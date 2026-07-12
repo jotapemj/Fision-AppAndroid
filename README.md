@@ -61,10 +61,13 @@ server. There are two paths:
 - **Personalized**: enable or disable individual stems (guitar, bass,
   drums, piano, brass) and choose voice mode (single or split).
 
-You also pick the compute device (CPU or CUDA) and the chord recognition
-backend (BTC or Chordino). The audio is streamed to the server without
-loading the whole file into memory, and a progress dialog shows the
-upload percentage with a cancel button.
+You also pick the compute device (CPU or CUDA). The audio is streamed
+to the server without loading the whole file into memory, and a
+progress dialog shows the upload percentage with a cancel button.
+
+Chord detection on the server always uses BTC (Bidirectional
+Transformer for Chord recognition), so there is no chord backend
+selector in the app.
 
 ### Server connection
 
@@ -160,6 +163,47 @@ side to side you find:
 - **Show/hide chords button**: collapses the chord section to give the
   stem list more room.
 - **Audio 3D button**: switches into the 3D positioning view.
+
+## Song folder layout
+
+Each song lives in its own folder inside the app's `Songs/` directory
+on external storage. Folders downloaded from the server are named
+after the hash the server assigns; folders you add manually can use
+any name, and the app treats them as local-only.
+
+A typical folder contains:
+
+```
+SongName/
+├── bass.flac
+├── drums.flac
+├── other.flac
+├── vocals.flac
+├── (extra stems the server may produce, such as guitar, piano,
+│    brass, kick, snare, toms, hh, ride, crash, vocals2)
+├── metronome.flac
+├── metronome_half.flac
+├── metronome_double.flac
+├── chords.txt         (advanced chord chart, one "CHORD TIME" per line)
+├── chords_basic.txt   (optional, basic variant of the chord chart)
+├── beats.txt          (first line: global BPM, then one beat time per line)
+├── downbeats.txt      (optional, one downbeat time per line)
+├── metadata.txt       (optional, "Title: ...", "Artist: ...")
+└── artcover.png       (optional, HD cover for the notification and UI)
+```
+
+Stems can be WAV instead of FLAC (see the note above about stem
+formats). The app matches stems by filename (case-insensitive, without
+the extension) against its internal catalog, so any WAV or FLAC whose
+name matches a known stem name is loaded automatically. Files that do
+not match a known stem are ignored.
+
+If a song is missing `chords_basic.txt`, the drawer disables the
+Chords toggle and the advanced variant is used by default. If a song
+is missing `downbeats.txt`, bar lines are inferred from the beat grid
+using the global BPM. If a song is missing `metadata.txt` or
+`artcover.png`, the folder name is used as the title and a generic
+cover is shown.
 
 ## Audio engine
 
@@ -341,3 +385,54 @@ The project is a standard Android Studio module with Gradle. It
 requires the Android NDK (for the C++ engine) and CMake. Open the
 project in Android Studio, let Gradle sync, and run the `app`
 configuration on any device with Android 7.0 (API 24) or higher.
+
+## Credits and citations
+
+Fision Android relies on the work of several open-source projects and
+research datasets. Please respect their licenses if you reuse code
+from this repository.
+
+### Audio and DSP
+
+- **Oboe**. Google's low-latency audio library for Android.
+  Apache License 2.0.
+  <https://github.com/google/oboe>
+- **SoundTouch**. Real-time pitch shifting and tempo change.
+  LGPL 2.1.
+  <https://www.surina.net/soundtouch/>
+- **dr_flac**. Single-file FLAC decoder by David Reid (mackron).
+  MIT / Public Domain.
+  <https://github.com/mackron/dr_libs>
+
+### HRTF dataset
+
+- **KEMAR HRTF measurements**. Bill Gardner and Keith Martin, MIT
+  Media Lab, 1994. Free for research and personal use.
+  <https://sound.media.mit.edu/resources/KEMAR.html>
+
+  > Gardner, W. G., and Martin, K. D. (1995). "HRTF measurements of
+  > a KEMAR." Journal of the Acoustical Society of America, 97(6),
+  > 3907-3908.
+
+### Android libraries
+
+- **AndroidX** and **Material Components**. Apache License 2.0.
+- **Room**. Apache License 2.0.
+- **OkHttp** and **Retrofit**. Apache License 2.0.
+
+### Server-side pipeline
+
+The following tools run on FisionServer, not inside this app. They are
+listed here so that users of the ecosystem can attribute them
+properly:
+
+- **Demucs** and **BS-RoFormer** (via audio-separator). Source
+  separation models used to produce stems.
+- **BTC (Bidirectional Transformer for Chord recognition)**. Chord
+  detection.
+- **beat_this**. Beat and downbeat estimation.
+
+## License
+
+TBD. Add a `LICENSE` file at the root before making the repository
+public.
