@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Translucent dark tint (~50% alpha) over the background blur (BlurBehindLayout
+         paints a blur of the RV behind). Keeps the dark gray tone but lets color
+         and motion from the list behind show through. Rounded corners at 16dp. -->
+    <solid android:color="#801A1A1A" />
+    <corners android:radius="16dp" />
+</shape>

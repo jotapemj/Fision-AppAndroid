@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "About" dialog with: app name (large), version + developer,
+  scrollable block with the list of external dependencies and their licenses.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minWidth="320dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <!-- Logo + app name -->
+    <ImageView
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="10dp"
+        android:src="@mipmap/ic_launcher"
+        android:contentDescription="@string/app_name" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/app_name"
+        android:textColor="@color/AppWhite"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/yugothic_ui_regular" />
+
+    <TextView
+        android:id="@+id/tv_about_version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginTop="2dp"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp"
+        android:fontFamily="@font/yugothic_ui_regular"
+        tools:text="v1.0.0" xmlns:tools="http://schemas.android.com/tools" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginTop="4dp"
+        android:text="@string/about_developer"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp"
+        android:fontFamily="@font/yugothic_ui_regular" />
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="10dp"
+        android:background="#22FFFFFF" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/about_libraries_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/yugothic_ui_regular" />
+
+    <!-- Dependencies list with licenses — text formatted with line breaks -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:maxHeight="260dp"
+        android:layout_marginTop="8dp"
+        android:scrollbars="vertical">
+
+        <TextView
+            android:id="@+id/tv_about_libraries"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#DDFFFFFF"
+            android:textSize="12sp"
+            android:lineSpacingExtra="3dp"
+            android:fontFamily="@font/yugothic_ui_regular" />
+    </ScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_about_close"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="14dp"
+        android:padding="10dp"
+        android:text="@string/dialog_close"
+        android:textColor="@color/AppWhite"
+        android:backgroundTint="@color/colorPrimary"
+        app:cornerRadius="30dp" />
+
+</LinearLayout>

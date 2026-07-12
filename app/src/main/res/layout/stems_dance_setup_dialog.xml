@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Stems dance setup dialog. Lets the user pick which ones dance
+  and tune the initial speed and distance.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="330dp"
+    android:layout_height="wrap_content"
+    android:padding="20dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:text="@string/stems_dance_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:text="@string/stems_dance_hint"
+        android:textColor="#B3FFFFFF"
+        android:textSize="12sp"
+        android:layout_marginBottom="14dp" />
+
+    <!-- Container where PlayerActivity adds the toggleable stem icons.
+         Horizontal LinearLayout; the code splits it into rows if it does not fit. -->
+    <LinearLayout
+        android:id="@+id/gl_dance_stems"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="18dp" />
+
+    <!-- Speed -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:text="@string/stems_dance_speed"
+            android:textColor="@color/AppWhite"
+            android:textSize="13sp" />
+        <TextView
+            android:id="@+id/tv_dance_speed_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:text="0.50×"
+            android:textColor="@color/colorPrimary"
+            android:textSize="13sp" />
+    </LinearLayout>
+    <com.google.android.material.slider.Slider
+        android:id="@+id/sl_dance_speed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:valueFrom="0.02"
+        android:valueTo="0.4"
+        android:value="0.15"
+        android:stepSize="0.01"
+        app:trackColorActive="@color/colorPrimary"
+        app:trackColorInactive="@color/BottomSheetColor"
+        app:thumbColor="@color/sliderThumb"
+        app:haloRadius="0dp"
+        app:tickVisible="false" />
+
+    <!-- Distance -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="4dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:text="@string/stems_dance_distance"
+            android:textColor="@color/AppWhite"
+            android:textSize="13sp" />
+        <TextView
+            android:id="@+id/tv_dance_distance_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:text="1.00"
+            android:textColor="@color/colorPrimary"
+            android:textSize="13sp" />
+    </LinearLayout>
+    <com.google.android.material.slider.Slider
+        android:id="@+id/sl_dance_distance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:valueFrom="0.4"
+        android:valueTo="1.2"
+        android:value="1.0"
+        android:stepSize="0.05"
+        app:trackColorActive="@color/colorPrimary"
+        app:trackColorInactive="@color/BottomSheetColor"
+        app:thumbColor="@color/sliderThumb"
+        app:haloRadius="0dp"
+        app:tickVisible="false" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="18dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_dance_cancel"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:padding="10dp"
+            android:text="@string/NO"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_dance_start"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:padding="10dp"
+            android:text="@string/stems_dance_start"
+            android:textColor="@color/AppWhite"
+            android:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+    </LinearLayout>
+
+</LinearLayout>

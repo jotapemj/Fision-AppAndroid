@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">F I S I O N</string>
+    <string name="app_name">Fision</string>
+    <string name="tv_title">Пісні</string>
+    <string name="te_find">Знайти в бібліотеці</string>
+    <string name="b_add">+ Додати</string>
+    <string name="tv_SongsCount">25 пісень</string>
+    <string name="results">результати</string>
+    <string name="tvTitle">Назва пісні тут</string>
+    <string name="tvSubtitle">Більше інформації тут</string>
+    <string name="tv_chord">F#</string>
+    <string name="tv_SongTitle">Назва пісні</string>
+    <string name="tv_currentPos">00:00</string>
+    <string name="iv_icon">AppIcon</string>
+    <string name="tv_bpm">"BPM: "</string>
+    <string name="b_play_description">Кнопка відтворення пісні</string>
+    <string name="b_next_description">Кнопка відтворення наступної пісні</string>
+    <string name="b_previous_description">Кнопка відтворення попередньої пісні</string>
+    <string name="b_seconds_back_description">Кнопка повернення на 5 секунд назад</string>
+    <string name="b_seconds_forward_description">Кнопка переходу на 5 секунд вперед</string>
+    <string name="b_settings_description">Кнопка налаштувань</string>
+    <string name="b_delete">Видалити пісню</string>
+    <string name="b_edit_info">Редагувати інформацію</string>
+    <string name="delete_confirm">Видалити</string>
+    <string name="song_info_title">Інформація про пісню</string>
+    <string name="rename_hint_song">Назва</string>
+    <string name="rename_hint_artist">Виконавець</string>
+    <string name="save">ЗБЕРЕГТИ</string>
+    <string name="song_info_added">Додано</string>
+    <string name="song_info_format">Формат</string>
+    <string name="song_info_size">Обсяг на диску</string>
+    <string name="song_info_duration">Тривалість</string>
+    <string name="song_info_stems">Стеми</string>
+    <string name="song_info_unknown">—</string>
+
+    <!--- player side drawer -->
+    <string name="drawer_options_title">Параметри</string>
+    <string name="drawer_item_chords">Акорди</string>
+    <string name="chords_dialog_title">Версія акордів</string>
+    <string name="chords_basic">Базові</string>
+    <string name="chords_advanced">Розширені</string>
+    <string name="drawer_item_cifrado">Система нотації</string>
+    <string name="cifrado_dialog_title">Система нотації</string>
+    <string name="cifrado_american">Американська (A, B, C, D, E, F, G)</string>
+    <string name="cifrado_latin">Латинська (Do, Re, Mi, Fa, Sol, La, Si)</string>
+    <string name="drawer_switch_transposition">Транспонувати з pitch</string>
+
+    <string name="drawer_item_notation">Знаки</string>
+    <string name="notation_dialog_title">Знаки альтерації</string>
+    <string name="notation_flat">Бемоль (♭)</string>
+    <string name="notation_sharp">Дієз (♯)</string>
+
+    <string name="metronome_half_variant_a">A</string>
+    <string name="metronome_half_variant_b">B</string>
+
+    <string name="drawer_switch_downbeat">Звук на сильній долі</string>
+    <string name="drawer_item_downbeat_sound">Звук</string>
+    <string name="downbeat_sound_dialog_title">Звук сильної долі</string>
+    <string name="downbeat_sound_clap">Плескіт</string>
+    <string name="downbeat_sound_glass">Скло</string>
+    <string name="downbeat_sound_metronomebell">Дзвіночок метронома</string>
+    <string name="downbeat_sound_snap">Клацання</string>
+    <string name="downbeat_sound_stick">Палиця</string>
+    <string name="downbeat_sound_synthbella">Синт дзвіночок A</string>
+    <string name="downbeat_sound_synthbellb">Синт дзвіночок B</string>
+    <string name="downbeat_sound_synthsquarea">Синт квадрат A</string>
+    <string name="downbeat_sound_synthsquareb">Синт квадрат B</string>
+    <string name="downbeat_sound_synthsquarec">Синт квадрат C</string>
+    <string name="downbeat_sound_tongue">Язик</string>
+    <string name="downbeat_sound_weird">Дивний</string>
+    <string name="downbeat_sound_whistle">Свист</string>
+
+    <!--- export -->
+    <string name="drawer_item_export">Експорт</string>
+    <string name="drawer_item_reprocess">Переобробити</string>
+    <string name="import_reprocess_short">Переобробити</string>
+    <string name="import_reprocess_title">Переобробка пісні</string>
+    <string name="reprocess_success">Запит на переобробку надіслано</string>
+    <string name="reprocess_missing_input">Оригінального аудіо вже немає на сервері</string>
+    <string name="reprocess_failed">Помилка переобробки</string>
+    <string name="reprocess_busy">Ця пісня вже обробляється</string>
+    <string name="audio3d_title">3D аудіо</string>
+    <string name="audio3d_info_title">3D аудіо</string>
+    <string name="audio3d_info_body">Експериментальна бінауральна просторова обробка. Кожен інструмент розміщується навколо слухача у вигляді зверху. Конволюція HRTF (Head-Related Transfer Function, набір даних KEMAR MIT) відтворює природну фільтрацію голови, вух і плечей для симуляції напрямку, висоти та відстані. Для роботи ефекту потрібні навушники.</string>
+    <string name="audio3d_legend_drag"><![CDATA[<b>Перетягнути</b> · розмістити]]></string>
+    <string name="audio3d_legend_tap"><![CDATA[<b>Дотик</b> · вибрати]]></string>
+    <string name="audio3d_legend_double"><![CDATA[<b>Подвійний дотик</b> · всюдисущий]]></string>
+    <string name="audio3d_legend_long"><![CDATA[<b>Довге натискання</b> · вимкнути звук]]></string>
+    <string name="audio3d_legend_reset"><![CDATA[<b>Скидання</b> · початкові позиції]]></string>
+    <string name="stems_dance_title">Танець стемів</string>
+    <string name="stems_dance_hint">Оберіть інструменти, які танцюватимуть</string>
+    <string name="stems_dance_start">Почати</string>
+    <string name="stems_dance_speed">Швидкість</string>
+    <string name="stems_dance_distance">Відстань</string>
+    <string name="dl_notif_progress_single">Завантаження %1$d%%</string>
+    <string name="dl_notif_progress_multi">Завантаження %1$d/%2$d · %3$d%%</string>
+    <string name="dl_notif_ready">Готово до відтворення</string>
+    <string name="drawer_item_reset">Скинути до типового</string>
+    <string name="drawer_reset_dialog_title">Скинути</string>
+    <string name="drawer_reset_dialog_body">Усі налаштування доріжок цієї пісні повернуться до типових значень. Продовжити?</string>
+    <string name="drawer_reset_dialog_cancel">Скасувати</string>
+    <string name="export_dialog_title">Експорт</string>
+    <string name="export_choice_mixdown">Зберегти поточний мікс</string>
+    <string name="export_choice_separate">Зберегти окремі доріжки</string>
+    <string name="export_volume_default">Гучність за замовчуванням</string>
+    <string name="export_volume_current">Гучність поточного міксу</string>
+    <string name="export_format_wav">WAV</string>
+    <string name="export_format_aac">AAC</string>
+    <string name="export_format_m4a">M4A</string>
+    <string name="export_format_dialog_title">Формат виводу</string>
+    <string name="export_volume_dialog_title">Джерело гучності</string>
+    <string name="export_progress_title">Експортується…</string>
+    <string name="export_done">Експорт завершено</string>
+    <string name="export_failed">Помилка експорту</string>
+    <string name="export_save">Зберегти</string>
+    <string name="export_stem_button_desc">Експорт доріжки</string>
+    <string name="export_back">Назад</string>
+    <string name="export_include_metronome">Додати метроном до міксу</string>
+    <string name="export_permission_title">Дозвіл на сховище</string>
+    <string name="export_permission_body">Щоб зберігати експорти, Fision потребує доступу до всіх файлів. Відкриються Налаштування — увімкни доступ і повернись до додатка.</string>
+    <string name="export_permission_continue">Відкрити Налаштування</string>
+
+    <string name="helpline_icon">Піктограма діалогового вікна попередження</string>
+    <string name="tv_alertDialog_text">Видалити [НАЗВА ПІСНІ]?</string>
+    <string name="YES">ВИДАЛИТИ</string>
+    <string name="NO">Скасувати</string>
+    <string name="title_bass">Бас</string>
+    <string name="title_drums">Барабани</string>
+    <string name="title_other">Інші інструменти</string>
+    <string name="title_vocals">Вокал</string>
+    <string name="title_main_vocals">Основний вокал</string>
+    <string name="title_chorus">Бек-вокал</string>
+    <string name="title_accompaniment">Інструментальний</string>
+    <string name="title_guitar">Гітара</string>
+    <string name="title_piano">Піаніно</string>
+    <string name="title_winds">Духові</string>
+
+    <!--- stem context menu -->
+    <string name="stem_menu_solo">Соло</string>
+    <string name="stem_menu_mute">Тиша</string>
+    <string name="title_kick">Бочка</string>
+    <string name="title_snare">Малий барабан</string>
+    <string name="title_hh">Хай-хет</string>
+    <string name="title_crash">Креш</string>
+    <string name="title_ride">Райд</string>
+    <string name="title_toms">Томи</string>
+    <string name="title_drumset">Барабанна установка</string>
+
+    <string name="order_by_title">Сортувати за</string>
+    <string name="order_by_date_desc">Датою додавання (новіші спочатку)</string>
+    <string name="order_by_date_asc">Датою додавання (старіші спочатку)</string>
+    <string name="pan_l">L</string>
+    <string name="pan_r">R</string>
+    <string name="pan_title">Баланс</string>
+    <string name="tv_metronome_title">Динамічний метроном</string>
+    <string name="tv_metronome_volume">Обсяг</string>
+    <string name="tv_metronome_speed">Швидкість відтворення</string>
+    <string name="b_metronome">1x</string>
+    <string name="b_metronomeHalf">0.5x</string>
+    <string name="b_metronomeDouble">2x</string>
+    <string name="tv_pitch_title">Транспозиція</string>
+    <string name="tv_pitch_semitones">півтони</string>
+    <string name="settings_title">Налаштування</string>
+    <string name="title_activity_settings">Екран налаштувань</string>
+    <string name="songs">пісні</string>
+
+    <!--- Fision server -->
+    <string name="server_section_title">Сервер Fision</string>
+    <string name="server_url_title">URL сервера</string>
+    <string name="server_url_summary">Напр.: http://192.168.1.50:8000</string>
+    <string name="server_token_title">Токен</string>
+    <string name="server_token_summary">Натисни, щоб подивитися чи змінити (потрібна біометрія)</string>
+    <string name="about_section_title">Про застосунок</string>
+    <string name="about_title">Про Fision</string>
+    <string name="about_summary">Версія, розробник і open-source кредити</string>
+    <string name="about_developer">Jotapeveloper 2026</string>
+    <string name="about_version_fmt">v%1$s</string>
+    <string name="about_libraries_title">Open-source бібліотеки</string>
+    <string name="about_libraries_body"><![CDATA[<b>Oboe</b> · Google · Apache 2.0
+Аудіо з низькою затримкою на Android.
+
+<b>SoundTouch</b> · Olli Parviainen · LGPL 2.1
+Зміна pitch і темпу в реальному часі.
+
+<b>dr_flac</b> · David Reid (mackron) · MIT / Public Domain
+Однофайловий декодер FLAC.
+
+<b>KEMAR HRTF dataset</b> · MIT Media Lab
+Імпульсні відгуки для режиму Audio 3D. Вільно для дослідницького та особистого використання.
+
+<b>Material Components</b> · Google · Apache 2.0
+UI-компоненти, кнопки, діалоги.
+
+<b>AndroidX / Room</b> · Google · Apache 2.0
+Persistence, біометрія, transitions, налаштування.
+
+<b>OkHttp / Retrofit</b> · Square · Apache 2.0
+HTTP-клієнт і серверні bindings.]]></string>
+    <string name="server_token_set">Токен встановлено</string>
+    <string name="server_token_unset">Не встановлено</string>
+    <string name="server_token_dialog_title">Токен</string>
+    <string name="server_token_hint">Встав токен сервера</string>
+    <string name="server_auth_required">Автентифікація потрібна для редагування токена</string>
+    <string name="server_auth_subtitle">Біометрія або PIN пристрою</string>
+    <string name="server_auth_unavailable">Біометрія недоступна на цьому пристрої</string>
+    <string name="server_status_online">Сервер у мережі</string>
+    <string name="server_status_offline">Сервер недоступний</string>
+    <string name="server_test_title">Перевірити з\'єднання</string>
+    <string name="server_test_summary">Пінг /health на налаштованому сервері</string>
+    <string name="server_test_running">Перевірка сервера…</string>
+    <string name="server_test_ok">Сервер доступний</string>
+    <string name="server_test_fail">Немає відповіді</string>
+    <string name="server_test_no_url">Спочатку вкажи URL</string>
+    <string name="server_test_timeout">Сервер не відповідає</string>
+    <string name="dialog_close">Закрити</string>
+
+    <!--- import / add song -->
+    <string name="import_title">Додати пісню</string>
+    <string name="import_pick_audio">Обрати аудіофайл</string>
+    <string name="import_no_file">Файл не обрано</string>
+    <string name="import_section_separation">Розділення</string>
+    <string name="import_classic">Класичне</string>
+    <string name="import_personalized">Персоналізоване</string>
+    <string name="import_classic_4stem">Вокал + Барабани + Бас + Інші</string>
+    <string name="import_classic_2stem">Вокал + Інструментал</string>
+    <string name="import_vocals_always">Вокал</string>
+    <string name="import_vocals_single">Вокал</string>
+    <string name="import_vocals_split">Основний / Бек-вокал</string>
+    <string name="import_drums_full">Загальна перкусія</string>
+    <string name="import_drums_split">Розділена перкусія</string>
+    <string name="import_stem_guitar">Гітара</string>
+    <string name="import_stem_bass">Бас</string>
+    <string name="import_stem_drums">Перкусія</string>
+    <string name="import_stem_piano">Піаніно</string>
+    <string name="import_stem_brass">Духові / Метал</string>
+    <string name="import_hint_other">Решта інструментів буде змішана в один стем</string>
+    <string name="import_hint_drums_split">Виявлена ​​барабанна установка буде розділена на основні компоненти: бочка, малий барабан, томи, хет, тарілка та райд. Решту перкусії може бути відкинуто.</string>
+    <string name="import_send_short">Завантажити</string>
+    <string name="import_selected_header_placeholder">Оберіть аудіофайл</string>
+    <string name="import_section_device">Процесор</string>
+    <string name="import_device_cpu">CPU</string>
+    <string name="import_device_cuda">GPU · CUDA</string>
+    <string name="import_no_server">Спочатку налаштуй URL сервера в Налаштуваннях</string>
+    <string name="import_uploading">Завантаження…</string>
+    <string name="import_upload_failed">Помилка завантаження</string>
+
+    <!--- cloud item / delete -->
+    <string name="cloud_state_queued">У черзі…</string>
+    <string name="cloud_state_queued_pos">У черзі (#%1$d)…</string>
+    <string name="cloud_state_running">Обробка…</string>
+    <string name="cloud_state_downloading">Завантаження %1$d%%</string>
+    <string name="cloud_state_cloud_only">У хмарі</string>
+    <string name="cloud_state_error">Помилка</string>
+    <string name="cloud_delete_cloud">Видалити з хмари</string>
+    <string name="cloud_delete_cloud_confirm">Також видалити пісню із сервера?</string>
+    <string name="cloud_cancel_queue">Скасувати (черга)</string>
+    <string name="cloud_cancel_queue_confirm">Прибрати цю пісню з черги?</string>
+
+</resources>

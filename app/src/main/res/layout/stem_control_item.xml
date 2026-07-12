@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/black">
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="78dp"
+
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_stemIcon"
+            android:layout_width="38dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="24dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="stem icon"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?selectableItemBackgroundBorderless" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sb_stemVol"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
+            app:trackColorActive="@color/colorPrimary"
+            app:trackColorInactive="@color/BottomSheetColor"
+            app:thumbColor="@color/sliderThumb"
+            app:haloColor="@color/sliderHalo"
+            app:haloRadius="0dp"
+            android:value="0"
+            android:valueFrom="0"
+            android:valueTo="100"
+            />
+
+        <ImageButton
+            android:id="@+id/ib_restoreVol"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginTop="27dp"
+            android:layout_marginEnd="8dp"
+            android:background="?selectableItemBackgroundBorderless"
+            android:backgroundTint="@color/black"
+            android:contentDescription="restore volume to default"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:padding="0dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_restore_stem" />
+
+        <ImageButton
+            android:id="@+id/ib_options"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginTop="25dp"
+            android:layout_marginEnd="20dp"
+            android:background="?selectableItemBackgroundBorderless"
+            android:backgroundTint="@color/black"
+            android:contentDescription="stem options"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:scaleType="fitXY"
+            android:src="@drawable/ic_more"
+            />
+
+
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Self-hosted Fision server: HTTP to a LAN or Tailscale IP/host. Cleartext is
+    allowed globally (usesCleartextTraffic=true in the manifest) because the host
+    is configured by the user in Settings and can be any private IP.
+    If Cloudflare Tunnel or WireGuard with HTTPS is used later, this XML
+    can be tightened to HTTPS-only per domain.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="280dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <ImageView
+        android:id="@+id/iv_alertDialog_ic"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:contentDescription="@string/helpline_icon"
+        android:src="@drawable/ic_delete"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_alertDialog_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="20dp"
+        android:text="@string/tv_alertDialog_text"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="18sp"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/iv_alertDialog_ic" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"> <!-- Center the buttons -->
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_no"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:padding="10dp"
+            android:maxLines="2"
+            android:text="@string/NO"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_yes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:padding="10dp"
+            android:maxLines="2"
+            android:text="@string/YES"
+            android:textColor="@color/AppWhite"
+            android:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+
+    </LinearLayout>
+
+    </LinearLayout>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <!-- Beat box: fixed width, dark gray background that lights up dynamically -->
+    <View
+        android:id="@+id/v_beat_bg"
+        android:layout_width="44dp"
+        android:layout_height="60dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="2dp"
+        android:background="@drawable/beat_cell_bg" />
+
+    <TextView
+        android:id="@+id/tv_beat_chord"
+        android:layout_width="44dp"
+        android:layout_height="60dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="2dp"
+        android:fontFamily="@font/mus_glyhps"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp" />
+
+    <!-- Bar-start mark: vertical line centered in the gap between the
+         previous tile (ends at x=58dp) and the current one (starts at x=74dp of the next
+         FrameLayout). Gap center = 66dp → marginStart=5dp lands the 2dp line
+         at [65,67], perfectly centered. -->
+    <View
+        android:id="@+id/v_bar_marker"
+        android:layout_width="2dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="5dp"
+        android:background="@color/colorPrimary"
+        android:visibility="gone" />
+
+</FrameLayout>

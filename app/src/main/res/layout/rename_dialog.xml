@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="300dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <TextView
+        android:id="@+id/tv_renameDialog_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="20dp"
+        android:text="@string/song_info_title"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Artcover: centered square PNG. Falls back to generic if no artcover.png. -->
+    <ImageView
+        android:id="@+id/iv_renameDialog_cover"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="20dp"
+        android:scaleType="centerCrop"
+        android:src="@raw/artcover_generic"
+        android:contentDescription="@string/helpline_icon" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_song_name"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/rename_hint_song"
+        app:boxStrokeColor="@color/AppWhite"
+        android:textColorHint="#919191"
+        app:hintTextColor="@color/AppWhite"
+        app:cursorColor="@color/colorPrimary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_song_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:theme="@style/EditTextHandleTheme"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="@color/AppWhite"
+            android:textCursorDrawable="@drawable/cursor_primary"
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionNext" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_artist_name"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:hint="@string/rename_hint_artist"
+        app:boxStrokeColor="@color/AppWhite"
+        android:textColorHint="#919191"
+        app:hintTextColor="@color/AppWhite"
+        app:cursorColor="@color/colorPrimary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_artist_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:theme="@style/EditTextHandleTheme"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="@color/AppWhite"
+            android:textCursorDrawable="@drawable/cursor_primary"
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionDone" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Divider + read-only song info (populated from Java) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp"
+        android:background="#22FFFFFF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout style="@style/SongInfoRow">
+            <TextView style="@style/SongInfoLabel" android:text="@string/song_info_added" />
+            <TextView android:id="@+id/tv_song_info_added" style="@style/SongInfoValue" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/SongInfoRow">
+            <TextView style="@style/SongInfoLabel" android:text="@string/song_info_format" />
+            <TextView android:id="@+id/tv_song_info_format" style="@style/SongInfoValue" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/SongInfoRow">
+            <TextView style="@style/SongInfoLabel" android:text="@string/song_info_size" />
+            <TextView android:id="@+id/tv_song_info_size" style="@style/SongInfoValue" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/SongInfoRow">
+            <TextView style="@style/SongInfoLabel" android:text="@string/song_info_duration" />
+            <TextView android:id="@+id/tv_song_info_duration" style="@style/SongInfoValue" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/SongInfoRow">
+            <TextView style="@style/SongInfoLabel" android:text="@string/song_info_stems" />
+            <TextView android:id="@+id/tv_song_info_stems" style="@style/SongInfoValue" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_rename_cancel"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:padding="10dp"
+            android:maxLines="2"
+            android:text="@string/NO"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_rename_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:padding="10dp"
+            android:maxLines="2"
+            android:text="@string/save"
+            android:textColor="@color/AppWhite"
+            android:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

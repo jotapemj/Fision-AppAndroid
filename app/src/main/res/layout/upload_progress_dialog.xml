@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Song upload dialog. Same visual language as the export wizard
+    (bg `delete_dialogbg`, 24dp padding). Determinate ProgressBar
+    because ProgressRequestBody reports live byte counts.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="360dp"
+    android:layout_height="wrap_content"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <TextView
+        android:id="@+id/tv_uploadTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:text="@string/import_uploading"
+        android:layout_marginBottom="14dp" />
+
+    <TextView
+        android:id="@+id/tv_uploadSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:singleLine="true"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:textColor="#919191"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="13sp"
+        android:layout_marginBottom="10dp" />
+
+    <ProgressBar
+        android:id="@+id/pb_upload"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:progressTint="@color/colorPrimary"
+        android:max="100"
+        android:progress="0" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_uploadCancel"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="@android:string/cancel"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="30dp" />
+    </LinearLayout>
+
+</LinearLayout>

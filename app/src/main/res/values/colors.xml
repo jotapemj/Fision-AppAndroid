@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="colorPrimary">#27B397</color>
+
+
+    <color name="AppDarkGrey">#919191</color>
+    <color name="BottomSheetColor">#272727</color>
+    <color name="AppWhite">#FFFFFF</color>
+
+    <color name="sliderThumb">#02d8e7</color>
+    <color name="sliderHalo">#3302D8E7</color>
+
+    <!-- Fision server connection state -->
+    <color name="cloud_online">#27B397</color>
+    <color name="cloud_offline">#E04848</color>
+</resources>

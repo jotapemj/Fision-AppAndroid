@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="280dp"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="@drawable/delete_dialogbg">
+
+    <FrameLayout
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="14dp">
+
+        <ProgressBar
+            android:id="@+id/pb_pingSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/colorPrimary" />
+
+        <ImageView
+            android:id="@+id/iv_pingResult"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:contentDescription="@string/server_test_title" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_pingText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textColor="@color/AppWhite"
+        android:textSize="16sp"
+        android:layout_marginBottom="18dp"
+        android:text="@string/server_test_running" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_pingClose"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:minWidth="120dp"
+        android:text="@string/dialog_close"
+        android:textColor="@color/AppWhite"
+        android:backgroundTint="@color/colorPrimary"
+        android:visibility="gone"
+        app:cornerRadius="30dp" />
+
+</LinearLayout>

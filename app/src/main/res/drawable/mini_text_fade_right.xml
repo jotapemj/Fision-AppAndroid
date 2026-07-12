@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Quick fade from transparent to opaque, now with the same translucent gray
+         as the mini-player background to keep visual consistency. -->
+    <gradient
+        android:startColor="#001A1A1A"
+        android:centerColor="#BF1A1A1A"
+        android:endColor="#BF1A1A1A"
+        android:angle="0" />
+</shape>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="300dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:src="@raw/ic_orderby"
+        android:scaleType="fitCenter"
+        android:layout_marginBottom="10dp" />
+
+    <TextView
+        android:id="@+id/tv_orderByDialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="20dp"
+        android:text="@string/order_by_title"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tv_orderByOption_desc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="start|center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:text="@string/order_by_date_desc"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="15sp"
+        android:background="@drawable/dialog_option_inactive"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tv_orderByOption_asc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="start|center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:text="@string/order_by_date_asc"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textSize="15sp"
+        android:background="@drawable/dialog_option_inactive"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_orderByCancel"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:padding="10dp"
+        android:text="@android:string/cancel"
+        android:textColor="@color/AppWhite"
+        app:strokeColor="@color/colorPrimary"
+        app:rippleColor="@color/colorPrimary"
+        app:cornerRadius="30dp" />
+
+</LinearLayout>

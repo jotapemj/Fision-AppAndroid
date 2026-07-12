@@ -1,0 +1,45 @@
+# Gradle
+.gradle/
+/build
+**/build/
+/captures
+.externalNativeBuild/
+.cxx/
+
+# IDE
+*.iml
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local config (nunca subir)
+/local.properties
+local.properties
+
+# Claves de firma (NUNCA subir)
+*.jks
+*.keystore
+keystore.properties
+key.properties
+release/
+signingConfig*.properties
+
+# Servicios cloud
+google-services.json
+
+# Logs
+*.log
+
+# Claude Code (privado, no repo)
+.claude/
+CLAUDE.md
+
+# Tools garbage
+/tools/compact.tar
+/tools/compact.tar.Z
+/tools/compact/
+
+# Local helper scripts (no van al repo)
+/extraer_comentarios.py
+/comentarios_espanol.txt
+/comentarios_es.txt

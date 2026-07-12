@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/ImportActivity"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/import_toolbar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/black"
+        android:layout_marginTop="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/b_import_back"
+                style="@style/Widget.MaterialComponents.Button.IconOnly"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:backgroundTint="@color/black"
+                app:icon="@drawable/ic_back"
+                app:iconSize="24dp"
+                app:iconTint="@color/white"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/import_title"
+                android:textColor="@color/AppWhite"
+                android:textSize="20sp"
+                android:fontFamily="@font/yugothic_ui_regular"
+                android:layout_marginStart="12dp"
+                app:layout_constraintStart_toEndOf="@+id/b_import_back"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.appcompat.widget.Toolbar>
+
+    <!-- Sticky header with cover + title/artist of the selected song.
+         Shown when the user picks a file with readable metadata. -->
+    <LinearLayout
+        android:id="@+id/ll_import_header"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="#000000"
+        app:layout_constraintTop_toBottomOf="@+id/import_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <FrameLayout
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/cover_clip_bg"
+            android:clipToOutline="true">
+            <ImageView
+                android:id="@+id/iv_import_cover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@raw/artcover_generic" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_import_headerTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:fontFamily="@font/yugothic_ui_regular"
+                android:textColor="@color/AppWhite"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:text="@string/import_selected_header_placeholder" />
+
+            <TextView
+                android:id="@+id/tv_import_headerArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:fontFamily="@font/yugothic_ui_regular"
+                android:textColor="#B3FFFFFF"
+                android:textSize="13sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_import_pickFile"
+            style="@style/Widget.MaterialComponents.Button.IconOnly"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="@color/colorPrimary"
+            android:contentDescription="@string/import_pick_audio"
+            app:icon="@drawable/ic_edit"
+            app:iconSize="20dp"
+            app:iconTint="@color/AppWhite"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/v_import_headerSep"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="#22FFFFFF"
+        app:layout_constraintTop_toBottomOf="@+id/ll_import_header"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ScrollView
+        android:id="@+id/import_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="20dp"
+        app:layout_constraintTop_toBottomOf="@+id/v_import_headerSep"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/b_import_send">
+
+        <LinearLayout
+            android:id="@+id/ll_import_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:animateLayoutChanges="true">
+
+            <!-- Hidden filename field (compat, no longer visible in the UI). The real name
+                 is shown in the sticky header. -->
+            <TextView
+                android:id="@+id/tv_import_filename"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <!-- ====== Separation ====== -->
+            <TextView style="@style/ImportSectionLabel"
+                android:text="@string/import_section_separation" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/seg_sep_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_sep_classic"
+                    style="@style/ImportSegmentButton"
+                    android:text="@string/import_classic" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_sep_personalized"
+                    style="@style/ImportSegmentButton"
+                    android:text="@string/import_personalized" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <!-- Panel Classic -->
+            <LinearLayout
+                android:id="@+id/panel_classic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="10dp">
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/seg_classic_preset"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                        app:singleSelection="true"
+                    app:selectionRequired="true">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/b_classic_4stem"
+                        style="@style/ImportSegmentButton"
+                        android:text="@string/import_classic_4stem" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/b_classic_2stem"
+                        style="@style/ImportSegmentButton"
+                        android:text="@string/import_classic_2stem" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+
+            <!-- Personalized panel (collapsible via animateLayoutChanges) -->
+            <LinearLayout
+                android:id="@+id/panel_personalized"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="10dp"
+                android:visibility="gone">
+
+                <TextView style="@style/ImportSubLabel"
+                    android:text="@string/import_vocals_always" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/seg_vocals_variant"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                        app:singleSelection="true"
+                    app:selectionRequired="true">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/b_vocals_single"
+                        style="@style/ImportSegmentButton"
+                        android:text="@string/import_vocals_single" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/b_vocals_split"
+                        style="@style/ImportSegmentButton"
+                        android:text="@string/import_vocals_split" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cb_stem_guitar"
+                    style="@style/ImportStemCheck"
+                    android:text="@string/import_stem_guitar" />
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cb_stem_bass"
+                    style="@style/ImportStemCheck"
+                    android:text="@string/import_stem_bass" />
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cb_stem_drums"
+                    style="@style/ImportStemCheck"
+                    android:text="@string/import_stem_drums"
+                    android:checked="true" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/seg_drums_variant"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginTop="6dp"
+                        app:singleSelection="true"
+                    app:selectionRequired="true">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/b_drums_full"
+                        style="@style/ImportSegmentButton"
+                        android:text="@string/import_drums_full" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/b_drums_split"
+                        style="@style/ImportSegmentButton"
+                        android:text="@string/import_drums_split" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <!-- Notice about split drums: only visible when that option is selected.
+                     No info icon (purely informative, not the same kind as the general hint). -->
+                <TextView
+                    android:id="@+id/tv_import_drumsSplitHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/import_hint_drums_split"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:visibility="gone" />
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cb_stem_piano"
+                    style="@style/ImportStemCheck"
+                    android:text="@string/import_stem_piano" />
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cb_stem_brass"
+                    style="@style/ImportStemCheck"
+                    android:text="@string/import_stem_brass" />
+
+                <!-- General hint with info icon on the left -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="top"
+                    android:layout_marginTop="12dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginTop="1dp"
+                        android:src="@drawable/ic_info"
+                        app:tint="@color/colorPrimary"
+                        android:contentDescription="info" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/import_hint_other"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/yugothic_ui_regular" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ====== Device ====== -->
+            <TextView style="@style/ImportSectionLabel"
+                android:text="@string/import_section_device"
+                android:layout_marginTop="22dp" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/seg_device"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_dev_cpu"
+                    style="@style/ImportSegmentButton"
+                    android:text="@string/import_device_cpu" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_dev_cuda"
+                    style="@style/ImportSegmentButton"
+                    android:text="@string/import_device_cuda" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_import_send"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="20dp"
+        android:backgroundTint="@color/colorPrimary"
+        android:textColor="@color/AppWhite"
+        android:text="@string/import_send_short"
+        android:textSize="15sp"
+        android:fontFamily="@font/yugothic_ui_regular"
+        app:cornerRadius="30dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

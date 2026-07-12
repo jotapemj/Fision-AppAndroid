@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="80sp"
+    android:background="@drawable/ripple_button">
+
+
+    <!-- Wrapper that clips the cover + overlays to rounded corners -->
+    <FrameLayout
+        android:id="@+id/fl_cover_wrap"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="16dp"
+        android:background="@drawable/cover_clip_bg"
+        android:clipToOutline="true"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/iv_cover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="cover"
+            android:src="@drawable/ic_media" />
+
+        <!-- Gray veil for cloud_only / processing / error -->
+        <View
+            android:id="@+id/v_cover_dim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#A6000000"
+            android:visibility="gone" />
+
+        <!-- Cover with wave (fill wave) animation during DOWNLOADING. Replaces
+             the old green overlay: paints the darkened cover and fills from the bottom
+             with the real-brightness cover, clipped by an animated sine wave. -->
+        <com.jotapeveloper.fision.CoverFillWaveView
+            android:id="@+id/v_cover_wave"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <!-- Spinner while processing -->
+        <ProgressBar
+            android:id="@+id/pb_cover_spinner"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/AppWhite"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:maxLines="1"
+        android:text="@string/tvTitle"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toTopOf="@+id/tvSubtitle"
+        app:layout_constraintEnd_toStartOf="@+id/options"
+        app:layout_constraintStart_toEndOf="@+id/fl_cover_wrap"
+        app:layout_constraintTop_toTopOf="@+id/fl_cover_wrap"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <TextView
+        android:id="@+id/tvSubtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:maxLines="1"
+        android:text="@string/tvSubtitle"
+        android:textColor="#919191"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="@+id/fl_cover_wrap"
+        app:layout_constraintEnd_toStartOf="@+id/options"
+        app:layout_constraintStart_toEndOf="@+id/fl_cover_wrap"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitle" />
+
+    <ImageButton
+        android:id="@+id/options"
+        android:contentDescription="chosen song options"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:padding="0dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:layout_marginEnd="20dp"
+        android:text=""
+        android:textColor="@color/white"
+        android:backgroundTint="@color/black"
+        android:src="@drawable/ic_more"
+        android:scaleType="fitXY"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="?selectableItemBackgroundBorderless"
+
+        />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

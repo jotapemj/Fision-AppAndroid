@@ -1,0 +1,21 @@
+package com.jotapeveloper.fision;
+
+/** Persistent settings for a stem within a song. */
+public class StemSetting {
+    public int   volume = 75;   // 0..100
+    public float pan    = 0f;   // -100..100
+    /** Normalized 3D position [-1..1] relative to the head center. NaN = no saved
+     *  position; PlayerActivity uses the default layout (frontal semicircle). */
+    public float pos3DX = Float.NaN;
+    public float pos3DY = Float.NaN;
+    /** 3D elevation in degrees (-40..+90). Default 0 = horizontal plane. */
+    public float elevationDeg = 0f;
+    /** Omnipresent mode: stem playing at the center with no specific direction. */
+    public boolean omnipresent = false;
+
+    public StemSetting() {}
+    public StemSetting(int volume, float pan) {
+        this.volume = volume;
+        this.pan    = pan;
+    }
+}

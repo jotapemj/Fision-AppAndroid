@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Explanatory dialog for Audio 3D mode. delete_dialogbg background and Fision-style
+  buttons (colorPrimary). Justified text (justificationMode=inter_word, API 26+).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="300dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <ImageView
+        android:id="@+id/iv_audio3d_info_icon"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:src="@drawable/ic_info"
+        app:tint="@color/colorPrimary"
+        android:layout_marginBottom="10dp"
+        android:contentDescription="@string/audio3d_info_title" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginBottom="14dp"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:text="@string/audio3d_info_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Justified body (inter_word, API 26+). Falls back to start on API<26. -->
+    <TextView
+        android:id="@+id/tv_audio3d_info_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="14dp"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:text="@string/audio3d_info_body"
+        android:textColor="@color/AppWhite"
+        android:textSize="14sp"
+        android:justificationMode="inter_word" />
+
+    <!-- Actions legend (below the body) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="10dp"
+        android:background="#22FFFFFF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tv_audio3d_legend_drag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/tv_audio3d_legend_tap"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/tv_audio3d_legend_double"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/tv_audio3d_legend_long"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/tv_audio3d_legend_reset"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_audio3d_info_close"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:padding="10dp"
+        android:minWidth="140dp"
+        android:text="@string/dialog_close"
+        android:textColor="@color/AppWhite"
+        android:backgroundTint="@color/colorPrimary"
+        app:cornerRadius="30dp" />
+
+</LinearLayout>

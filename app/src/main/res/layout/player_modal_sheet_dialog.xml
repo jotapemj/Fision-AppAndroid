@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/dialogbg">
+
+
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_round_remove_24"
+            android:layout_gravity="center|top"
+            android:scaleType="centerCrop"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- Title row + export button on the right (same baseline) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="30dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginEnd="15dp">
+
+            <TextView
+                android:id="@+id/Title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:ellipsize="marquee"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:fontFamily="@font/yugothic_ui_regular"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:scrollHorizontally="true"
+                android:singleLine="true"
+                android:text="@string/title_bass"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"/>
+
+            <ImageButton
+                android:id="@+id/ib_exportStem"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="@string/export_stem_button_desc"
+                android:padding="6dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_export"
+                app:tint="#FFFFFF"/>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/pan_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/pan_title"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginBottom="10dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginEnd="15dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/pan_l"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:text="@string/pan_l"
+                    android:textColor="#FFFFFF"
+                    android:textSize="25sp"
+                    android:layout_marginBottom="30dp"
+                    android:layout_marginStart="80dp"
+                    android:layout_marginEnd="15dp"/>
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/s_pan"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="0dp"
+                    android:layout_marginEnd="00dp"
+                    android:value="0"
+                    android:valueFrom="-100"
+                    android:valueTo="100"
+                    app:trackColorActive="@color/AppDarkGrey"
+                    app:trackColorInactive="@color/AppDarkGrey"
+                    app:thumbColor="@color/sliderThumb"
+                    app:haloRadius="0dp"
+                    app:haloColor="@color/sliderHalo"
+                    />
+
+                <TextView
+                    android:id="@+id/pan_r"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="30dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:text="@string/pan_r"
+                    android:textColor="#FFFFFF"
+                    android:textSize="25sp"
+                    android:layout_marginBottom="30dp"
+                    android:layout_marginStart="15dp"
+                    />
+
+                <ImageButton
+                    android:id="@+id/ib_restorePan"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginEnd="20dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:backgroundTint="@color/black"
+                    android:contentDescription="restore pan"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:padding="0dp"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/ic_restore_pan"
+                    android:text=""
+                    android:textColor="@color/white"
+                    android:value="50"
+                    />
+
+        </LinearLayout>
+
+
+
+
+</LinearLayout>

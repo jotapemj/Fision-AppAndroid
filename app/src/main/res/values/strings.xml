@@ -1,0 +1,278 @@
+<resources>
+    <string name="app_title">F I S I O N</string>
+    <string name="app_name">Fision</string>
+    <string name="tv_title">Songs</string>
+    <string name="te_find">Find in library</string>
+    <string name="b_add">+ Add</string>
+    <string name="tv_SongsCount">25 songs</string>
+    <string name="results">results</string>
+    <string name="songs">songs</string>
+
+    <string name="tvTitle">Song title here</string>
+    <string name="tvSubtitle">More info here</string>
+
+    <string name="tv_chord">F#</string>
+    <string name="tv_SongTitle">Song Title</string>
+    <string name="tv_currentPos">00:00</string>
+    <string name="iv_icon">AppIcon</string>
+
+    <string name="tv_bpm">BPM: </string>
+    <string name="b_play_description">Play song button</string>
+    <string name="b_next_description">Play next song button</string>
+    <string name="b_previous_description">Play previous song button</string>
+    <string name="b_seconds_back_description">Go 5 seconds back button</string>
+    <string name="b_seconds_forward_description">Go 5 seconds ahead button</string>
+    <string name="b_settings_description">Settings button</string>
+
+
+    <string name="b_delete">Delete song</string>
+    <string name="b_edit_info">Edit information</string>
+    <string name="delete_confirm">Eliminar</string>
+    <string name="song_info_title">Song information</string>
+    <string name="rename_hint_song">Title</string>
+    <string name="rename_hint_artist">Artist</string>
+    <string name="save">SAVE</string>
+    <string name="song_info_added">Date added</string>
+    <string name="song_info_format">Format</string>
+    <string name="song_info_size">Storage size</string>
+    <string name="song_info_duration">Duration</string>
+    <string name="song_info_stems">Stems</string>
+    <string name="song_info_unknown">—</string>
+
+    <!--- player side drawer -->
+    <string name="drawer_options_title">Options</string>
+    <string name="drawer_item_chords">Chords</string>
+    <string name="chords_dialog_title">Chord version</string>
+    <string name="chords_basic">Basic</string>
+    <string name="chords_advanced">Advanced</string>
+    <string name="drawer_item_cifrado">Notation system</string>
+    <string name="cifrado_dialog_title">Notation system</string>
+    <string name="cifrado_american">American (A, B, C, D, E, F, G)</string>
+    <string name="cifrado_latin">Latin (Do, Re, Mi, Fa, Sol, La, Si)</string>
+    <string name="drawer_switch_transposition">Transpose with pitch</string>
+
+    <!--- accidentals (flat/sharp) -->
+    <string name="drawer_item_notation">Accidentals</string>
+    <string name="notation_dialog_title">Accidentals</string>
+    <string name="notation_flat">Flat (♭)</string>
+    <string name="notation_sharp">Sharp (♯)</string>
+
+    <!--- metronome 0.5x variant -->
+    <string name="metronome_half_variant_a">A</string>
+    <string name="metronome_half_variant_b">B</string>
+
+    <!--- sound on downbeat -->
+    <string name="drawer_switch_downbeat">Sound on downbeat</string>
+    <string name="drawer_item_downbeat_sound">Sound</string>
+    <string name="downbeat_sound_dialog_title">Downbeat sound</string>
+    <string name="downbeat_sound_clap">Clap</string>
+    <string name="downbeat_sound_glass">Glass</string>
+    <string name="downbeat_sound_metronomebell">Metronome bell</string>
+    <string name="downbeat_sound_snap">Snap</string>
+    <string name="downbeat_sound_stick">Stick</string>
+    <string name="downbeat_sound_synthbella">Synth bell A</string>
+    <string name="downbeat_sound_synthbellb">Synth bell B</string>
+    <string name="downbeat_sound_synthsquarea">Synth square A</string>
+    <string name="downbeat_sound_synthsquareb">Synth square B</string>
+    <string name="downbeat_sound_synthsquarec">Synth square C</string>
+    <string name="downbeat_sound_tongue">Tongue</string>
+    <string name="downbeat_sound_weird">Weird</string>
+    <string name="downbeat_sound_whistle">Whistle</string>
+
+    <!--- export -->
+    <string name="drawer_item_export">Export</string>
+    <string name="drawer_item_reprocess">Reprocess</string>
+    <string name="import_reprocess_short">Reprocess</string>
+    <string name="import_reprocess_title">Reprocess song</string>
+    <string name="reprocess_success">Reprocess sent to server</string>
+    <string name="reprocess_missing_input">Original audio no longer on server</string>
+    <string name="reprocess_failed">Reprocess failed</string>
+    <string name="reprocess_busy">Already processing this song</string>
+    <string name="audio3d_title">3D audio</string>
+    <string name="audio3d_info_title">3D audio</string>
+    <string name="audio3d_info_body">Experimental binaural spatialization. Each instrument is positioned around the listener in the top-down view. HRTF convolution (Head-Related Transfer Function, KEMAR MIT dataset) recreates the natural filtering of head, ears and shoulders to simulate direction, elevation and distance. Headphones are required for the effect to work.</string>
+    <string name="audio3d_legend_drag"><![CDATA[<b>Drag</b> · position]]></string>
+    <string name="audio3d_legend_tap"><![CDATA[<b>Tap</b> · select]]></string>
+    <string name="audio3d_legend_double"><![CDATA[<b>Double tap</b> · omnipresent]]></string>
+    <string name="audio3d_legend_long"><![CDATA[<b>Long press</b> · mute]]></string>
+    <string name="audio3d_legend_reset"><![CDATA[<b>Reset</b> · initial positions]]></string>
+    <string name="stems_dance_title">Stems dance</string>
+    <string name="stems_dance_hint">Select the instruments to dance</string>
+    <string name="stems_dance_start">Start</string>
+    <string name="stems_dance_speed">Speed</string>
+    <string name="stems_dance_distance">Distance</string>
+    <string name="dl_notif_progress_single">Downloading %1$d%%</string>
+    <string name="dl_notif_progress_multi">Downloading %1$d/%2$d · %3$d%%</string>
+    <string name="dl_notif_ready">Ready to play</string>
+    <string name="drawer_item_reset">Reset to default</string>
+    <string name="drawer_reset_dialog_title">Reset</string>
+    <string name="drawer_reset_dialog_body">All stem settings for this song will return to their default values. Continue?</string>
+    <string name="drawer_reset_dialog_cancel">Cancel</string>
+    <string name="export_dialog_title">Export</string>
+    <string name="export_choice_mixdown">Save current mix</string>
+    <string name="export_choice_separate">Save separate stems</string>
+    <string name="export_volume_default">Default volumes</string>
+    <string name="export_volume_current">Current mix volumes</string>
+    <string name="export_format_wav">WAV</string>
+    <string name="export_format_aac">AAC</string>
+    <string name="export_format_m4a">M4A</string>
+    <string name="export_format_dialog_title">Output format</string>
+    <string name="export_volume_dialog_title">Volume source</string>
+    <string name="export_progress_title">Exporting…</string>
+    <string name="export_done">Export complete</string>
+    <string name="export_failed">Export failed</string>
+    <string name="export_save">Save</string>
+    <string name="export_stem_button_desc">Export stem</string>
+    <string name="export_back">Back</string>
+    <string name="export_include_metronome">Include metronome in mix</string>
+    <string name="export_permission_title">Storage permission needed</string>
+    <string name="export_permission_body">To save exports, allow Fision to access all files. The system Settings will open — toggle the access for Fision and come back.</string>
+    <string name="export_permission_continue">Open Settings</string>
+
+    <string name="helpline_icon">Alert dialog icon</string>
+    <string name="tv_alertDialog_text">Delete [SONG TITLE]?</string>
+    <string name="YES">DELETE</string>
+    <string name="NO">@android:string/cancel</string>
+
+    <string name="title_bass">Bass</string>
+    <string name="title_drums">Drums</string>
+    <string name="title_other">Other instruments</string>
+    <string name="title_vocals">Vocals</string>
+    <string name="title_main_vocals">Main vocals</string>
+    <string name="title_chorus">Chorus</string>
+    <string name="title_accompaniment">Instrumental</string>
+    <string name="title_guitar">Guitar</string>
+    <string name="title_piano">Piano</string>
+    <string name="title_winds">Winds</string>
+
+    <!--- stem context menu -->
+    <string name="stem_menu_solo">Solo</string>
+    <string name="stem_menu_mute">Mute</string>
+    <string name="title_kick">Kick</string>
+    <string name="title_snare">Snare</string>
+    <string name="title_hh">Hi-Hat</string>
+    <string name="title_crash">Crash</string>
+    <string name="title_ride">Ride</string>
+    <string name="title_toms">Toms</string>
+    <string name="title_drumset">Drum kit</string>
+
+    <!--- order by -->
+    <string name="order_by_title">Order by</string>
+    <string name="order_by_date_desc">Date added (newest first)</string>
+    <string name="order_by_date_asc">Date added (oldest first)</string>
+
+    <string name="pan_l">L</string>
+    <string name="pan_r">R</string>
+    <string name="pan_title">Panning</string>
+
+    <!--- metronome -->
+    <string name="tv_metronome_title">Dynamic metronome</string>
+    <string name="tv_metronome_volume">Volume</string>
+    <string name="tv_metronome_speed">Playback speed</string>
+    <string name="sw_enableMetronome"></string>
+    <string name="b_metronome">1x</string>
+    <string name="b_metronomeHalf">0.5x</string>
+    <string name="b_metronomeDouble">2x</string>
+
+    <!--- pitch -->
+    <string name="tv_pitch_title">Transposition</string>
+    <string name="tv_pitch_semitones">semitones</string>
+
+    <!--- settings -->
+
+    <string name="title_activity_settings">Settings Activity</string>
+    <string name="settings_title">Settings</string>
+
+    <!--- Fision server -->
+    <string name="server_section_title">Fision Server</string>
+    <string name="server_url_title">Server URL</string>
+    <string name="server_url_summary">e.g. http://192.168.1.50:8000</string>
+    <string name="server_token_title">Token</string>
+    <string name="server_token_summary">Tap to view or edit (requires biometrics)</string>
+    <string name="about_section_title">About</string>
+    <string name="about_title">About Fision</string>
+    <string name="about_summary">Version, developer and open-source credits</string>
+    <string name="about_developer">Jotapeveloper 2026</string>
+    <string name="about_version_fmt">v%1$s</string>
+    <string name="about_libraries_title">Open-source libraries</string>
+    <string name="about_libraries_body"><![CDATA[<b>Oboe</b> · Google · Apache 2.0
+Low-latency audio stream on Android.
+
+<b>SoundTouch</b> · Olli Parviainen · LGPL 2.1
+Real-time pitch shift and tempo change.
+
+<b>dr_flac</b> · David Reid (mackron) · MIT / Public Domain
+Single-header FLAC decoder.
+
+<b>KEMAR HRTF dataset</b> · MIT Media Lab
+Head-related impulse responses for the Audio 3D mode. Free for research and personal use.
+
+<b>Material Components</b> · Google · Apache 2.0
+UI components, buttons, dialogs.
+
+<b>AndroidX / Room</b> · Google · Apache 2.0
+Persistence, biometrics, transitions, preferences.
+
+<b>OkHttp / Retrofit</b> · Square · Apache 2.0
+HTTP client and server API bindings.]]></string>
+    <string name="server_token_set">Token set</string>
+    <string name="server_token_unset">Not set</string>
+    <string name="server_token_dialog_title">Token</string>
+    <string name="server_token_hint">Paste the token from the server</string>
+    <string name="server_auth_required">Authentication required to edit the token</string>
+    <string name="server_auth_subtitle">Biometrics or device PIN</string>
+    <string name="server_auth_unavailable">Biometrics not available on this device</string>
+    <string name="server_status_online">Server online</string>
+    <string name="server_status_offline">Server offline</string>
+    <string name="server_test_title">Test connection</string>
+    <string name="server_test_summary">Pings /health on the configured server</string>
+    <string name="server_test_running">Pinging server…</string>
+    <string name="server_test_ok">Server reachable</string>
+    <string name="server_test_fail">No response</string>
+    <string name="server_test_no_url">Set the URL first</string>
+    <string name="server_test_timeout">No response from server</string>
+    <string name="dialog_close">Close</string>
+
+    <!--- import / add song -->
+    <string name="import_title">Add song</string>
+    <string name="import_pick_audio">Choose audio file</string>
+    <string name="import_no_file">No file chosen</string>
+    <string name="import_section_separation">Separation</string>
+    <string name="import_classic">Classic</string>
+    <string name="import_personalized">Personalized</string>
+    <string name="import_classic_4stem">Vocals + Drums + Bass + Others</string>
+    <string name="import_classic_2stem">Vocals + Instrumental</string>
+    <string name="import_vocals_always">Vocals</string>
+    <string name="import_vocals_single">Vocals</string>
+    <string name="import_vocals_split">Lead / Choirs</string>
+    <string name="import_drums_full">General percussion</string>
+    <string name="import_drums_split">Split percussion</string>
+    <string name="import_stem_guitar">Guitar</string>
+    <string name="import_stem_bass">Bass</string>
+    <string name="import_stem_drums">Percussion</string>
+    <string name="import_stem_piano">Piano</string>
+    <string name="import_stem_brass">Winds / Brass</string>
+    <string name="import_hint_other">The rest of instruments will be mixed into a single stem</string>
+    <string name="import_hint_drums_split">The identified drum kit will be split into its main components: kick, snare, toms, hi-hat, cymbal and ride. Other percussion may be discarded.</string>
+    <string name="import_send_short">Upload</string>
+    <string name="import_selected_header_placeholder">Select an audio file</string>
+    <string name="import_section_device">Device</string>
+    <string name="import_device_cpu">CPU</string>
+    <string name="import_device_cuda">GPU · CUDA</string>
+    <string name="import_no_server">Set the server URL in Settings first</string>
+    <string name="import_uploading">Uploading…</string>
+    <string name="import_upload_failed">Upload failed</string>
+
+    <!--- cloud item / delete -->
+    <string name="cloud_state_queued">In queue…</string>
+    <string name="cloud_state_queued_pos">In queue (#%1$d)…</string>
+    <string name="cloud_state_running">Processing…</string>
+    <string name="cloud_state_downloading">Downloading %1$d%%</string>
+    <string name="cloud_state_cloud_only">In the cloud</string>
+    <string name="cloud_state_error">Error</string>
+    <string name="cloud_delete_cloud">Delete from cloud</string>
+    <string name="cloud_delete_cloud_confirm">Delete this song from the server too?</string>
+    <string name="cloud_cancel_queue">Cancel (queue)</string>
+    <string name="cloud_cancel_queue_confirm">Remove this song from the queue?</string>
+
+</resources>

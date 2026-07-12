@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tags for animateExpandCollapse (ImportActivity) -->
+    <item name="tag_expand_state" type="id" />
+    <item name="tag_expand_anim"  type="id" />
+</resources>

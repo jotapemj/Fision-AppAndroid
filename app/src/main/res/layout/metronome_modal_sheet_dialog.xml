@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/dialogbg">
+
+
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_round_remove_24"
+            android:layout_gravity="center|top"
+            android:scaleType="centerCrop"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/Title"
+                    android:layout_width="0dp"
+                    android:layout_height="35dp"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:maxLines="1"
+                    android:text="@string/tv_metronome_title"
+                    android:textColor="#FFFFFF"
+                    android:textSize="22sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="10sp"
+                    android:autoSizeMaxTextSize="22sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="30dp"
+                    android:layout_marginStart="90dp"
+                    android:layout_marginEnd="15dp"/>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/sw_enableMetronome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sw_enableMetronome"
+                    app:thumbTint="@color/sliderThumb"
+                    app:trackTint="@color/sliderHalo"
+                    android:textColor="@color/AppWhite"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="25dp"/>
+
+
+        </LinearLayout>
+
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            >
+
+                <!-- 0.5x card: single container that expands on tap to reveal A/B.
+                     Mimics the look of the sibling MaterialButtons (1x, 2x). -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_metronomeHalf"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="25dp"
+                    android:layout_marginEnd="20dp"
+                    app:cardBackgroundColor="@color/button_background_color"
+                    app:cardCornerRadius="4dp"
+                    app:strokeColor="#FFFFFF"
+                    app:strokeWidth="4dp"
+                    app:cardElevation="0dp"
+                    android:foreground="?attr/selectableItemBackground">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/b_metronomeHalf"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:text="@string/b_metronomeHalf"
+                            android:fontFamily="@font/yugothic_ui_regular"
+                            android:textColor="@color/button_text_color"
+                            android:textSize="14sp"
+                            android:textAllCaps="true"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Horizontal divider between the 0.5x header and the A/B panel -->
+                        <View
+                            android:id="@+id/half_variant_divider_top"
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/AppDarkGrey"
+                            android:visibility="gone" />
+
+                        <!-- A/B panel: appears when tapping the 0.5x. B shifts the phase by one beat
+                             (half a period) to align with bars 1+3 vs 2+4. -->
+                        <LinearLayout
+                            android:id="@+id/panel_half_variant"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:id="@+id/b_metronomeHalfA"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:padding="10dp"
+                                android:text="@string/metronome_half_variant_a"
+                                android:fontFamily="@font/yugothic_ui_regular"
+                                android:textColor="@color/AppWhite"
+                                android:textSize="14sp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="match_parent"
+                                android:background="@color/AppDarkGrey" />
+
+                            <TextView
+                                android:id="@+id/b_metronomeHalfB"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:padding="10dp"
+                                android:text="@string/metronome_half_variant_b"
+                                android:fontFamily="@font/yugothic_ui_regular"
+                                android:textColor="@color/AppWhite"
+                                android:textSize="14sp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_metronome"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/b_metronome"
+                    android:layout_marginEnd="20dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    style="@style/ModalButton"
+                    />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_metronomeDouble"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="25dp"
+                    android:text="@string/b_metronomeDouble"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    style="@style/ModalButton"
+                    />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_metronome_volume"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/tv_metronome_volume"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="15dp" />
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal">
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/s_metronomeVolume"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="80dp"
+                    android:layout_marginEnd="80dp"
+                    android:value="0"
+                    android:valueFrom="0"
+                    android:valueTo="100"
+                    app:trackColorActive="@color/AppDarkGrey"
+                    app:trackColorInactive="@color/AppDarkGrey"
+                    app:thumbColor="@color/sliderThumb"
+                    app:haloRadius="0dp"
+                    app:haloColor="@color/sliderHalo"
+                    />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_metronome_panning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="20dp"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/pan_title"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginBottom="10dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginEnd="15dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/pan_l"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:text="@string/pan_l"
+                    android:textColor="#FFFFFF"
+                    android:textSize="25sp"
+                    android:layout_marginBottom="30dp"
+                    android:layout_marginStart="80dp"
+                    android:layout_marginEnd="15dp"/>
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/s_metronomePan"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="0dp"
+                    android:layout_marginEnd="00dp"
+                    android:value="0"
+                    android:valueFrom="-100"
+                    android:valueTo="100"
+                    app:trackColorActive="@color/AppDarkGrey"
+                    app:trackColorInactive="@color/AppDarkGrey"
+                    app:thumbColor="@color/sliderThumb"
+                    app:haloRadius="0dp"
+                    app:haloColor="@color/sliderHalo"
+                    />
+
+                <TextView
+                    android:id="@+id/pan_r"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="30dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:text="@string/pan_r"
+                    android:textColor="#FFFFFF"
+                    android:textSize="25sp"
+                    android:layout_marginBottom="30dp"
+                    android:layout_marginStart="15dp"
+                    />
+
+                <ImageButton
+                    android:id="@+id/ib_metronome_restorePan"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginEnd="20dp"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:backgroundTint="@color/black"
+                    android:contentDescription="restore pan"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:padding="0dp"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/ic_restore_pan"
+                    android:text=""
+                    android:textColor="@color/white"
+                    android:value="50"
+                    />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_metronome_speed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/tv_metronome_speed"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="15dp" />
+
+        <com.shawnlin.numberpicker.NumberPicker
+            android:id="@+id/np_metronome_speed"
+            android:layout_width="match_parent"
+            android:layout_marginStart="50dp"
+            android:layout_marginEnd="50dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            app:np_orientation="horizontal"
+            app:np_width="170dp"
+            app:np_height="64dp"
+            app:np_dividerColor="@color/AppDarkGrey"
+            app:np_textColor="@color/AppWhite"
+            app:np_min="-10"
+            app:np_max="10"
+            app:np_selectedTextColor="@color/colorPrimary"
+            app:np_wrapSelectorWheel="false"
+            app:np_wheelItemCount="3"
+            app:np_textSize="20dp"
+            app:np_selectedTextSize="35dp"
+            app:np_value="0" />
+
+
+
+
+
+</LinearLayout>
