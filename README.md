@@ -1,5 +1,9 @@
 # Fision Android
 
+<div align="center">
+  <img src="./docs/screenshots/title.png" width="600" alt="Main view of Fision App">
+</div>
+
 Android client for the Fision ecosystem. Plays multitrack songs prepared by the
 Fision server as separate stems (vocals, drums, bass, other, and any extras the
 server exposes) and lets you remix them, transpose, retempo, follow chord
