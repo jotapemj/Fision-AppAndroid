@@ -40,7 +40,9 @@ The magic starts with the fision of your music.
 
 ## The song library
 
-<img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App">
+</div>
 
 
 The main screen lists every song stored locally plus any
@@ -52,7 +54,9 @@ animation over the cover growing from bottom to top.
 
 ### Importing a song
 
-<img src="./docs/screenshots/012.jpeg" width="300" alt="Importing a song and selecting separation type" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/012.jpeg" width="300" alt="Importing a song and selecting separation type">
+</div>
 
 The import flow lets you pick any audio file on the device through the
 system picker and choose the separation configuration to send to the
@@ -72,7 +76,9 @@ selector in the app.
 
 ### Server connection
 
-<img src="./docs/screenshots/005.jpeg" width="300" alt="Settings screen where language and server connection are set up" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/005.jpeg" width="300" alt="Settings screen where language and server connection are set up">
+</div>
 
 The Settings screen holds the server URL and the bearer token. The URL
 is a plain preference. The token is stored in an encrypted preferences
@@ -115,7 +121,9 @@ title, the artist, and two actions:
 
 ### Edit info dialog
 
-<img src="./docs/screenshots/011.jpeg" width="300" alt="Song info and metadata edition dialog" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/011.jpeg" width="300" alt="Song info and metadata edition dialog" />
+</div>
 
 The edit dialog lets you rename the song, set the artist, and shows a
 read-only information block with details of the underlying files:
@@ -140,7 +148,9 @@ is used as a match target.
 
 ## Player
 
-<img src="./docs/screenshots/player.png" width="300" alt="" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/player.png" width="300" alt="">
+</div>
 
 The player screen is the main working surface. From top to bottom and
 side to side you find:
@@ -234,7 +244,9 @@ concern. It brings no benefit when the input is a lossy MP3.
 
 ## Player drawer
 
-<img src="./docs/screenshots/007.jpg" width="300" alt="Multiple playback and play-along settings for the best experience" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/007.jpg" width="300" alt="Multiple playback and play‑along settings for the best experience">
+</div>
 
 The drawer on the right side of the player exposes global and per-song
 options.
@@ -274,7 +286,9 @@ can:
 
 ## Pitch bottom sheet
 
-<img src="./docs/screenshots/010.jpeg" width="300" alt="" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/010.jpeg" width="300" alt="">
+</div>
 
 The pitch bottom sheet lets you transpose the song in semitones. The
 range covers a comfortable interval around the original key. 
@@ -285,7 +299,9 @@ pitched by SoundTouch, which drives the WSOLA algorithm mentioned above.
 
 ## Dynamic metronome bottom sheet
 
-<img src="./docs/screenshots/006.jpeg" width="300" alt="" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/006.jpeg" width="300" alt="">
+</div>
 
 The metronome is dynamic. It is generated from the song's own beat grid
 during processing on the server, so it follows tempo changes and swing
@@ -314,7 +330,9 @@ instruments.
 
 ## Audio 3D
 
-<img src="./docs/screenshots/008.jpeg" width="300" alt="" />
+<div style="text-align:center;">
+  <img src="./docs/screenshots/008.jpeg" width="300" alt="">
+</div>
 
 The 3D view places each stem as a movable icon around a virtual head.
 It uses HRTF (Head-Related Transfer Function) convolution with a
