@@ -40,8 +40,8 @@ The magic starts with the fision of your music.
 
 ## The song library
 
-<div style="text-align:center;">
-  <img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App" style="display:block;margin:auto;">
+<div align="center">
+  <img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App">
 </div>
 
 
@@ -54,7 +54,7 @@ animation over the cover growing from bottom to top.
 
 ### Importing a song
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/012.jpeg" width="300" alt="Importing a song and selecting separation type">
 </div>
 
@@ -76,7 +76,7 @@ selector in the app.
 
 ### Server connection
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/005.jpeg" width="300" alt="Settings screen where language and server connection are set up">
 </div>
 
@@ -121,7 +121,7 @@ title, the artist, and two actions:
 
 ### Edit info dialog
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/011.jpeg" width="300" alt="Song info and metadata edition dialog" />
 </div>
 
@@ -243,7 +243,7 @@ concern. It brings no benefit when the input is a lossy MP3.
 
 ## Player drawer
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/007.jpg" width="300" alt="Multiple playback and play‑along settings for the best experience">
 </div>
 
@@ -285,20 +285,20 @@ can:
 
 ## Pitch bottom sheet
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/010.jpeg" width="300" alt="">
 </div>
 
 The pitch bottom sheet lets you transpose the song in semitones. The
 range covers a comfortable interval around the original key. 
-[!NOTE]
-The stem`drums` is excluded from pitch shifting on purpose, 
-so the drum kit never sounds detuned. The rest of the stems are
-pitched by SoundTouch, which drives the WSOLA algorithm mentioned above.
+>[!NOTE]
+>The stem`drums` is excluded from pitch shifting on purpose, 
+>so the drum kit never sounds detuned. The rest of the stems are
+>pitched by SoundTouch, which drives the WSOLA algorithm mentioned above.
 
 ## Dynamic metronome bottom sheet
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/006.jpeg" width="300" alt="">
 </div>
 
@@ -329,7 +329,7 @@ instruments.
 
 ## Audio 3D
 
-<div style="text-align:center;">
+<div align="center">
   <img src="./docs/screenshots/008.jpeg" width="300" alt="">
 </div>
 
