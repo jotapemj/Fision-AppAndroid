@@ -1,5 +1,9 @@
 # Fision Android
 
+<div align="center">
+  <img src="./docs/screenshots/title.png" width="400" alt="Main view of Fision App">
+</div>
+
 Android client for the Fision ecosystem. Plays multitrack songs prepared by the
 Fision server as separate stems (vocals, drums, bass, other, and any extras the
 server exposes) and lets you remix them, transpose, retempo, follow chord
@@ -40,9 +44,12 @@ The magic starts with the fision of your music.
 
 ## The song library
 
-<!-- Screenshot: main song list with mini player at the bottom. -->
+<div align="center">
+  <img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App">
+</div>
 
-The main screen lists every song stored locally under `Songs/` plus any
+
+The main screen lists every song stored locally plus any
 song that lives on the Fision server. Each entry shows its cover, title,
 and artist. Server-only songs appear alongside local ones ordered by
 submission date. Songs currently being processed show a spinner over the
@@ -51,7 +58,9 @@ animation over the cover growing from bottom to top.
 
 ### Importing a song
 
-<!-- Screenshot: import activity. Local file picker + separation options. -->
+<div align="center">
+  <img src="./docs/screenshots/012.jpeg" width="300" alt="Importing a song and selecting separation type">
+</div>
 
 The import flow lets you pick any audio file on the device through the
 system picker and choose the separation configuration to send to the
@@ -71,7 +80,9 @@ selector in the app.
 
 ### Server connection
 
-<!-- Screenshot: Settings screen with URL, token, and test button. -->
+<div align="center">
+  <img src="./docs/screenshots/005.jpeg" width="300" alt="Settings screen where language and server connection are set up">
+</div>
 
 The Settings screen holds the server URL and the bearer token. The URL
 is a plain preference. The token is stored in an encrypted preferences
@@ -103,7 +114,6 @@ they survive leaving the app.
 
 ### Song bottom sheet
 
-<!-- Screenshot: bottom sheet with edit and delete buttons. -->
 
 Long-pressing a song opens a bottom sheet with the cover in HD, the
 title, the artist, and two actions:
@@ -115,7 +125,9 @@ title, the artist, and two actions:
 
 ### Edit info dialog
 
-<!-- Screenshot: edit info dialog with editable title, artist, and read-only info block. -->
+<div align="center">
+  <img src="./docs/screenshots/011.jpeg" width="300" alt="Song info and metadata edition dialog" />
+</div>
 
 The edit dialog lets you rename the song, set the artist, and shows a
 read-only information block with details of the underlying files:
@@ -128,15 +140,11 @@ read-only information block with details of the underlying files:
 
 ### Sort by
 
-<!-- Screenshot: sort by dialog. -->
-
 The list can be sorted by date added, ascending or descending. The
 preference is remembered and reused by the mini player when the user
 swipes to the previous or next song.
 
 ### Search
-
-<!-- Screenshot: search bar in action. -->
 
 The search bar filters the list by folder name, display title, and
 artist. Any local metadata written by the server or edited from the app
@@ -144,7 +152,8 @@ is used as a match target.
 
 ## Player
 
-<!-- Screenshot: annotated player with arrows pointing at each region. -->
+![](./docs/screenshots/player.png)
+
 
 The player screen is the main working surface. From top to bottom and
 side to side you find:
@@ -198,6 +207,8 @@ the extension) against its internal catalog, so any WAV or FLAC whose
 name matches a known stem name is loaded automatically. Files that do
 not match a known stem are ignored.
 
+### Files securities
+
 If a song is missing `chords_basic.txt`, the drawer disables the
 Chords toggle and the advanced variant is used by default. If a song
 is missing `downbeats.txt`, bar lines are inferred from the beat grid
@@ -236,7 +247,9 @@ concern. It brings no benefit when the input is a lossy MP3.
 
 ## Player drawer
 
-<!-- Screenshot: right-side drawer with all its options. -->
+<div align="center">
+  <img src="./docs/screenshots/007.jpeg" width="300" alt="Multiple playback and play‑along settings for the best experience">
+</div>
 
 The drawer on the right side of the player exposes global and per-song
 options.
@@ -267,8 +280,6 @@ options.
 
 ## Stem bottom sheet
 
-<!-- Screenshot: stem bottom sheet showing pan slider and export button. -->
-
 Tapping the menu button on a stem opens its bottom sheet. From here you
 can:
 
@@ -278,17 +289,22 @@ can:
 
 ## Pitch bottom sheet
 
-<!-- Screenshot: pitch bottom sheet. -->
+<div align="center">
+  <img src="./docs/screenshots/010.jpeg" width="300" alt="">
+</div>
 
 The pitch bottom sheet lets you transpose the song in semitones. The
-range covers a comfortable interval around the original key. The stem
-`drums` is excluded from pitch shifting on purpose, so the drum kit
-never sounds detuned. The rest of the stems are pitched by SoundTouch,
-which drives the WSOLA algorithm mentioned above.
+range covers a comfortable interval around the original key. 
+>[!NOTE]
+>The stem`drums` is excluded from pitch shifting on purpose, 
+>so the drum kit never sounds detuned. The rest of the stems are
+>pitched by SoundTouch, which drives the WSOLA algorithm mentioned above.
 
 ## Dynamic metronome bottom sheet
 
-<!-- Screenshot: metronome bottom sheet. -->
+<div align="center">
+  <img src="./docs/screenshots/006.jpeg" width="300" alt="">
+</div>
 
 The metronome is dynamic. It is generated from the song's own beat grid
 during processing on the server, so it follows tempo changes and swing
@@ -301,6 +317,7 @@ The bottom sheet offers three subdivisions:
   half-time practice.
 - **2x**: two clicks per beat. Useful for eighth-note grids.
 
+[!NOTE]
 For songs where the 0.5x click lands on beats 2 and 4 instead of 1 and
 3, the 0.5x option expands into two variants (A and B). Variant A uses
 the phase from the server. Variant B shifts the click by one beat
@@ -316,7 +333,9 @@ instruments.
 
 ## Audio 3D
 
-<!-- Screenshot: Audio 3D view with head and stem icons around it. -->
+<div align="center">
+  <img src="./docs/screenshots/008.jpeg" width="300" alt="">
+</div>
 
 The 3D view places each stem as a movable icon around a virtual head.
 It uses HRTF (Head-Related Transfer Function) convolution with a
@@ -362,8 +381,6 @@ Global preferences that do not belong to a single song (chord notation,
 sort order, downbeat sample choice, and so on) live in `SharedPreferences`.
 
 ## Mini player and background service
-
-<!-- Screenshot: mini player at the bottom of the main screen. -->
 
 Audio playback lives in a foreground `Service`. That means the player
 keeps running when you leave the app, when the screen turns off, and
