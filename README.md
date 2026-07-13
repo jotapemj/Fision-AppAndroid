@@ -41,7 +41,7 @@ The magic starts with the fision of your music.
 ## The song library
 
 <div style="text-align:center;">
-  <img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App">
+  <img src="./docs/screenshots/001.jpeg" width="300" alt="Main view of Fision App" style="display:block;margin:auto;">
 </div>
 
 
@@ -148,9 +148,8 @@ is used as a match target.
 
 ## Player
 
-<div style="text-align:center;">
-  <img src="./docs/screenshots/player.png" width="300" alt="">
-</div>
+![](./docs/screenshots/player.png)
+
 
 The player screen is the main working surface. From top to bottom and
 side to side you find:
