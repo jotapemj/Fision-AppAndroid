@@ -365,13 +365,26 @@
                 >
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_repeat"
+                    android:contentDescription="@string/b_repeat_description"
+                    style="@style/Widget.MaterialComponents.Button.IconOnly"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:backgroundTint="@color/black"
+                    android:layout_marginEnd="20dp"
+                    app:icon="@drawable/ic_repeat"
+                    app:iconSize="24dp"
+                    app:iconTint="@color/white"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/b_pitch"
                     android:contentDescription="pitch"
                     style="@style/Widget.MaterialComponents.Button.IconOnly"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
-                    android:layout_marginEnd="30dp"
+                    android:layout_marginEnd="20dp"
                     app:icon="@raw/ic_pitch"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
@@ -384,7 +397,7 @@
                     android:layout_width="50dp"
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
-                    android:layout_marginEnd="30dp"
+                    android:layout_marginEnd="20dp"
                     app:icon="@raw/ic_metronome"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
@@ -397,7 +410,7 @@
                     android:layout_width="50dp"
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
-                    android:layout_marginEnd="30dp"
+                    android:layout_marginEnd="20dp"
                     android:onClick="ShowChords"
                     app:icon="@raw/ic_chord"
                     app:iconSize="24dp"

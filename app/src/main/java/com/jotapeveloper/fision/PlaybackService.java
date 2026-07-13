@@ -84,9 +84,58 @@ public class PlaybackService extends Service {
     private android.graphics.Bitmap cachedCoverBitmap = null;
 
     // === Listeners for UI (mini-bar, etc.) ===
-    public interface Listener { void onPlaybackChanged(); }
+    public interface Listener {
+        void onPlaybackChanged();
+        /** Fired when the song wrapped around because of the repeat mode.
+         *  UI listeners use it to reset beat/chord counters without a full reload. */
+        default void onSongLooped() {}
+    }
     private final Set<Listener> listeners = new HashSet<>();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    // === Repeat + playlist continuation ===
+    public enum RepeatMode { OFF, ALL, ONE }
+    private static final String PREFS_SONGS       = "prefs_songs";
+    private static final String KEY_REPEAT_MODE   = "repeat_mode";
+    private static final String KEY_PLAYLIST_MODE = "playlist_mode";
+    private RepeatMode repeatMode  = RepeatMode.OFF;
+    private boolean playlistMode   = false;
+    /** ONE mode plays the song one extra time; this flag latches after that
+     *  extra pass so the following end triggers a stop instead of another loop. */
+    private boolean repeatOneUsed  = false;
+
+    public RepeatMode getRepeatMode()   { return repeatMode; }
+    public boolean isPlaylistMode()     { return playlistMode; }
+    public void setRepeatMode(RepeatMode m) {
+        if (m == null) m = RepeatMode.OFF;
+        repeatMode = m;
+        repeatOneUsed = false;
+        getSharedPreferences(PREFS_SONGS, MODE_PRIVATE).edit()
+                .putInt(KEY_REPEAT_MODE, m.ordinal()).apply();
+    }
+    public void setPlaylistMode(boolean enabled) {
+        playlistMode = enabled;
+        getSharedPreferences(PREFS_SONGS, MODE_PRIVATE).edit()
+                .putBoolean(KEY_PLAYLIST_MODE, enabled).apply();
+    }
+    private void loadRepeatPrefs() {
+        android.content.SharedPreferences p = getSharedPreferences(PREFS_SONGS, MODE_PRIVATE);
+        int mode = p.getInt(KEY_REPEAT_MODE, 0);
+        if (mode < 0 || mode >= RepeatMode.values().length) mode = 0;
+        repeatMode   = RepeatMode.values()[mode];
+        playlistMode = p.getBoolean(KEY_PLAYLIST_MODE, false);
+        repeatOneUsed = false;
+    }
+
+    /** Optional hook that lets a foreground Activity (typically PlayerActivity)
+     *  intercept skip requests so the in-place song switch runs through its own
+     *  UI flow instead of the service recreating the engine underneath. */
+    public interface SkipRequestHandler { boolean handleSkip(int delta); }
+    private SkipRequestHandler skipHandler;
+    public void setSkipRequestHandler(SkipRequestHandler h) { skipHandler = h; }
+    public void clearSkipRequestHandler(SkipRequestHandler h) {
+        if (skipHandler == h) skipHandler = null;
+    }
 
     public void addListener(Listener l)    { listeners.add(l); }
     public void removeListener(Listener l) { listeners.remove(l); }
@@ -102,6 +151,7 @@ public class PlaybackService extends Service {
         notificationManager = NotificationManagerCompat.from(this);
         setupMediaSession();
         setupAudioFocus();
+        loadRepeatPrefs();
     }
 
     @Nullable
@@ -274,6 +324,9 @@ public class PlaybackService extends Service {
         currentSongName = songName;
         currentSongId   = songId;
         songDurationMs  = engine.getDurationMs();
+        // Loading a new song clears the ONE-mode latch so the extra repeat
+        // pass runs on the new song too.
+        repeatOneUsed   = false;
         // Optional metadata from info.txt + artcover.png
         currentMetadata = SongMetadata.read(folder);
         // Invalidate the cover cache when switching songs (do not recycle: the previous
@@ -324,11 +377,35 @@ public class PlaybackService extends Service {
 
     /** Loads the next song (in the same folder as the current one) and starts
      *  playback. Triggered by Bluetooth SKIP_TO_NEXT and by the notification. */
-    public void skipToNext()     { skipAdjacent(+1); }
+    public void skipToNext()     { dispatchSkip(+1); }
 
-    /** Loads the previous song (in the same folder as the current one) and
-     *  starts playback. Triggered by Bluetooth SKIP_TO_PREVIOUS. */
-    public void skipToPrevious() { skipAdjacent(-1); }
+    /** Loads the previous song. Applies the common "rewind to 00:00 when more
+     *  than 5s in" rule before falling back to loading the previous song. */
+    public void skipToPrevious() {
+        if (engine != null && engine.getCurrentPositionMs() > REWIND_THRESHOLD_MS) {
+            seekTo(0);
+            updatePlaybackState(isPlaying
+                    ? PlaybackStateCompat.STATE_PLAYING
+                    : PlaybackStateCompat.STATE_PAUSED);
+            return;
+        }
+        dispatchSkip(-1);
+    }
+
+    /** Position threshold that separates "restart current song" from
+     *  "go to previous song" for the previous action. */
+    public static final long REWIND_THRESHOLD_MS = 5000;
+
+    /** Runs the skip on the main thread. If a foreground Activity registered a
+     *  handler, the request goes through it; otherwise the service performs the
+     *  in-service load. */
+    private void dispatchSkip(int delta) {
+        mainHandler.post(() -> {
+            SkipRequestHandler h = skipHandler;
+            if (h != null && h.handleSkip(delta)) return;
+            skipAdjacent(delta);
+        });
+    }
 
     private void skipAdjacent(int delta) {
         if (currentSongPath == null) return;
@@ -516,13 +593,80 @@ public class PlaybackService extends Service {
             long dur = songDurationMs;
             long pos = engine.getCurrentPositionMs();
             if (dur > 0 && pos >= dur - 250) {
-                pause();
-                seekTo(0);
-                return; // pause() already stops the watcher
+                EndOfSongResult r = handleSongEnded();
+                // LOOPED_SAME keeps playing → keep watching for the next end.
+                // STOPPED already called pause() which stops the watcher.
+                // ADVANCED_NEXT reloads the song and play() re-arms the watcher.
+                if (r == EndOfSongResult.LOOPED_SAME) {
+                    mainHandler.postDelayed(this, 500);
+                }
+                return;
             }
             mainHandler.postDelayed(this, 500);
         }
     };
+
+    /** Single source of truth for the end-of-song transition, shared by the
+     *  service watcher and PlayerActivity's fast UI timer. Encodes the combined
+     *  repeat + playlist behaviour:
+     *   - Repeat.ALL          → seek 0 and keep playing (infinite loop).
+     *   - Repeat.ONE + fresh  → seek 0 and keep playing (one extra pass).
+     *   - Repeat.ONE + used   → stop.
+     *   - Repeat.OFF + list   → advance to the next song via the skip bridge.
+     *   - Repeat.OFF + no list→ stop and reset position.
+     *  Repeat takes priority over playlist continuation. */
+    public enum EndOfSongResult { LOOPED_SAME, ADVANCED_NEXT, STOPPED }
+
+    // Both watchers (fast UI timer + service tick) can hit the end-of-song
+    // window in the same seek(0) settle interval. Debounce them so ONE mode
+    // does not exhaust its extra pass on the second reentrant tick.
+    private long lastEndHandledAtNs = 0;
+    private EndOfSongResult lastEndResult = EndOfSongResult.STOPPED;
+    private static final long END_DEBOUNCE_NS = 800_000_000L;
+
+    public EndOfSongResult handleSongEnded() {
+        long now = System.nanoTime();
+        if (now - lastEndHandledAtNs < END_DEBOUNCE_NS) return lastEndResult;
+        lastEndHandledAtNs = now;
+        EndOfSongResult r = computeEndAction();
+        lastEndResult = r;
+        return r;
+    }
+
+    private EndOfSongResult computeEndAction() {
+        if (engine == null) return EndOfSongResult.STOPPED;
+        if (repeatMode == RepeatMode.ALL) {
+            seekTo(0);
+            notifyLoopedListeners();
+            return EndOfSongResult.LOOPED_SAME;
+        }
+        if (repeatMode == RepeatMode.ONE) {
+            if (!repeatOneUsed) {
+                repeatOneUsed = true;
+                seekTo(0);
+                notifyLoopedListeners();
+                return EndOfSongResult.LOOPED_SAME;
+            }
+            repeatOneUsed = false;
+            pause();
+            seekTo(0);
+            return EndOfSongResult.STOPPED;
+        }
+        // Repeat OFF branch.
+        if (playlistMode) {
+            dispatchSkip(+1);
+            return EndOfSongResult.ADVANCED_NEXT;
+        }
+        pause();
+        seekTo(0);
+        return EndOfSongResult.STOPPED;
+    }
+
+    private void notifyLoopedListeners() {
+        mainHandler.post(() -> {
+            for (Listener l : new HashSet<>(listeners)) l.onSongLooped();
+        });
+    }
 
     private void startEndOfSongWatcher() {
         mainHandler.removeCallbacks(endOfSongTick);

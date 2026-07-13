@@ -8,6 +8,13 @@
 // instantiation lives in Track.cpp.
 #include "dr_flac.h"
 
+// Guard against calls arriving after dispose() zeroed the Java handle.
+// Race window example: the service disposes the engine while a background
+// timer in a client Activity is still calling read/write natives.
+static inline AudioEngine* asEngine(jlong h) {
+    return reinterpret_cast<AudioEngine*>(h);
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeCreate(JNIEnv*, jclass){
     return reinterpret_cast<jlong>(new AudioEngine());
@@ -15,137 +22,161 @@ Java_com_jotapeveloper_fision_AudioEngine_nativeCreate(JNIEnv*, jclass){
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeDispose(JNIEnv*, jclass, jlong h){
-    auto* e = reinterpret_cast<AudioEngine*>(h); delete e;
+    if (h == 0) return;
+    delete asEngine(h);
 }
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeAddTrack(JNIEnv* env, jclass, jlong h, jstring path_, jboolean loop){
+    if (h == 0) return -1;
     const char* path = env->GetStringUTFChars(path_, nullptr);
-    auto* e = reinterpret_cast<AudioEngine*>(h);
-    int id = e->addTrack(path, loop);
+    int id = asEngine(h)->addTrack(path, loop);
     env->ReleaseStringUTFChars(path_, path);
     return id;
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetTempo(JNIEnv*, jclass, jlong h, jint id, jfloat t){
-    reinterpret_cast<AudioEngine*>(h)->setTempo(id, t);
+    if (h == 0) return;
+    asEngine(h)->setTempo(id, t);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetPitch(JNIEnv*, jclass, jlong h, jint id, jfloat s){
-    reinterpret_cast<AudioEngine*>(h)->setPitch(id, s);
+    if (h == 0) return;
+    asEngine(h)->setPitch(id, s);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetVolume(JNIEnv*, jclass, jlong h, jint id, jfloat L, jfloat R){
-    reinterpret_cast<AudioEngine*>(h)->setVolume(id, L, R);
+    if (h == 0) return;
+    asEngine(h)->setVolume(id, L, R);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetDuckFactor(JNIEnv*, jclass, jlong h, jfloat f){
-    reinterpret_cast<AudioEngine*>(h)->setDuckFactor(f);
+    if (h == 0) return;
+    asEngine(h)->setDuckFactor(f);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeStart(JNIEnv*, jclass, jlong h){
-    return reinterpret_cast<AudioEngine*>(h)->start();
+    if (h == 0) return JNI_FALSE;
+    return asEngine(h)->start();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativePause(JNIEnv*, jclass, jlong h){
-    reinterpret_cast<AudioEngine*>(h)->pause();
+    if (h == 0) return;
+    asEngine(h)->pause();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeResume(JNIEnv*, jclass, jlong h){
-    reinterpret_cast<AudioEngine*>(h)->resume();
+    if (h == 0) return;
+    asEngine(h)->resume();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeStop(JNIEnv*, jclass, jlong h){
-    reinterpret_cast<AudioEngine*>(h)->stop();
+    if (h == 0) return;
+    asEngine(h)->stop();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSeekTo(JNIEnv*, jclass, jlong h, jint id, jlong ms){
-    reinterpret_cast<AudioEngine*>(h)->seekToMs(id, ms);
+    if (h == 0) return;
+    asEngine(h)->seekToMs(id, ms);
 }
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeGetCurrentPosition(JNIEnv*, jclass, jlong h, jint id){
-    return reinterpret_cast<AudioEngine*>(h)->getCurrentPositionMs(id);
+    if (h == 0) return 0;
+    return asEngine(h)->getCurrentPositionMs(id);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSeekToAll(JNIEnv*, jclass, jlong h, jlong ms){
-    reinterpret_cast<AudioEngine*>(h)->seekToAll((int64_t)ms);
+    if (h == 0) return;
+    asEngine(h)->seekToAll((int64_t)ms);
 }
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeGetCurrentPositionAll(JNIEnv*, jclass, jlong h){
-    return reinterpret_cast<AudioEngine*>(h)->getCurrentPositionAllMs();
+    if (h == 0) return 0;
+    return asEngine(h)->getCurrentPositionAllMs();
 }
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeGetDuration(JNIEnv*, jclass, jlong h){
-    return reinterpret_cast<AudioEngine*>(h)->getDurationMs();
+    if (h == 0) return 0;
+    return asEngine(h)->getDurationMs();
 }
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeGetOutputLatencyMs(JNIEnv*, jclass, jlong h){
-    return reinterpret_cast<AudioEngine*>(h)->getOutputLatencyMs();
+    if (h == 0) return 0;
+    return asEngine(h)->getOutputLatencyMs();
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetClickWav(JNIEnv* env, jclass, jlong h, jstring path_){
+    if (h == 0) return JNI_FALSE;
     const char* path = env->GetStringUTFChars(path_, nullptr);
-    bool ok = reinterpret_cast<AudioEngine*>(h)->setClickWav(path);
+    bool ok = asEngine(h)->setClickWav(path);
     env->ReleaseStringUTFChars(path_, path);
     return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeScheduleClickAt(JNIEnv*, jclass, jlong h, jlong sourceMs){
-    reinterpret_cast<AudioEngine*>(h)->scheduleClickAt(sourceMs);
+    if (h == 0) return;
+    asEngine(h)->scheduleClickAt(sourceMs);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeClearClickSchedule(JNIEnv*, jclass, jlong h){
-    reinterpret_cast<AudioEngine*>(h)->clearClickSchedule();
+    if (h == 0) return;
+    asEngine(h)->clearClickSchedule();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetClickEnabled(JNIEnv*, jclass, jlong h, jboolean e){
-    reinterpret_cast<AudioEngine*>(h)->setClickEnabled(e == JNI_TRUE);
+    if (h == 0) return;
+    asEngine(h)->setClickEnabled(e == JNI_TRUE);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetClickDuckTrack(JNIEnv*, jclass, jlong h, jint trackId){
-    reinterpret_cast<AudioEngine*>(h)->setClickDuckTrack(trackId);
+    if (h == 0) return;
+    asEngine(h)->setClickDuckTrack(trackId);
 }
 
 // === Per-track 3D mode ===
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrack3DEnabled(JNIEnv*, jclass, jlong h, jint id, jboolean e){
-    reinterpret_cast<AudioEngine*>(h)->setTrack3DEnabled(id, e == JNI_TRUE);
+    if (h == 0) return;
+    asEngine(h)->setTrack3DEnabled(id, e == JNI_TRUE);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrack3DPosition(JNIEnv*, jclass, jlong h, jint id, jfloat azimuthRad, jfloat distance, jfloat elevationDeg){
-    reinterpret_cast<AudioEngine*>(h)->setTrack3DPosition(id, azimuthRad, distance, elevationDeg);
+    if (h == 0) return;
+    asEngine(h)->setTrack3DPosition(id, azimuthRad, distance, elevationDeg);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrack3DOmnipresent(JNIEnv*, jclass, jlong h, jint id, jboolean omni){
-    reinterpret_cast<AudioEngine*>(h)->setTrack3DOmnipresent(id, omni == JNI_TRUE);
+    if (h == 0) return;
+    asEngine(h)->setTrack3DOmnipresent(id, omni == JNI_TRUE);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeInitHrtf(JNIEnv* env, jclass, jlong h, jobject assetMgrJava, jstring assetPath_){
+    if (h == 0) return JNI_FALSE;
     AAssetManager* mgr = AAssetManager_fromJava(env, assetMgrJava);
     const char* p = env->GetStringUTFChars(assetPath_, nullptr);
-    bool ok = reinterpret_cast<AudioEngine*>(h)->initHrtfFromAssets(mgr, p);
+    bool ok = asEngine(h)->initHrtfFromAssets(mgr, p);
     env->ReleaseStringUTFChars(assetPath_, p);
     return ok ? JNI_TRUE : JNI_FALSE;
 }

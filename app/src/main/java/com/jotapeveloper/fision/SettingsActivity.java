@@ -115,7 +115,12 @@ public class SettingsActivity extends AppCompatActivity {
                 int index = languagePreference.findIndexOfValue(newLanguage);
                 if (index >= 0) preference.setSummary(entries[index]);
                 updateLocale(newLanguage);
+                // Android 13+ requires an explicit target package for broadcasts
+                // that reach receivers registered with RECEIVER_NOT_EXPORTED.
+                // Without setPackage, MainActivity's receiver would never fire
+                // and its UI kept the previous locale until the app restarted.
                 Intent intent = new Intent("com.jotapeveloper.fision.LANGUAGE_CHANGED");
+                intent.setPackage(requireActivity().getPackageName());
                 requireActivity().sendBroadcast(intent);
                 requireActivity().recreate();
                 return true;

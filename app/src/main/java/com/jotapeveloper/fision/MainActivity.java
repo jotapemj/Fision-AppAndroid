@@ -672,18 +672,54 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
+    // Reachability tracking for the cloud icon. Offline = red, persistent.
+    // Transition offline→online flashes a green icon for a short interval and
+    // fades it out; a stable online state keeps the icon hidden to reduce noise.
+    private Boolean lastReachable = null;
+    private static final long CLOUD_RECONNECT_FLASH_MS = 1500;
+    private static final long CLOUD_RECONNECT_FADE_MS  = 350;
+    private final Runnable cloudReconnectFadeOut = new Runnable() {
+        @Override public void run() {
+            if (ivCloudStatus == null) return;
+            ivCloudStatus.animate().alpha(0f).setDuration(CLOUD_RECONNECT_FADE_MS)
+                    .withEndAction(() -> {
+                        if (ivCloudStatus != null) ivCloudStatus.setVisibility(View.GONE);
+                    })
+                    .start();
+        }
+    };
+
     private void updateCloudStatusIcon(boolean reachable) {
         if (ivCloudStatus == null) return;
-        // Only visible when offline. Reduces UI noise when the server is reachable.
-        if (reachable) {
-            ivCloudStatus.setVisibility(View.GONE);
+        boolean firstCall = (lastReachable == null);
+        boolean wasOffline = (lastReachable != null && !lastReachable);
+        lastReachable = reachable;
+        ivCloudStatus.removeCallbacks(cloudReconnectFadeOut);
+        ivCloudStatus.animate().cancel();
+        if (!reachable) {
+            // Persistent red icon while the server is unreachable.
+            ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+            ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.cloud_offline)));
+            ivCloudStatus.setContentDescription(getString(R.string.server_status_offline));
+            ivCloudStatus.setAlpha(1f);
+            ivCloudStatus.setVisibility(View.VISIBLE);
             return;
         }
-        ivCloudStatus.setVisibility(View.VISIBLE);
+        // Reachable now. Flash green only when coming back from a known offline
+        // state; a stable online state keeps the icon hidden.
+        if (firstCall || !wasOffline) {
+            ivCloudStatus.setVisibility(View.GONE);
+            ivCloudStatus.setAlpha(1f);
+            return;
+        }
         ivCloudStatus.setImageResource(R.drawable.ic_cloud);
         ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.cloud_offline)));
-        ivCloudStatus.setContentDescription(getString(R.string.server_status_offline));
+                ContextCompat.getColor(this, R.color.colorPrimary)));
+        ivCloudStatus.setContentDescription(getString(R.string.server_status_online));
+        ivCloudStatus.setAlpha(1f);
+        ivCloudStatus.setVisibility(View.VISIBLE);
+        ivCloudStatus.postDelayed(cloudReconnectFadeOut, CLOUD_RECONNECT_FLASH_MS);
     }
 
     private void syncSongsWithDatabase() {

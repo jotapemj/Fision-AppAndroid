@@ -87,6 +87,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private MaterialButton b_pitch;
     private MaterialButton b_back;
     private MaterialButton b_menu;
+    private MaterialButton b_repeat;
     // "+" / "-" sign overlay on top of the 5s buttons — animated on click
     private TextView tv_seconds_back_sign;
     private TextView tv_seconds_forward_sign;
@@ -205,6 +206,25 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
+        @Override
+        public void onSongLooped() {
+            // Repeat wrapped the song around: the engine is at 0 and still
+            // playing. Reset the visual iterators so beats/chords advance again
+            // from the top instead of remaining stuck at the last position.
+            currentBeatIdx = -1;
+            chordCounter   = 0;
+            beatCounter    = 1;
+            lastScheduledDownbeatIdx = -1;
+            cancelPendingDownbeats();
+            applyMetronomeHalfPhase(0);
+            if (pendingTileHighlight != null) rvChords.removeCallbacks(pendingTileHighlight);
+            if (beatAdapter != null) beatAdapter.setHighlight(-1);
+            sb_progressBar.setProgress(0);
+            tv_currentPos.setText("00:00");
+            if (!chordList.isEmpty()) rvChords.scrollToPosition(0);
+            // Re-arm the upcoming downbeats for the next pass through the song.
+            scheduleUpcomingDownbeats();
+        }
     };
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
@@ -213,12 +233,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             playbackService = ((PlaybackService.LocalBinder) iBinder).getService();
             serviceBound = true;
             playbackService.addListener(playbackListener);
+            playbackService.setSkipRequestHandler(skipRequestHandler);
             onServiceReady();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            if (playbackService != null) playbackService.removeListener(playbackListener);
+            if (playbackService != null) {
+                playbackService.removeListener(playbackListener);
+                playbackService.clearSkipRequestHandler(skipRequestHandler);
+            }
             playbackService = null;
             serviceBound = false;
         }
@@ -261,6 +285,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         SetControlsEnabled(true);
         PrepareControls();
         setupRecyclerViews();
+        refreshRepeatButtonUi();
         // Auto-play only when this is a fresh open (service was not playing).
         // Flag as pending: play is triggered from updateUI() after the stored volumes
         // are pushed to the engine — before, play started here and a moment of 75%
@@ -865,7 +890,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         b_play = findViewById(R.id.b_play);
         b_previous = findViewById(R.id.b_previous);
         b_next = findViewById(R.id.b_next);
-        b_previous.setOnClickListener(v -> openAdjacentSong(-1));
+        b_previous.setOnClickListener(v -> handlePreviousRequest());
         b_next.setOnClickListener(v -> openAdjacentSong(+1));
         b_seconds_back = findViewById(R.id.b_seconds_back);
         b_seconds_forward = findViewById(R.id.b_seconds_forward);
@@ -879,6 +904,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         b_back = findViewById(R.id.b_back);
         b3d = findViewById(R.id.b_3d);
         if (b3d != null) b3d.setOnClickListener(v -> toggle3DView());
+        b_repeat = findViewById(R.id.b_repeat);
+        if (b_repeat != null) b_repeat.setOnClickListener(v -> cycleRepeatMode());
 
         tv_duration = findViewById(R.id.tv_duration);
         tv_currentPos = findViewById(R.id.tv_currentPos);
@@ -1020,6 +1047,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
                         .edit().putBoolean(PREF_TRANSP_AFFECTS, isChecked).apply();
                 applyDisplayShiftToAdapter();
+            });
+        }
+
+        // Switch "continue playlist from this song" (global)
+        com.google.android.material.switchmaterial.SwitchMaterial swPlaylist =
+                findViewById(R.id.sw_drawer_playlist);
+        if (swPlaylist != null && playbackService != null) {
+            swPlaylist.setOnCheckedChangeListener(null);
+            swPlaylist.setChecked(playbackService.isPlaylistMode());
+            swPlaylist.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (playbackService != null) playbackService.setPlaylistMode(isChecked);
             });
         }
 
@@ -1750,6 +1788,70 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return (long)(interval * 1000f);
     }
 
+    /** Cycles the repeat mode OFF → ALL → ONE → OFF and refreshes the icon/tint. */
+    private void cycleRepeatMode() {
+        if (playbackService == null) return;
+        PlaybackService.RepeatMode next;
+        switch (playbackService.getRepeatMode()) {
+            case OFF: next = PlaybackService.RepeatMode.ALL; break;
+            case ALL: next = PlaybackService.RepeatMode.ONE; break;
+            default:  next = PlaybackService.RepeatMode.OFF;
+        }
+        playbackService.setRepeatMode(next);
+        refreshRepeatButtonUi();
+    }
+
+    /** Repeat button visual sync: ic_repeat (white)=OFF, ic_repeat (primary)=ALL,
+     *  ic_repeat_one (primary)=ONE. */
+    private void refreshRepeatButtonUi() {
+        if (b_repeat == null || playbackService == null) return;
+        PlaybackService.RepeatMode mode = playbackService.getRepeatMode();
+        int iconRes;
+        int tintRes;
+        switch (mode) {
+            case ALL:
+                iconRes = R.drawable.ic_repeat;
+                tintRes = R.color.colorPrimary;
+                break;
+            case ONE:
+                iconRes = R.drawable.ic_repeat_one;
+                tintRes = R.color.colorPrimary;
+                break;
+            case OFF:
+            default:
+                iconRes = R.drawable.ic_repeat;
+                tintRes = R.color.white;
+                break;
+        }
+        b_repeat.setIconResource(iconRes);
+        b_repeat.setIconTint(android.content.res.ColorStateList.valueOf(
+                ContextCompat.getColor(this, tintRes)));
+    }
+
+    /** Previous button: rewind to 00:00 when the current position is past a
+     *  short threshold, otherwise jump to the previous song. Mirrors the
+     *  behaviour of common music players and matches the Bluetooth handler. */
+    private void handlePreviousRequest() {
+        long pos = 0;
+        if (playbackService != null) pos = playbackService.getCurrentPositionMs();
+        else if (engine != null)      pos = engine.getCurrentPositionMs();
+        if (pos > PlaybackService.REWIND_THRESHOLD_MS) {
+            if (playbackService != null) playbackService.seekTo(0);
+            else if (engine != null)     engine.seekTo(0);
+            sb_progressBar.setProgress(0);
+            tv_currentPos.setText("00:00");
+            currentBeatIdx = -1;
+            chordCounter   = 0;
+            beatCounter    = 1;
+            cancelPendingDownbeats();
+            applyMetronomeHalfPhase(0);
+            if (beatAdapter != null) beatAdapter.setHighlight(-1);
+            if (!chordList.isEmpty()) rvChords.scrollToPosition(0);
+            return;
+        }
+        openAdjacentSong(-1);
+    }
+
     /** Loads the adjacent song (direction = +1 next, -1 previous) without restarting the
      *  Activity. Same global ordering as MainActivity. Wrap-around. */
     private void openAdjacentSong(int direction) {
@@ -2021,28 +2123,34 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             int PosPercentage = songDuration > 0 ? (CurrentPos * 100) / songDuration : 0;
             sb_progressBar.setProgress(PosPercentage);
 
-            // End of song: pause, reset to 00:00 and leave it ready to start again
+            // End of song: delegate to the service so repeat + playlist logic
+            // stays in one place. The service returns what happened and the UI
+            // updates accordingly (loop → reset counters only; stop → full fade).
             if (songDuration > 0 && CurrentPos >= songDuration - 250) {
-                if (playbackService != null) {
-                    playbackService.pause();
-                    playbackService.seekTo(0);
+                PlaybackService.EndOfSongResult result =
+                        playbackService != null
+                                ? playbackService.handleSongEnded()
+                                : PlaybackService.EndOfSongResult.STOPPED;
+                if (result == PlaybackService.EndOfSongResult.STOPPED) {
+                    cancelPendingDownbeats();
+                    applyMetronomeHalfPhase(0);
+                    paused = true;
+                    runOnUiThread(() -> {
+                        b_play.setIconResource(R.raw.ic_play);
+                        sb_progressBar.setProgress(0);
+                        tv_currentPos.setText("00:00");
+                        chordCounter = 0;
+                        beatCounter = 1;
+                        currentBeatIdx = -1;
+                        if (pendingTileHighlight != null) rvChords.removeCallbacks(pendingTileHighlight);
+                        if (beatAdapter != null) beatAdapter.setHighlight(-1);
+                        // Fade-to-black of the recycler, reposition to 0 without visible scroll, fade-in
+                        fadeChordsToStart();
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    });
                 }
-                cancelPendingDownbeats();
-                applyMetronomeHalfPhase(0);
-                paused = true;
-                runOnUiThread(() -> {
-                    b_play.setIconResource(R.raw.ic_play);
-                    sb_progressBar.setProgress(0);
-                    tv_currentPos.setText("00:00");
-                    chordCounter = 0;
-                    beatCounter = 1;
-                    currentBeatIdx = -1;
-                    if (pendingTileHighlight != null) rvChords.removeCallbacks(pendingTileHighlight);
-                    if (beatAdapter != null) beatAdapter.setHighlight(-1);
-                    // Fade-to-black of the recycler, reposition to 0 without visible scroll, fade-in
-                    fadeChordsToStart();
-                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                });
+                // LOOPED_SAME and ADVANCED_NEXT are handled via listeners
+                // (onSongLooped / SkipRequestHandler) so no work is needed here.
                 return;
             }
 
@@ -2878,12 +2986,28 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         danceActive = false;
         danceHandler.removeCallbacks(danceTick);
         if (serviceBound) {
-            if (playbackService != null) playbackService.removeListener(playbackListener);
+            if (playbackService != null) {
+                playbackService.removeListener(playbackListener);
+                playbackService.clearSkipRequestHandler(skipRequestHandler);
+            }
             unbindService(serviceConnection);
             serviceBound = false;
         }
         super.onDestroy();
     }
+
+    /** Bluetooth / notification skip requests: keep the Activity as the SSoT of
+     *  the UI by running the same in-place song switch as the on-screen prev/next
+     *  buttons. Returns true so the service does not also recreate the engine. */
+    private final PlaybackService.SkipRequestHandler skipRequestHandler =
+            delta -> {
+                if (isDestroyed) return false;
+                runOnUiThread(() -> {
+                    if (delta < 0) handlePreviousRequest();
+                    else            openAdjacentSong(delta);
+                });
+                return true;
+            };
 
     // Configuration
 
