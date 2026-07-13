@@ -248,7 +248,7 @@ concern. It brings no benefit when the input is a lossy MP3.
 ## Player drawer
 
 <div align="center">
-  <img src="./docs/screenshots/007.jpg" width="300" alt="Multiple playback and play‑along settings for the best experience">
+  <img src="./docs/screenshots/007.jpeg" width="300" alt="Multiple playback and play‑along settings for the best experience">
 </div>
 
 The drawer on the right side of the player exposes global and per-song
