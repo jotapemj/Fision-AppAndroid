@@ -2,6 +2,7 @@
     <string name="app_title">F I S I O N</string>
     <string name="app_name">Fision</string>
     <string name="tv_title">Canciones</string>
+    <string name="tv_title_search">Buscar canción</string>
     <string name="te_find">Buscar en la biblioteca</string>
     <string name="b_add">+ Añadir</string>
     <string name="tv_SongsCount">25 canciones</string>
@@ -22,7 +23,7 @@
     <string name="b_previous_description">Botón de canción anterior</string>
     <string name="b_seconds_back_description">Botón de retroceder 5 segundos</string>
     <string name="b_seconds_forward_description">Botón de avanzar 5 segundos</string>
-
+    
 
     <string name="b_settings_description">Settings button</string>
     <string name="b_delete">Borrar canción</string>

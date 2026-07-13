@@ -3,6 +3,7 @@
     <string name="app_title">F I S I O N</string>
     <string name="app_name">Fision</string>
     <string name="tv_title">Пісні</string>
+    <string name="tv_title_search">Пошук пісні</string>
     <string name="te_find">Знайти в бібліотеці</string>
     <string name="b_add">+ Додати</string>
     <string name="tv_SongsCount">25 пісень</string>

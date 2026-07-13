@@ -257,13 +257,15 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         setAppLocale(language);
         // Register receiver for language changes
 
+        // Listen to both system LOCALE_CHANGED (device language change) and the
+        // in-app broadcast fired by SettingsActivity when the language preference
+        // is changed from inside the app.
+        IntentFilter langFilter = new IntentFilter(Intent.ACTION_LOCALE_CHANGED);
+        langFilter.addAction("com.jotapeveloper.fision.LANGUAGE_CHANGED");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(languageChangeReceiver,
-                    new IntentFilter(Intent.ACTION_LOCALE_CHANGED),
-                    Context.RECEIVER_NOT_EXPORTED); // only accessible within this app
+            registerReceiver(languageChangeReceiver, langFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(languageChangeReceiver,
-                    new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
+            registerReceiver(languageChangeReceiver, langFilter);
         }
 
         setContentView(R.layout.activity_main);
@@ -343,8 +345,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (hasFocus){
                     if (b_add.getVisibility() == View.VISIBLE){
                         buttonAnimation(false, b_add);}
-                    if(tv_title.getText().equals("Songs")){
-                        changeTextAnimation(tv_title,"Search song");}
+                    if(tv_title.getText().toString().equals(getString(R.string.tv_title))){
+                        changeTextAnimation(tv_title, getString(R.string.tv_title_search));}
                 }
             }
         });
@@ -594,17 +596,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         List<SongListData> regular  = new ArrayList<>();
         Set<String> handled = new HashSet<>();
 
-        // 1) Locals (with or without cloud)
+        // 1) Locals (with or without cloud). Items with a local counterpart never
+        //    jump to the in-flight section: a reprocess must not reorder the list.
         for (String folder : localFolders) {
             SongListData s = buildSongListData(folder);
             CloudItem c = byHash.get(folder);
             if (c != null) {
                 s.cloud = c;
                 handled.add(folder);
-                if (c.isInFlight()) inFlight.add(s); else regular.add(s);
-            } else {
-                regular.add(s);
             }
+            regular.add(s);
         }
 
         // 2) Server items without local counterpart (CLOUD_ONLY, sticky, in-flight).
@@ -673,12 +674,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void updateCloudStatusIcon(boolean reachable) {
         if (ivCloudStatus == null) return;
-        // Same ic_cloud PNG, only the tint changes (green online / red offline)
+        // Only visible when offline. Reduces UI noise when the server is reachable.
+        if (reachable) {
+            ivCloudStatus.setVisibility(View.GONE);
+            return;
+        }
+        ivCloudStatus.setVisibility(View.VISIBLE);
         ivCloudStatus.setImageResource(R.drawable.ic_cloud);
         ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
-                ContextCompat.getColor(this, reachable ? R.color.cloud_online : R.color.cloud_offline)));
-        ivCloudStatus.setContentDescription(getString(
-                reachable ? R.string.server_status_online : R.string.server_status_offline));
+                ContextCompat.getColor(this, R.color.cloud_offline)));
+        ivCloudStatus.setContentDescription(getString(R.string.server_status_offline));
     }
 
     private void syncSongsWithDatabase() {
@@ -1246,7 +1251,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         if(et_find.hasFocus()){
             buttonAnimation(true, b_add);
-            changeTextAnimation(tv_title,"Songs");
+            changeTextAnimation(tv_title, getString(R.string.tv_title));
             et_find.clearFocus();
             et_find.setText("");
             return;

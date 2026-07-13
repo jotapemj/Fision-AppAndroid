@@ -310,23 +310,77 @@ public class PlaybackService extends Service {
         engine.pause();
         unregisterNoisyReceiver();
         isPlaying = false;
-        // Keep the notification visible but let the system reclaim the service when needed
-        Notification n = buildNotification(PlaybackStateCompat.STATE_PAUSED);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_DETACH);
-        } else {
-            stopForeground(false);
-        }
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
-                == PackageManager.PERMISSION_GRANTED) {
-            notificationManager.notify(NOTIF_ID, n);
-        }
+        // Stay in foreground with the paused notification. Leaving foreground
+        // during pause let the system reclaim the service after a few minutes,
+        // which broke tap-to-resume from the mini player.
+        startForegroundWithNotif(PlaybackStateCompat.STATE_PAUSED);
         updatePlaybackState(PlaybackStateCompat.STATE_PAUSED);
         notifyListeners();
     }
 
     public void seekTo(long ms) {
         if (engine != null) engine.seekTo(ms);
+    }
+
+    /** Loads the next song (in the same folder as the current one) and starts
+     *  playback. Triggered by Bluetooth SKIP_TO_NEXT and by the notification. */
+    public void skipToNext()     { skipAdjacent(+1); }
+
+    /** Loads the previous song (in the same folder as the current one) and
+     *  starts playback. Triggered by Bluetooth SKIP_TO_PREVIOUS. */
+    public void skipToPrevious() { skipAdjacent(-1); }
+
+    private void skipAdjacent(int delta) {
+        if (currentSongPath == null) return;
+        File currentFolder = new File(currentSongPath);
+        File songsRoot     = currentFolder.getParentFile();
+        if (songsRoot == null) return;
+        File[] siblings = songsRoot.listFiles(File::isDirectory);
+        if (siblings == null || siblings.length == 0) return;
+        int sortOrder = getSharedPreferences("prefs_songs", MODE_PRIVATE)
+                .getInt("songs_sort_order", 0);
+        java.util.Arrays.sort(siblings, (a, b) -> sortOrder == 0
+                ? Long.compare(b.lastModified(), a.lastModified())
+                : Long.compare(a.lastModified(), b.lastModified()));
+        int idx = -1;
+        for (int i = 0; i < siblings.length; i++) {
+            if (siblings[i].getName().equals(currentFolder.getName())) { idx = i; break; }
+        }
+        if (idx < 0) return;
+        int nextIdx = (idx + delta + siblings.length) % siblings.length;
+        loadAndPlayWithVolumes(siblings[nextIdx]);
+    }
+
+    /** Loads the song, applies stem volumes/pan from Room, then plays.
+     *  Mirrors MainActivity.loadSongInServiceWithVolumes so skip works when
+     *  no Activity is alive. */
+    private void loadAndPlayWithVolumes(File folder) {
+        final String path = folder.getAbsolutePath();
+        final String name = folder.getName();
+        final int    id   = name.hashCode();
+        boolean ok = loadSong(path, name, id);
+        if (!ok) return;
+        AppDatabase db = AppDatabase.getInstance(getApplicationContext());
+        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+            java.util.List<db_SongParameters> list =
+                    db.DAO_db_SongParameters().getParametersByElementId(id);
+            if (!list.isEmpty() && engine != null) {
+                db_SongParameters p = list.get(0);
+                java.util.Map<String, StemSetting> settings =
+                        StemSettingsCodec.parse(p.stemSettingsJson);
+                for (java.util.Map.Entry<String, StemSetting> e : settings.entrySet()) {
+                    Integer t = stemTracks.get(e.getKey());
+                    if (t == null) continue;
+                    float vol = e.getValue().volume * 0.01f;
+                    float L = vol, R = vol;
+                    float pan = e.getValue().pan;
+                    if (pan > 0)      L = vol * (100f - pan) * 0.01f;
+                    else if (pan < 0) R = vol * (100f - Math.abs(pan)) * 0.01f;
+                    engine.setVolume(t, L, R);
+                }
+            }
+            mainHandler.post(this::play);
+        });
     }
 
     /** Releases the song and stops the foreground service. */
@@ -381,13 +435,17 @@ public class PlaybackService extends Service {
             }
             @Override public void onPause() { pause(); }
             @Override public void onStop()  { pause(); }
+            @Override public void onSkipToNext()     { skipToNext(); }
+            @Override public void onSkipToPrevious() { skipToPrevious(); }
         });
         stateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY
                         | PlaybackStateCompat.ACTION_PAUSE
                         | PlaybackStateCompat.ACTION_STOP
                         | PlaybackStateCompat.ACTION_PLAY_PAUSE
-                        | PlaybackStateCompat.ACTION_SEEK_TO);
+                        | PlaybackStateCompat.ACTION_SEEK_TO
+                        | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
         mediaSession.setPlaybackState(stateBuilder.build());
         mediaSession.setActive(true);
     }
@@ -575,15 +633,25 @@ public class PlaybackService extends Service {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(false)
                 .addAction(new NotificationCompat.Action(
+                        R.drawable.ic_previous,
+                        "Previous",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+                                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
+                .addAction(new NotificationCompat.Action(
                         playbackState == PlaybackStateCompat.STATE_PLAYING ? R.drawable.ic_pause : R.drawable.ic_play,
                         playbackState == PlaybackStateCompat.STATE_PLAYING ? "Pause" : "Play",
                         MediaButtonReceiver.buildMediaButtonPendingIntent(this,
                                 playbackState == PlaybackStateCompat.STATE_PLAYING
                                         ? PlaybackStateCompat.ACTION_PAUSE
                                         : PlaybackStateCompat.ACTION_PLAY)))
+                .addAction(new NotificationCompat.Action(
+                        R.drawable.ic_next,
+                        "Next",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.getSessionToken())
-                        .setShowActionsInCompactView(0)
+                        .setShowActionsInCompactView(0, 1, 2)
                         .setShowCancelButton(true));
         return builder.build();
     }

@@ -18,6 +18,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 import com.jotapeveloper.fision.MainActivity;
+import com.jotapeveloper.fision.PlayerActivity;
 import com.jotapeveloper.fision.R;
 
 import java.io.BufferedOutputStream;
@@ -275,10 +276,24 @@ public class FisionDownloadService extends Service {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return;
+
+        // Tap opens PlayerActivity with the freshly downloaded song. autoCancel
+        // dismisses the notification on tap.
+        File hashDir = new File(DownloadManagerLite.songsDir(this), hash);
+        Intent open = new Intent(this, PlayerActivity.class);
+        open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        open.putExtra("SongPathString", hashDir.getAbsolutePath());
+        open.putExtra("SongName", hash);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT
+                | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
+        PendingIntent pi = PendingIntent.getActivity(this, ("dl_" + hash).hashCode(), open, flags);
+
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setContentTitle(displayName != null ? displayName : "Song ready")
                 .setContentText(getString(R.string.dl_notif_ready))
+                .setContentIntent(pi)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         try { nm.notify(("dl_" + hash).hashCode(), b.build()); }

@@ -2,6 +2,7 @@
     <string name="app_title">F I S I O N</string>
     <string name="app_name">Fision</string>
     <string name="tv_title">Songs</string>
+    <string name="tv_title_search">Search song</string>
     <string name="te_find">Find in library</string>
     <string name="b_add">+ Add</string>
     <string name="tv_SongsCount">25 songs</string>

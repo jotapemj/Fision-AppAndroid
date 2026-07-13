@@ -2,7 +2,8 @@
 <resources>
     <string name="app_name">Fision</string>
     <string name="app_title">F I S I O N</string>
-    <string name="tv_title">Songs</string>
+    <string name="tv_title">Cançons</string>
+    <string name="tv_title_search">Cerca cançó</string>
     <string name="te_find">Troba a la biblioteca</string>
     <string name="b_add">+ Afegir</string>
     <string name="tv_SongsCount">25 cançons</string>
