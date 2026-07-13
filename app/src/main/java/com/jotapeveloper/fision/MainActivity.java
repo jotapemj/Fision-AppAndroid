@@ -676,7 +676,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     // Transition offline→online flashes a green icon for a short interval and
     // fades it out; a stable online state keeps the icon hidden to reduce noise.
     private Boolean lastReachable = null;
-    private static final long CLOUD_RECONNECT_FLASH_MS = 1500;
+    private static final long CLOUD_RECONNECT_FLASH_MS = 3000;
     private static final long CLOUD_RECONNECT_FADE_MS  = 350;
     private final Runnable cloudReconnectFadeOut = new Runnable() {
         @Override public void run() {

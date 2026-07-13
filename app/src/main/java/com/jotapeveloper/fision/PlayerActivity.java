@@ -286,6 +286,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         PrepareControls();
         setupRecyclerViews();
         refreshRepeatButtonUi();
+        bindPlaylistSwitch();
         // Auto-play only when this is a fresh open (service was not playing).
         // Flag as pending: play is triggered from updateUI() after the stored volumes
         // are pushed to the engine — before, play started here and a moment of 75%
@@ -1050,17 +1051,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             });
         }
 
-        // Switch "continue playlist from this song" (global)
-        com.google.android.material.switchmaterial.SwitchMaterial swPlaylist =
-                findViewById(R.id.sw_drawer_playlist);
-        if (swPlaylist != null && playbackService != null) {
-            swPlaylist.setOnCheckedChangeListener(null);
-            swPlaylist.setChecked(playbackService.isPlaylistMode());
-            swPlaylist.setOnCheckedChangeListener((btn, isChecked) -> {
-                if (playbackService != null) playbackService.setPlaylistMode(isChecked);
-            });
-        }
-
         // Switch "sound on downbeat" (per song)
         sw_drawer_downbeat = findViewById(R.id.sw_drawer_downbeat);
         drawerDownbeatSoundItem = findViewById(R.id.drawer_item_downbeat_sound);
@@ -1788,6 +1778,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return (long)(interval * 1000f);
     }
 
+    /** Binds the drawer switch that persists the playlist continuation flag on
+     *  the service. Must run after the service is connected: the switch state
+     *  is read from the service and the listener needs a live reference to
+     *  push the change back. */
+    private void bindPlaylistSwitch() {
+        com.google.android.material.switchmaterial.SwitchMaterial sw =
+                findViewById(R.id.sw_drawer_playlist);
+        if (sw == null || playbackService == null) return;
+        sw.setOnCheckedChangeListener(null);
+        sw.setChecked(playbackService.isPlaylistMode());
+        sw.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (playbackService != null) playbackService.setPlaylistMode(isChecked);
+        });
+    }
+
     /** Cycles the repeat mode OFF → ALL → ONE → OFF and refreshes the icon/tint. */
     private void cycleRepeatMode() {
         if (playbackService == null) return;
@@ -1940,6 +1945,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         SetControlsEnabled(true);
         PrepareControls();
         setupRecyclerViews();
+        refreshRepeatButtonUi();
+        bindPlaylistSwitch();
         b_play.setIconResource(R.raw.ic_play);
 
         // 8) Pending autoplay: updateUI applies saved volumes before pressing play
