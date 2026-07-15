@@ -44,6 +44,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.jotapeveloper.fision.cloud.AuthManager;
+import com.jotapeveloper.fision.cloud.AvatarManager;
 import com.jotapeveloper.fision.cloud.CloudItem;
 import com.jotapeveloper.fision.cloud.CloudRepository;
 
@@ -111,6 +113,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     // === Server state ===
     private ImageView ivCloudStatus;
+    private View flAvatar;
+    private TextView tvAvatarInitial;
+    private com.google.android.material.imageview.ShapeableImageView ivAvatarImage;
+    private MaterialButton bSettings;
+    private final AvatarManager.Listener avatarListener = user -> {
+        if (isFinishing() || isDestroyed()) return;
+        runOnUiThread(this::refreshToolbarAvatar);
+    };
     private final CloudRepository.Listener cloudListener = new CloudRepository.Listener() {
         @Override public void onCloudChanged() {
             // CloudRepository already posts to the main thread; do not re-dispatch.
@@ -178,6 +188,18 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 titleChanged = true;
             }
 
+            // Cover arrived asynchronously? buildMergedSongsList runs before
+            // fetchCover completes, so cloud-only songs are initially built
+            // without a coverPath. Sync s.coverPath from nc.coverPath and
+            // force a full bind so the cover cell decodes the bitmap.
+            boolean coverArrived = false;
+            if (nc != null && nc.coverPath != null && !nc.coverPath.isEmpty()
+                    && (s.getCoverPath() == null || !s.getCoverPath().equals(nc.coverPath))
+                    && new java.io.File(nc.coverPath).exists()) {
+                s.setCoverPath(nc.coverPath);
+                coverArrived = true;
+            }
+
             // For in-flight items (running/queued/downloading) the CloudItem is the SAME
             // object in memory as in the repository: when it changes its pct/state,
             // s.cloud already reflects the new value and cloudDeltaChanged would return false even though
@@ -190,7 +212,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             com.jotapeveloper.fision.cloud.CloudItem.State cachedState =
                     nc != null ? lastRenderedStateByHash.get(nc.hash) : null;
             boolean stateChangedSinceRender = nc != null && cachedState != nc.state;
-            if (titleChanged) {
+            if (titleChanged || coverArrived) {
                 s.cloud = nc;
                 songsAd.notifyItemChanged(i);     // full bind, no payload
             } else if (stateChangedSinceRender || inFlight || cloudDeltaChanged(s.cloud, nc)) {
@@ -277,8 +299,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         b_add = findViewById(R.id.b_add);
         b_orderBy = findViewById(R.id.b_orderBy);
         ivCloudStatus = findViewById(R.id.iv_cloud_status);
-        ivCloudStatus.setOnClickListener(v -> openSettings(v));
-        updateCloudStatusIcon(CloudRepository.get(this).isReachable());
+        flAvatar = findViewById(R.id.fl_avatar);
+        tvAvatarInitial = findViewById(R.id.tv_avatarInitial);
+        ivAvatarImage = findViewById(R.id.iv_avatarImage);
+        bSettings = findViewById(R.id.b_settings);
+        ivCloudStatus.setOnClickListener(v -> handleCloudIconTap());
+        flAvatar.setOnClickListener(v -> openSettings(v));
+        refreshToolbarAvatar();
+        refreshCloudStatusIcon();
 
         // Load the saved sort order and wire up the button
         SharedPreferences sortPrefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -405,6 +433,35 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 }
                 return false;
             }
+        });
+
+        // First-run flow: prompt the sign-in dialog on the very first launch. The
+        // user can either authenticate against a server or skip into local mode.
+        maybeShowFirstRunLogin();
+    }
+
+    /** Shows the login dialog once, on the first ever launch. The dialog itself
+     *  transitions the app out of first-run state via AuthManager. */
+    private void maybeShowFirstRunLogin() {
+        if (!AuthManager.get(this).isFirstRun()) return;
+        // Defer to the next UI cycle so the activity is fully laid out.
+        rvSongList.post(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            LoginDialog.show(this, true, new LoginDialog.Callback() {
+                @Override public void onLoggedIn(String u) {
+                    refreshToolbarAvatar();
+                    refreshCloudStatusIcon();
+                    CloudRepository.get(MainActivity.this).notifyConfigChanged();
+                    CloudRepository.get(MainActivity.this).startPolling();
+                }
+                @Override public void onLocalMode() {
+                    refreshToolbarAvatar();
+                    refreshCloudStatusIcon();
+                }
+                @Override public void onCancelled() {
+                    // No decision yet; keep first_run true so it prompts again next open.
+                }
+            });
         });
     }
 
@@ -539,6 +596,20 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     public void addSong(View view){
+        // Cloud pipeline requires an authenticated server. In local mode, prompt
+        // the login dialog instead of opening the import UI.
+        if (!AuthManager.get(this).isLoggedIn()) {
+            Toast.makeText(this, R.string.local_mode_import_blocked, Toast.LENGTH_LONG).show();
+            LoginDialog.show(this, true, new LoginDialog.Callback() {
+                @Override public void onLoggedIn(String u) {
+                    refreshToolbarAvatar();
+                    refreshCloudStatusIcon();
+                    CloudRepository.get(MainActivity.this).notifyConfigChanged();
+                    startActivity(new Intent(MainActivity.this, ImportActivity.class));
+                }
+            });
+            return;
+        }
         startActivity(new Intent(this, ImportActivity.class));
     }
 
@@ -690,14 +761,48 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     };
 
     private void updateCloudStatusIcon(boolean reachable) {
+        // Reachable transitions can arrive before the local session state is
+        // reconsulted; delegate to the state-aware refresh path.
+        refreshCloudStatusIcon(reachable);
+    }
+
+    /** Refreshes the cloud icon reading both the auth state and the last
+     *  known server reachability. Three visible outcomes:
+     *    - no session       → grey icon, tap = open login dialog.
+     *    - session + offline → red icon, persistent.
+     *    - session + online  → hidden (with a brief green flash on reconnect). */
+    private void refreshCloudStatusIcon() {
+        boolean reachable = lastReachable != null ? lastReachable
+                : CloudRepository.get(this).isReachable();
+        refreshCloudStatusIcon(reachable);
+    }
+
+    private void refreshCloudStatusIcon(boolean reachable) {
         if (ivCloudStatus == null) return;
+        boolean loggedIn = AuthManager.get(this).isLoggedIn();
+
+        // No session → grey cloud icon regardless of reachability. Tap opens the
+        // login dialog so the user can authenticate without visiting Settings.
+        if (!loggedIn) {
+            ivCloudStatus.removeCallbacks(cloudReconnectFadeOut);
+            ivCloudStatus.animate().cancel();
+            ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+            ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.AppDarkGrey)));
+            ivCloudStatus.setContentDescription(getString(R.string.login_status_unauthenticated));
+            ivCloudStatus.setAlpha(1f);
+            ivCloudStatus.setVisibility(View.VISIBLE);
+            // Reset reachability tracking so a later login → offline shows red immediately.
+            lastReachable = null;
+            return;
+        }
+
         boolean firstCall = (lastReachable == null);
         boolean wasOffline = (lastReachable != null && !lastReachable);
         lastReachable = reachable;
         ivCloudStatus.removeCallbacks(cloudReconnectFadeOut);
         ivCloudStatus.animate().cancel();
         if (!reachable) {
-            // Persistent red icon while the server is unreachable.
             ivCloudStatus.setImageResource(R.drawable.ic_cloud);
             ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
                     ContextCompat.getColor(this, R.color.cloud_offline)));
@@ -706,8 +811,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             ivCloudStatus.setVisibility(View.VISIBLE);
             return;
         }
-        // Reachable now. Flash green only when coming back from a known offline
-        // state; a stable online state keeps the icon hidden.
         if (firstCall || !wasOffline) {
             ivCloudStatus.setVisibility(View.GONE);
             ivCloudStatus.setAlpha(1f);
@@ -720,6 +823,66 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         ivCloudStatus.setAlpha(1f);
         ivCloudStatus.setVisibility(View.VISIBLE);
         ivCloudStatus.postDelayed(cloudReconnectFadeOut, CLOUD_RECONNECT_FLASH_MS);
+    }
+
+    /** Swaps the toolbar between the settings gear (no session) and the
+     *  circular initial avatar (session active). Both open Settings when tapped;
+     *  the avatar exists purely to signal an active identity. */
+    private void refreshToolbarAvatar() {
+        if (flAvatar == null || bSettings == null) return;
+        String user = AuthManager.get(this).getUsername();
+        boolean loggedIn = AuthManager.get(this).isLoggedIn() && !user.isEmpty();
+        // The settings button stays laid out at all times so the cloud icon can
+        // anchor to it regardless of the session state. The avatar is a clickable
+        // overlay on top; when it is visible it intercepts taps and delegates to
+        // openSettings, when hidden the underlying settings button handles them.
+        if (!loggedIn) {
+            flAvatar.setVisibility(View.GONE);
+            return;
+        }
+        flAvatar.setVisibility(View.VISIBLE);
+        AvatarManager am = AvatarManager.get(this);
+        // Safety net: covers the race where a post-login fetch completes while
+        // MainActivity is not registered as a listener yet, so the change
+        // notification is dropped. ensureFetched no-ops when a fetch has
+        // already been attempted for this user in the current process.
+        am.ensureFetched(user);
+        if (am.hasLocalAvatar(user)) {
+            android.graphics.Bitmap bm = android.graphics.BitmapFactory
+                    .decodeFile(am.getLocalFile(user).getAbsolutePath());
+            if (bm != null) {
+                ivAvatarImage.setImageBitmap(bm);
+                ivAvatarImage.setVisibility(View.VISIBLE);
+                tvAvatarInitial.setVisibility(View.GONE);
+                return;
+            }
+        }
+        // No cached picture: paint the initial fallback
+        tvAvatarInitial.setText(user.substring(0, 1).toUpperCase(Locale.ROOT));
+        tvAvatarInitial.setVisibility(View.VISIBLE);
+        ivAvatarImage.setVisibility(View.GONE);
+    }
+
+    /** Cloud icon tap dispatcher: opens the login dialog when there is no
+     *  session (fast entry), otherwise falls back to Settings so the user can
+     *  check server details or trigger a health test. */
+    private void handleCloudIconTap() {
+        if (AuthManager.get(this).isLoggedIn()) {
+            openSettings(null);
+        } else {
+            LoginDialog.show(this, true, new LoginDialog.Callback() {
+                @Override public void onLoggedIn(String u) {
+                    refreshToolbarAvatar();
+                    refreshCloudStatusIcon();
+                    CloudRepository.get(MainActivity.this).notifyConfigChanged();
+                    CloudRepository.get(MainActivity.this).startPolling();
+                }
+                @Override public void onLocalMode() {
+                    refreshToolbarAvatar();
+                    refreshCloudStatusIcon();
+                }
+            });
+        }
     }
 
     private void syncSongsWithDatabase() {
@@ -1331,7 +1494,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Live server state
         CloudRepository.get(this).addListener(cloudListener);
         CloudRepository.get(this).startPolling();
-        updateCloudStatusIcon(CloudRepository.get(this).isReachable());
+        AvatarManager.get(this).addListener(avatarListener);
+        // Session state may have changed since onCreate (Settings → logout, etc.)
+        refreshToolbarAvatar();
+        refreshCloudStatusIcon();
     }
 
     @Override
@@ -1345,6 +1511,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         CloudRepository.get(this).removeListener(cloudListener);
         CloudRepository.get(this).stopPolling();
+        AvatarManager.get(this).removeListener(avatarListener);
     }
 
     /** Refreshes the mini-player visibility/title/icon based on the service state. */

@@ -21,8 +21,11 @@ public class ServerPrefs {
     private static final String TAG = "ServerPrefs";
     private static final String PREFS_PLAIN   = "fision_server_prefs";
     private static final String PREFS_SECURE  = "fision_server_secure";
-    private static final String KEY_URL       = "server_url";
-    private static final String KEY_TOKEN     = "server_token";
+    private static final String KEY_URL        = "server_url";
+    private static final String KEY_TOKEN      = "server_token";
+    private static final String KEY_USER       = "server_user";
+    private static final String KEY_LOCAL_MODE = "local_mode";
+    private static final String KEY_FIRST_RUN  = "first_run";
 
     private final SharedPreferences plain;
     private final SharedPreferences secure;
@@ -75,4 +78,35 @@ public class ServerPrefs {
     public boolean hasUrl()   { return !getUrl().isEmpty(); }
     public boolean hasToken() { return !getToken().isEmpty(); }
     public boolean isConfigured() { return hasUrl(); }
+
+    public String getUsername() {
+        String u = plain.getString(KEY_USER, "");
+        return u == null ? "" : u.trim();
+    }
+
+    public void setUsername(String user) {
+        plain.edit().putString(KEY_USER, user == null ? "" : user.trim()).apply();
+    }
+
+    public boolean isLocalMode() {
+        return plain.getBoolean(KEY_LOCAL_MODE, false);
+    }
+
+    public void setLocalMode(boolean local) {
+        plain.edit().putBoolean(KEY_LOCAL_MODE, local).apply();
+    }
+
+    /** True until the user finishes the first-run login flow (login or local mode). */
+    public boolean isFirstRun() {
+        return plain.getBoolean(KEY_FIRST_RUN, true);
+    }
+
+    public void setFirstRunCompleted() {
+        plain.edit().putBoolean(KEY_FIRST_RUN, false).apply();
+    }
+
+    /** True when a login was completed and the token has not been wiped. */
+    public boolean isLoggedIn() {
+        return hasToken() && !getUsername().isEmpty();
+    }
 }

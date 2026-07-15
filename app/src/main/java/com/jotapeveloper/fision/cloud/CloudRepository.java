@@ -98,6 +98,34 @@ public class CloudRepository {
         this.prefs  = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         restorePendingJobs();
         restoreStickyMetadata();
+        sanitizeCoverCache();
+    }
+
+    /** Deletes cached cover files that no longer decode as images. Old versions
+     *  of fetchCover would happily write a 200-body to disk even when the
+     *  bytes were not a valid picture (server error page, empty response),
+     *  and mergeLibrary treated the presence of the file as "cover already
+     *  cached" so those items were stuck on the fallback image. Runs once at
+     *  singleton creation, synchronous so mergeLibrary is guaranteed to see
+     *  the fresh state and re-issue fetchCover for the affected items. */
+    private void sanitizeCoverCache() {
+        java.io.File dir = appCtx.getCacheDir();
+        if (dir == null) return;
+        java.io.File[] files = dir.listFiles((d, name) ->
+                name.startsWith("cover_") && name.endsWith(".png"));
+        if (files == null) return;
+        android.graphics.BitmapFactory.Options probe =
+                new android.graphics.BitmapFactory.Options();
+        probe.inJustDecodeBounds = true;
+        for (java.io.File f : files) {
+            probe.outWidth = probe.outHeight = 0;
+            android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath(), probe);
+            if (probe.outWidth <= 0 || probe.outHeight <= 0) {
+                Log.w(TAG, "sanitizeCoverCache dropping invalid " + f.getName()
+                        + " size=" + f.length());
+                f.delete();
+            }
+        }
     }
 
     // ---- listeners -----------------------------------------------------
@@ -139,6 +167,14 @@ public class CloudRepository {
     // ---- polling on/off ------------------------------------------------
     public void startPolling() {
         if (polling) return;
+        // Skip network work while the session is missing: local mode has nothing
+        // to poll and unauthenticated pings would produce noise. Reachable stays
+        // false so the toolbar renders the no-session icon.
+        ServerPrefs sp = ServerPrefs.get(appCtx);
+        if (!sp.isLoggedIn()) {
+            notifyConnectivity(false);
+            return;
+        }
         polling = true;
         // On app open, the first sweep syncs the live server queue
         // (jobs submitted from other instances become visible).
@@ -157,10 +193,19 @@ public class CloudRepository {
 
     public void notifyConfigChanged() {
         ApiClient.get(appCtx).notifyConfigChanged();
-        if (polling) {
-            main.post(pingPoll);
-            main.post(listPoll);
+        ServerPrefs sp = ServerPrefs.get(appCtx);
+        if (!sp.isLoggedIn()) {
+            // Session vanished (logout / switch account): stop polling and mark offline.
+            stopPolling();
+            notifyConnectivity(false);
+            return;
         }
+        if (!polling) {
+            startPolling();
+            return;
+        }
+        main.post(pingPoll);
+        main.post(listPoll);
     }
 
     // ---- local snapshot: what currently sits under Songs/ --------------
@@ -520,20 +565,47 @@ public class CloudRepository {
         api.downloadCover(url).enqueue(new Callback<okhttp3.ResponseBody>() {
             @Override public void onResponse(Call<okhttp3.ResponseBody> c,
                                              Response<okhttp3.ResponseBody> r) {
-                if (!r.isSuccessful() || r.body() == null) return;
-                java.io.File dst = new java.io.File(appCtx.getCacheDir(),
-                        "cover_" + hashFinal + ".png");
-                try (java.io.InputStream in = r.body().byteStream();
-                     java.io.FileOutputStream out = new java.io.FileOutputStream(dst)) {
-                    byte[] buf = new byte[16 * 1024];
-                    int n;
-                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-                } catch (Throwable ignored) { return; }
-                synchronized (CloudRepository.this) {
-                    CloudItem cur = items.get(hashFinal);
-                    if (cur != null) cur.coverPath = dst.getAbsolutePath();
+                final okhttp3.ResponseBody body = r.body();
+                if (!r.isSuccessful() || body == null) {
+                    if (body != null) body.close();
+                    return;
                 }
-                notifyChanged();
+                // Retrofit dispatches on the main thread by default; run the
+                // stream copy off-main to keep StrictMode happy.
+                new Thread(() -> {
+                    java.io.File dst = new java.io.File(appCtx.getCacheDir(),
+                            "cover_" + hashFinal + ".png");
+                    try (java.io.InputStream in = body.byteStream();
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(dst)) {
+                        byte[] buf = new byte[16 * 1024];
+                        int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "fetchCover write failed " + hashFinal, t);
+                        return;
+                    }
+                    // Validate what we just wrote. A 200 response with a body
+                    // that is not a decodable image (server error page, empty,
+                    // truncated download) would leave a corrupt file cached
+                    // forever, because needFetch would be false on subsequent
+                    // merges. Drop it and skip setting the coverPath so the
+                    // next poll re-attempts the download.
+                    android.graphics.BitmapFactory.Options probe =
+                            new android.graphics.BitmapFactory.Options();
+                    probe.inJustDecodeBounds = true;
+                    android.graphics.BitmapFactory.decodeFile(dst.getAbsolutePath(), probe);
+                    if (probe.outWidth <= 0 || probe.outHeight <= 0) {
+                        Log.w(TAG, "fetchCover invalid image " + hashFinal
+                                + " size=" + dst.length());
+                        dst.delete();
+                        return;
+                    }
+                    synchronized (CloudRepository.this) {
+                        CloudItem cur = items.get(hashFinal);
+                        if (cur != null) cur.coverPath = dst.getAbsolutePath();
+                    }
+                    notifyChanged();
+                }, "cover-fetch").start();
             }
             @Override public void onFailure(Call<okhttp3.ResponseBody> c, Throwable t) {
                 Log.w(TAG, "downloadCover failed " + hashFinal, t);

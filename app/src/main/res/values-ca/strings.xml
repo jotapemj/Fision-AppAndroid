@@ -218,6 +218,51 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="server_test_timeout">El servidor no respon</string>
     <string name="dialog_close">Tancar</string>
 
+    <!--- login / account -->
+    <string name="login_title">Inicia sessió</string>
+    <string name="login_subtitle">Connecta amb el teu servidor Fision</string>
+    <string name="login_hint_url">URL del servidor</string>
+    <string name="login_hint_user">Usuari</string>
+    <string name="login_hint_pass">Contrasenya</string>
+    <string name="login_submit">Inicia sessió</string>
+    <string name="login_local_mode">Continua en mode local</string>
+    <string name="login_status_unauthenticated">Sense sessió</string>
+    <string name="login_err_empty_fields">Omple tots els camps</string>
+    <string name="login_err_bad_credentials">Usuari o contrasenya incorrectes</string>
+    <string name="login_err_network">Sense resposta del servidor</string>
+    <string name="login_err_bad_url">URL del servidor no vàlida</string>
+    <string name="login_err_server">Error del servidor</string>
+    <string name="account_title">Compte</string>
+    <string name="account_summary_local">Mode local · toca per iniciar sessió</string>
+    <string name="account_summary_logged">Connectat com a %1$s</string>
+    <string name="account_dialog_title">Compte</string>
+    <string name="account_url_line">Servidor: %1$s</string>
+    <string name="account_change_password">Canvia la contrasenya</string>
+    <string name="account_logout">Tanca la sessió</string>
+    <string name="account_switch_account">Canvia de compte</string>
+    <string name="local_mode_banner">Mode local. Inicia sessió per a les funcions al núvol.</string>
+    <string name="local_mode_import_blocked">Inicia sessió per processar cançons noves al servidor</string>
+    <string name="change_password_title">Canviar contrasenya</string>
+    <string name="change_password_hint_old">Contrasenya actual</string>
+    <string name="change_password_hint_new">Nova contrasenya</string>
+    <string name="change_password_hint_confirm">Confirma la nova contrasenya</string>
+    <string name="change_password_submit">Actualitza</string>
+    <string name="change_password_ok">Contrasenya actualitzada</string>
+    <string name="change_password_err_bad_old">La contrasenya actual no és correcta</string>
+    <string name="change_password_err_bad_new">La nova contrasenya no és vàlida</string>
+    <string name="change_password_err_mismatch">Les contrasenyes no coincideixen</string>
+    <string name="change_password_biometric_title">Confirma la teva identitat</string>
+    <string name="change_password_biometric_sub">Empremta o PIN del dispositiu</string>
+    <string name="account_change_photo">Canvia la foto</string>
+    <string name="account_remove_photo">Elimina la foto</string>
+    <string name="crop_hint">Arrossega i pessiga per enquadrar</string>
+    <string name="crop_save">Desa</string>
+    <string name="crop_read_fail">No s\'ha pogut obrir la imatge</string>
+    <string name="crop_save_fail">No s\'ha pogut desar la imatge</string>
+    <string name="crop_upload_ok">Foto actualitzada</string>
+    <string name="crop_err_too_large">Imatge massa gran (màx 2 MB)</string>
+    <string name="crop_err_bad_format">Format d\'imatge no admès</string>
+
     <!--- import / add song -->
     <string name="import_title">Afegir cançó</string>
     <string name="import_pick_audio">Triar arxiu d\'àudio</string>

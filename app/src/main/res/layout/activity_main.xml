@@ -46,11 +46,10 @@
                 android:text="@string/app_title"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
-                app:layout_constraintStart_toEndOf="@+id/iv_AppIcon"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="@+id/iv_AppIcon"
-                app:layout_constraintBottom_toBottomOf="@+id/iv_AppIcon"
-                app:layout_constraintEnd_toStartOf="@+id/b_settings"
-                android:layout_marginStart="10dp" />
+                app:layout_constraintBottom_toBottomOf="@+id/iv_AppIcon" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/b_settings"
@@ -69,7 +68,45 @@
                 app:layout_goneMarginEnd="10dp"
                 app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 
-            <!-- Fision server connection state: green online / red offline -->
+            <!-- Session avatar: overlaid on the settings button, shown only when
+                 a user is signed in. Toggled from MainActivity. Constrained to
+                 b_settings so the cloud icon can keep anchoring to the same spot
+                 regardless of which one is currently visible. -->
+            <FrameLayout
+                android:id="@+id/fl_avatar"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:visibility="gone"
+                android:background="@drawable/avatar_circle_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:elevation="8dp"
+                android:translationZ="8dp"
+                app:layout_constraintStart_toStartOf="@+id/b_settings"
+                app:layout_constraintEnd_toEndOf="@+id/b_settings"
+                app:layout_constraintTop_toTopOf="@+id/b_settings"
+                app:layout_constraintBottom_toBottomOf="@+id/b_settings">
+                <TextView
+                    android:id="@+id/tv_avatarInitial"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:textStyle="bold"
+                    android:textColor="#CFCFCF"
+                    android:textSize="16sp"
+                    tools:text="J" />
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/iv_avatarImage"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+            </FrameLayout>
+
+            <!-- Fision server connection state: green online / red offline / grey local -->
             <ImageView
                 android:id="@+id/iv_cloud_status"
                 android:layout_width="26dp"

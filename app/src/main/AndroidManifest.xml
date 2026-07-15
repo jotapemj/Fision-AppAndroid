@@ -80,6 +80,13 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
+        <!-- CropAvatarActivity: circular crop for the profile picture -->
+        <activity
+            android:name=".CropAvatarActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
         <!-- Foreground service: persistent audio engine -->
         <service
             android:name=".PlaybackService"

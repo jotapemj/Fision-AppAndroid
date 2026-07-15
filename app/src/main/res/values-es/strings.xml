@@ -238,6 +238,51 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="server_test_timeout">El servidor no responde</string>
     <string name="dialog_close">Cerrar</string>
 
+    <!--- login / account -->
+    <string name="login_title">Iniciar sesión</string>
+    <string name="login_subtitle">Conecta con tu servidor Fision</string>
+    <string name="login_hint_url">URL del servidor</string>
+    <string name="login_hint_user">Usuario</string>
+    <string name="login_hint_pass">Contraseña</string>
+    <string name="login_submit">Iniciar sesión</string>
+    <string name="login_local_mode">Continuar en modo local</string>
+    <string name="login_status_unauthenticated">Sin sesión</string>
+    <string name="login_err_empty_fields">Rellena todos los campos</string>
+    <string name="login_err_bad_credentials">Usuario o contraseña incorrectos</string>
+    <string name="login_err_network">No hay respuesta del servidor</string>
+    <string name="login_err_bad_url">URL del servidor no válida</string>
+    <string name="login_err_server">Error del servidor</string>
+    <string name="account_title">Cuenta</string>
+    <string name="account_summary_local">Modo local · toca para iniciar sesión</string>
+    <string name="account_summary_logged">Conectado como %1$s</string>
+    <string name="account_dialog_title">Cuenta</string>
+    <string name="account_url_line">Servidor: %1$s</string>
+    <string name="account_change_password">Cambiar contraseña</string>
+    <string name="account_logout">Cerrar sesión</string>
+    <string name="account_switch_account">Cambiar de cuenta</string>
+    <string name="local_mode_banner">Modo local. Inicia sesión para funciones en la nube.</string>
+    <string name="local_mode_import_blocked">Inicia sesión para procesar canciones nuevas en el servidor</string>
+    <string name="change_password_title">Cambiar contraseña</string>
+    <string name="change_password_hint_old">Contraseña actual</string>
+    <string name="change_password_hint_new">Nueva contraseña</string>
+    <string name="change_password_hint_confirm">Confirmar nueva contraseña</string>
+    <string name="change_password_submit">Actualizar</string>
+    <string name="change_password_ok">Contraseña actualizada</string>
+    <string name="change_password_err_bad_old">La contraseña actual no es correcta</string>
+    <string name="change_password_err_bad_new">La nueva contraseña no es válida</string>
+    <string name="change_password_err_mismatch">Las contraseñas no coinciden</string>
+    <string name="change_password_biometric_title">Confirma tu identidad</string>
+    <string name="change_password_biometric_sub">Huella o PIN del dispositivo</string>
+    <string name="account_change_photo">Cambiar foto</string>
+    <string name="account_remove_photo">Eliminar foto</string>
+    <string name="crop_hint">Arrastra y pellizca para encuadrar</string>
+    <string name="crop_save">Guardar</string>
+    <string name="crop_read_fail">No se pudo abrir la imagen</string>
+    <string name="crop_save_fail">No se pudo guardar la imagen</string>
+    <string name="crop_upload_ok">Foto actualizada</string>
+    <string name="crop_err_too_large">Imagen demasiado grande (máx 2 MB)</string>
+    <string name="crop_err_bad_format">Formato de imagen no admitido</string>
+
     <!--- import / add song -->
     <string name="import_title">Añadir canción</string>
     <string name="import_pick_audio">Elegir archivo de audio</string>

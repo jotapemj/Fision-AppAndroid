@@ -7,6 +7,7 @@ import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
+import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
@@ -35,6 +36,31 @@ public interface FisionApi {
     /** Lightweight ping without token. Feeds the green/red status icon. */
     @GET("health")
     Call<Map<String, Object>> health();
+
+    /** Exchanges username+password for a bearer token. */
+    @POST("login")
+    Call<LoginResponse> login(@Body LoginRequest body);
+
+    /** Rotates the current password. The old token is revoked on success and
+     *  the response carries a fresh one. Bearer required. */
+    @POST("auth/change-password")
+    Call<LoginResponse> changePassword(@Body ChangePasswordRequest body);
+
+    /** Fetches the current user's avatar image. 404 means "no avatar set" and
+     *  the client should paint the initial fallback. Bearer required. */
+    @Streaming
+    @GET("auth/avatar")
+    Call<ResponseBody> getAvatar();
+
+    /** Uploads a new avatar image. Server enforces JPEG/PNG/WebP by magic
+     *  bytes and a 2 MB size cap. Client is expected to crop + resize + encode
+     *  before calling. */
+    @Multipart
+    @retrofit2.http.PUT("auth/avatar")
+    Call<Map<String, Object>> putAvatar(@Part MultipartBody.Part file);
+
+    @DELETE("auth/avatar")
+    Call<Map<String, Object>> deleteAvatar();
 
     /** Live server queue: running + queued items with a 1-based position. */
     @GET("jobs")

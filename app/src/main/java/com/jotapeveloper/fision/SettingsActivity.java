@@ -4,15 +4,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.biometric.BiometricManager;
-import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.preference.ListPreference;
@@ -20,9 +17,14 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.jotapeveloper.fision.cloud.ApiClient;
+import com.jotapeveloper.fision.cloud.AuthManager;
+import com.jotapeveloper.fision.cloud.AvatarManager;
 import com.jotapeveloper.fision.cloud.CloudRepository;
 import com.jotapeveloper.fision.cloud.FisionApi;
 import com.jotapeveloper.fision.cloud.ServerPrefs;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import java.util.Locale;
 import java.util.Map;
@@ -53,12 +55,30 @@ public class SettingsActivity extends AppCompatActivity {
 
     public static class SettingsFragment extends PreferenceFragmentCompat {
 
+        // Content-picker for the avatar. Registered at fragment creation time
+        // because ActivityResultLauncher must be wired before STARTED.
+        private ActivityResultLauncher<String> avatarPicker;
+        private Preference accountPrefRef;
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            avatarPicker = registerForActivityResult(
+                    new ActivityResultContracts.GetContent(), uri -> {
+                        if (uri == null) return;
+                        Intent i = new Intent(requireContext(), CropAvatarActivity.class);
+                        i.putExtra(CropAvatarActivity.EXTRA_SOURCE_URI, uri);
+                        startActivity(i);
+                    });
+        }
+
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
 
             setupLanguage();
-            setupServer();
+            setupAccount();
+            setupServerTest();
             setupAbout();
         }
 
@@ -79,14 +99,12 @@ public class SettingsActivity extends AppCompatActivity {
             android.widget.TextView tvLibs    = dlgView.findViewById(R.id.tv_about_libraries);
             com.google.android.material.button.MaterialButton bClose =
                     dlgView.findViewById(R.id.b_about_close);
-            // Dynamic version from PackageInfo (versionName from build.gradle)
             String vName = "?";
             try {
                 vName = ctx.getPackageManager()
                         .getPackageInfo(ctx.getPackageName(), 0).versionName;
             } catch (Throwable ignored) {}
             tvVersion.setText(getString(R.string.about_version_fmt, vName));
-            // HTML body (<b>) → parsed into spannable to keep boldface
             tvLibs.setText(androidx.core.text.HtmlCompat.fromHtml(
                     getString(R.string.about_libraries_body),
                     androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT));
@@ -115,10 +133,6 @@ public class SettingsActivity extends AppCompatActivity {
                 int index = languagePreference.findIndexOfValue(newLanguage);
                 if (index >= 0) preference.setSummary(entries[index]);
                 updateLocale(newLanguage);
-                // Android 13+ requires an explicit target package for broadcasts
-                // that reach receivers registered with RECEIVER_NOT_EXPORTED.
-                // Without setPackage, MainActivity's receiver would never fire
-                // and its UI kept the previous locale until the app restarted.
                 Intent intent = new Intent("com.jotapeveloper.fision.LANGUAGE_CHANGED");
                 intent.setPackage(requireActivity().getPackageName());
                 requireActivity().sendBroadcast(intent);
@@ -129,51 +143,148 @@ public class SettingsActivity extends AppCompatActivity {
             if (currentIndex >= 0) languagePreference.setSummary(entries[currentIndex]);
         }
 
-        // ---- server: URL + token gated by biometrics ----------------------
-        private void setupServer() {
-            Context ctx = requireContext();
-            ServerPrefs prefs = ServerPrefs.get(ctx);
+        // ---- account: single row, opens login dialog or account dialog ---
+        private void setupAccount() {
+            Preference accountPref = findPreference("account");
+            if (accountPref == null) return;
+            refreshAccountSummary(accountPref);
+            accountPref.setOnPreferenceClickListener(p -> {
+                if (AuthManager.get(requireContext()).isLoggedIn()) {
+                    showAccountDialog(accountPref);
+                } else {
+                    LoginDialog.show(requireActivity(), true, new LoginDialog.Callback() {
+                        @Override public void onLoggedIn(String u) { refreshAccountSummary(accountPref); }
+                        @Override public void onLocalMode()        { refreshAccountSummary(accountPref); }
+                    });
+                }
+                return true;
+            });
+        }
 
-            Preference urlPref = findPreference("server_url");
-            if (urlPref != null) {
-                urlPref.setSummary(prefs.getUrl().isEmpty()
-                        ? getString(R.string.server_url_summary) : prefs.getUrl());
-                urlPref.setOnPreferenceClickListener(p -> {
-                    showTextInputDialog(
-                            getString(R.string.server_url_title),
-                            getString(R.string.server_url_summary),
-                            prefs.getUrl(),
-                            false,
-                            value -> {
-                                String newUrl = value == null ? "" : value.trim();
-                                prefs.setUrl(newUrl);
-                                p.setSummary(newUrl.isEmpty()
-                                        ? getString(R.string.server_url_summary) : newUrl);
-                                ApiClient.get(ctx).notifyConfigChanged();
-                                CloudRepository.get(ctx).notifyConfigChanged();
-                            });
-                    return true;
-                });
+        private void refreshAccountSummary(Preference pref) {
+            ServerPrefs sp = ServerPrefs.get(requireContext());
+            if (sp.isLoggedIn()) {
+                pref.setSummary(getString(R.string.account_summary_logged, sp.getUsername()));
+            } else {
+                pref.setSummary(getString(R.string.account_summary_local));
             }
+        }
 
-            Preference tokenPref = findPreference("server_token");
-            if (tokenPref != null) {
-                tokenPref.setSummary(prefs.hasToken()
-                        ? getString(R.string.server_token_set)
-                        : getString(R.string.server_token_unset));
-                tokenPref.setOnPreferenceClickListener(p -> {
-                    promptBiometricThen(() -> showTokenDialog(prefs, tokenPref));
-                    return true;
+        private void showAccountDialog(Preference accountPref) {
+            FragmentActivity host = requireActivity();
+            View v = getLayoutInflater().inflate(R.layout.account_dialog, null);
+            android.widget.TextView tvInitial = v.findViewById(R.id.tv_accountInitial);
+            android.widget.TextView tvUser    = v.findViewById(R.id.tv_accountUser);
+            android.widget.TextView tvUrl     = v.findViewById(R.id.tv_accountUrl);
+            com.google.android.material.imageview.ShapeableImageView ivAvatar =
+                    v.findViewById(R.id.iv_accountAvatar);
+            View avatarWrap = v.findViewById(R.id.fl_accountAvatarWrap);
+            com.google.android.material.button.MaterialButton bRemovePhoto =
+                    v.findViewById(R.id.b_accountRemovePhoto);
+            com.google.android.material.button.MaterialButton bChange =
+                    v.findViewById(R.id.b_accountChangePassword);
+            com.google.android.material.button.MaterialButton bSwitch =
+                    v.findViewById(R.id.b_accountSwitch);
+            com.google.android.material.button.MaterialButton bLogout =
+                    v.findViewById(R.id.b_accountLogout);
+
+            ServerPrefs sp = ServerPrefs.get(host);
+            String user = sp.getUsername();
+            tvInitial.setText(user.isEmpty() ? "?" : user.substring(0, 1).toUpperCase(Locale.ROOT));
+            tvUser.setText(user);
+            tvUrl.setText(getString(R.string.account_url_line, sp.getUrl()));
+            paintAvatarInto(user, tvInitial, ivAvatar, bRemovePhoto);
+
+            AlertDialog dlg = new AlertDialog.Builder(host, R.style.Theme_Fision_BlurDialog)
+                    .setView(v)
+                    .setCancelable(true)
+                    .create();
+            android.view.Window win = dlg.getWindow();
+            if (win != null) win.setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            applyActivityBlur();
+            // Live-refresh the avatar card if the user finishes the crop flow
+            // while this dialog is still on-screen.
+            AvatarManager.Listener liveListener = uname ->
+                    paintAvatarInto(sp.getUsername(), tvInitial, ivAvatar, bRemovePhoto);
+            AvatarManager.get(host).addListener(liveListener);
+            dlg.setOnDismissListener(d -> {
+                AvatarManager.get(host).removeListener(liveListener);
+                removeActivityBlur();
+            });
+
+            avatarWrap.setOnClickListener(x -> {
+                accountPrefRef = accountPref;
+                try { avatarPicker.launch("image/*"); }
+                catch (Throwable t) {
+                    Toast.makeText(host, R.string.crop_read_fail, Toast.LENGTH_LONG).show();
+                }
+            });
+            bRemovePhoto.setOnClickListener(x -> {
+                bRemovePhoto.setEnabled(false);
+                AvatarManager.get(host).deleteAvatar(user, new AvatarManager.UploadCallback() {
+                    @Override public void onSuccess() {
+                        paintAvatarInto(user, tvInitial, ivAvatar, bRemovePhoto);
+                    }
+                    @Override public void onFailure(int code, String reason) {
+                        bRemovePhoto.setEnabled(true);
+                        Toast.makeText(host, R.string.login_err_server, Toast.LENGTH_LONG).show();
+                    }
                 });
-            }
+            });
+            bChange.setOnClickListener(x -> {
+                dlg.dismiss();
+                ChangePasswordDialog.show(host, new ChangePasswordDialog.Callback() {});
+            });
+            bSwitch.setOnClickListener(x -> {
+                dlg.dismiss();
+                AuthManager.get(host).logout();
+                refreshAccountSummary(accountPref);
+                LoginDialog.show(host, true, new LoginDialog.Callback() {
+                    @Override public void onLoggedIn(String u) { refreshAccountSummary(accountPref); }
+                    @Override public void onLocalMode()        { refreshAccountSummary(accountPref); }
+                });
+            });
+            bLogout.setOnClickListener(x -> {
+                AuthManager.get(host).logout();
+                refreshAccountSummary(accountPref);
+                dlg.dismiss();
+            });
+            dlg.show();
+        }
 
+        /** Paints the avatar card: image if cached, initial fallback otherwise.
+         *  Also toggles the "Remove photo" button visibility. */
+        private void paintAvatarInto(String user,
+                                     android.widget.TextView tvInitial,
+                                     com.google.android.material.imageview.ShapeableImageView ivAvatar,
+                                     com.google.android.material.button.MaterialButton bRemove) {
+            AvatarManager am = AvatarManager.get(requireContext());
+            if (am.hasLocalAvatar(user)) {
+                android.graphics.Bitmap bm = android.graphics.BitmapFactory
+                        .decodeFile(am.getLocalFile(user).getAbsolutePath());
+                if (bm != null) {
+                    ivAvatar.setImageBitmap(bm);
+                    ivAvatar.setVisibility(View.VISIBLE);
+                    tvInitial.setVisibility(View.GONE);
+                    bRemove.setVisibility(View.VISIBLE);
+                    bRemove.setEnabled(true);
+                    return;
+                }
+            }
+            ivAvatar.setVisibility(View.GONE);
+            tvInitial.setVisibility(View.VISIBLE);
+            bRemove.setVisibility(View.GONE);
+        }
+
+        // ---- server test kept as a debug affordance ---------------------
+        private void setupServerTest() {
             Preference testPref = findPreference("server_test");
-            if (testPref != null) {
-                testPref.setOnPreferenceClickListener(p -> {
-                    runConnectionTest(testPref);
-                    return true;
-                });
-            }
+            if (testPref == null) return;
+            testPref.setOnPreferenceClickListener(p -> {
+                runConnectionTest(testPref);
+                return true;
+            });
         }
 
         private void runConnectionTest(Preference pref) {
@@ -183,7 +294,6 @@ public class SettingsActivity extends AppCompatActivity {
                 Toast.makeText(ctx, R.string.server_test_no_url, Toast.LENGTH_LONG).show();
                 return;
             }
-            // Force a rebuild in case the URL was just changed in the same viewport
             ApiClient.get(ctx).notifyConfigChanged();
             FisionApi api = ApiClient.get(ctx).api();
             if (api == null) {
@@ -191,26 +301,26 @@ public class SettingsActivity extends AppCompatActivity {
                 return;
             }
 
-            // Inflate dialog and show spinner + "Testing server..." text
             View dlgView = getLayoutInflater().inflate(R.layout.ping_dialog, null);
             android.widget.ProgressBar spinner = dlgView.findViewById(R.id.pb_pingSpinner);
             android.widget.ImageView ivResult = dlgView.findViewById(R.id.iv_pingResult);
             android.widget.TextView tvText = dlgView.findViewById(R.id.tv_pingText);
-            com.google.android.material.button.MaterialButton bClose = dlgView.findViewById(R.id.b_pingClose);
+            com.google.android.material.button.MaterialButton bClose =
+                    dlgView.findViewById(R.id.b_pingClose);
 
             AlertDialog dlg = new AlertDialog.Builder(ctx, R.style.Theme_Fision_BlurDialog)
                     .setView(dlgView)
                     .setCancelable(false)
                     .create();
             android.view.Window win = dlg.getWindow();
-            if (win != null) win.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            if (win != null) win.setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
 
             pref.setEnabled(false);
             applyActivityBlur();
             dlg.setOnDismissListener(d -> { pref.setEnabled(true); removeActivityBlur(); });
             dlg.show();
 
-            // Mutable state shared with the timeout and the callback
             final Call<Map<String, Object>> call = api.health();
             final boolean[] finished = { false };
             final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -234,7 +344,6 @@ public class SettingsActivity extends AppCompatActivity {
                 bClose.setVisibility(View.VISIBLE);
             };
 
-            // 5s timeout: on no response, cancel AND show fail
             handler.postDelayed(() -> {
                 if (finished[0]) return;
                 finished[0] = true;
@@ -265,93 +374,6 @@ public class SettingsActivity extends AppCompatActivity {
                     showFail.run();
                 }
             });
-        }
-
-        private void promptBiometricThen(Runnable onSuccess) {
-            FragmentActivity activity = requireActivity();
-            BiometricManager bm = BiometricManager.from(activity);
-            int auth = BiometricManager.Authenticators.BIOMETRIC_WEAK
-                    | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
-            int can = bm.canAuthenticate(auth);
-
-            if (can != BiometricManager.BIOMETRIC_SUCCESS) {
-                // Device without biometrics nor a configured PIN: let the user through anyway
-                // (visible warning) — the token was already in EncryptedSharedPreferences.
-                Toast.makeText(activity, R.string.server_auth_unavailable, Toast.LENGTH_LONG).show();
-                onSuccess.run();
-                return;
-            }
-
-            BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(getString(R.string.server_auth_required))
-                    .setSubtitle(getString(R.string.server_auth_subtitle))
-                    .setAllowedAuthenticators(auth)
-                    .build();
-
-            BiometricPrompt prompt = new BiometricPrompt(activity,
-                    ContextCompat.getMainExecutor(activity),
-                    new BiometricPrompt.AuthenticationCallback() {
-                        @Override
-                        public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
-                            onSuccess.run();
-                        }
-                    });
-            prompt.authenticate(info);
-        }
-
-        private void showTokenDialog(ServerPrefs prefs, Preference pref) {
-            Context ctx = requireContext();
-            showTextInputDialog(
-                    getString(R.string.server_token_dialog_title),
-                    getString(R.string.server_token_hint),
-                    prefs.getToken(),
-                    true,
-                    value -> {
-                        prefs.setToken(value == null ? "" : value.trim());
-                        pref.setSummary(prefs.hasToken()
-                                ? getString(R.string.server_token_set)
-                                : getString(R.string.server_token_unset));
-                        ApiClient.get(ctx).notifyConfigChanged();
-                        CloudRepository.get(ctx).notifyConfigChanged();
-                    });
-        }
-
-        /** Generic input dialog styled like the app (background, colorPrimary buttons). */
-        private interface OnTextInputSaved { void onSave(String value); }
-
-        private void showTextInputDialog(String title, String hint, String initialValue,
-                                          boolean password, OnTextInputSaved cb) {
-            Context ctx = requireContext();
-            View dlgView = getLayoutInflater().inflate(R.layout.text_input_dialog, null);
-            android.widget.TextView tvTitle = dlgView.findViewById(R.id.tv_textInputTitle);
-            com.google.android.material.textfield.TextInputLayout til = dlgView.findViewById(R.id.til_textInput);
-            com.google.android.material.textfield.TextInputEditText et = dlgView.findViewById(R.id.et_textInput);
-            com.google.android.material.button.MaterialButton bCancel = dlgView.findViewById(R.id.b_textInputCancel);
-            com.google.android.material.button.MaterialButton bSave = dlgView.findViewById(R.id.b_textInputSave);
-
-            tvTitle.setText(title);
-            til.setHint(hint);
-            if (initialValue != null) et.setText(initialValue);
-            int input = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
-            if (password) input |= InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;
-            else input |= InputType.TYPE_TEXT_VARIATION_URI;
-            et.setInputType(input);
-
-            AlertDialog dlg = new AlertDialog.Builder(ctx, R.style.Theme_Fision_BlurDialog)
-                    .setView(dlgView)
-                    .setCancelable(true)
-                    .create();
-            android.view.Window win = dlg.getWindow();
-            if (win != null) win.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
-
-            applyActivityBlur();
-            dlg.setOnDismissListener(d -> removeActivityBlur());
-            bCancel.setOnClickListener(v -> dlg.dismiss());
-            bSave.setOnClickListener(v -> {
-                cb.onSave(et.getText() == null ? "" : et.getText().toString());
-                dlg.dismiss();
-            });
-            dlg.show();
         }
 
         /** Blurs the host activity decorView (Android 12+). */

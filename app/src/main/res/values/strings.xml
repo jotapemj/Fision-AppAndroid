@@ -238,6 +238,51 @@ HTTP client and server API bindings.]]></string>
     <string name="server_test_timeout">No response from server</string>
     <string name="dialog_close">Close</string>
 
+    <!--- login / account -->
+    <string name="login_title">Sign in</string>
+    <string name="login_subtitle">Connect to your Fision server</string>
+    <string name="login_hint_url">Server URL</string>
+    <string name="login_hint_user">Username</string>
+    <string name="login_hint_pass">Password</string>
+    <string name="login_submit">Sign in</string>
+    <string name="login_local_mode">Continue in local mode</string>
+    <string name="login_status_unauthenticated">Not signed in</string>
+    <string name="login_err_empty_fields">Fill in every field</string>
+    <string name="login_err_bad_credentials">Wrong username or password</string>
+    <string name="login_err_network">No response from server</string>
+    <string name="login_err_bad_url">Invalid server URL</string>
+    <string name="login_err_server">Server error</string>
+    <string name="account_title">Account</string>
+    <string name="account_summary_local">Local mode · tap to sign in</string>
+    <string name="account_summary_logged">Signed in as %1$s</string>
+    <string name="account_dialog_title">Account</string>
+    <string name="account_url_line">Server: %1$s</string>
+    <string name="account_change_password">Change password</string>
+    <string name="account_logout">Sign out</string>
+    <string name="account_switch_account">Switch account</string>
+    <string name="local_mode_banner">Local mode. Sign in for cloud features.</string>
+    <string name="local_mode_import_blocked">Sign in to process new songs on the server</string>
+    <string name="change_password_title">Change password</string>
+    <string name="change_password_hint_old">Current password</string>
+    <string name="change_password_hint_new">New password</string>
+    <string name="change_password_hint_confirm">Confirm new password</string>
+    <string name="change_password_submit">Update</string>
+    <string name="change_password_ok">Password updated</string>
+    <string name="change_password_err_bad_old">Current password is wrong</string>
+    <string name="change_password_err_bad_new">New password is not valid</string>
+    <string name="change_password_err_mismatch">Passwords do not match</string>
+    <string name="change_password_biometric_title">Confirm your identity</string>
+    <string name="change_password_biometric_sub">Biometrics or device PIN</string>
+    <string name="account_change_photo">Change photo</string>
+    <string name="account_remove_photo">Remove photo</string>
+    <string name="crop_hint">Move and pinch to fit</string>
+    <string name="crop_save">Save</string>
+    <string name="crop_read_fail">Could not open image</string>
+    <string name="crop_save_fail">Could not save image</string>
+    <string name="crop_upload_ok">Photo updated</string>
+    <string name="crop_err_too_large">Image too large (max 2 MB)</string>
+    <string name="crop_err_bad_format">Unsupported image format</string>
+
     <!--- import / add song -->
     <string name="import_title">Add song</string>
     <string name="import_pick_audio">Choose audio file</string>

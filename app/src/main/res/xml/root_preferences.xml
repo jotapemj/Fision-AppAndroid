@@ -13,17 +13,12 @@
 
     <PreferenceCategory android:title="@string/server_section_title">
         <Preference
-            android:key="server_url"
-            android:title="@string/server_url_title"
-            android:summary="@string/server_url_summary" />
+            android:key="account"
+            android:title="@string/account_title" />
         <Preference
             android:key="server_test"
             android:title="@string/server_test_title"
             android:summary="@string/server_test_summary" />
-        <Preference
-            android:key="server_token"
-            android:title="@string/server_token_title"
-            android:summary="@string/server_token_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/about_section_title">

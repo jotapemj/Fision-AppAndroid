@@ -102,6 +102,15 @@ public class ImportActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Cloud pipeline only: bail out if the user is not signed in. Prevents
+        // the activity from being reached from external intents while in local mode.
+        if (!com.jotapeveloper.fision.cloud.AuthManager.get(this).isLoggedIn()) {
+            android.widget.Toast.makeText(this,
+                    R.string.local_mode_import_blocked,
+                    android.widget.Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_import);
 
         // toolbar back
@@ -459,6 +468,11 @@ public class ImportActivity extends AppCompatActivity {
     // Submit
     // ---------------------------------------------------------------
     private void onSendClicked() {
+        if (!com.jotapeveloper.fision.cloud.AuthManager.get(this).isLoggedIn()) {
+            Toast.makeText(this, R.string.local_mode_import_blocked, Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
         if (!ServerPrefs.get(this).isConfigured()) {
             Toast.makeText(this, R.string.import_no_server, Toast.LENGTH_LONG).show();
             return;

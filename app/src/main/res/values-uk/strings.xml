@@ -218,6 +218,51 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="server_test_timeout">Сервер не відповідає</string>
     <string name="dialog_close">Закрити</string>
 
+    <!--- login / account -->
+    <string name="login_title">Увійти</string>
+    <string name="login_subtitle">Підключення до сервера Fision</string>
+    <string name="login_hint_url">URL сервера</string>
+    <string name="login_hint_user">Користувач</string>
+    <string name="login_hint_pass">Пароль</string>
+    <string name="login_submit">Увійти</string>
+    <string name="login_local_mode">Продовжити в локальному режимі</string>
+    <string name="login_status_unauthenticated">Не авторизовано</string>
+    <string name="login_err_empty_fields">Заповни всі поля</string>
+    <string name="login_err_bad_credentials">Неправильний логін чи пароль</string>
+    <string name="login_err_network">Немає відповіді від сервера</string>
+    <string name="login_err_bad_url">Некоректний URL сервера</string>
+    <string name="login_err_server">Помилка сервера</string>
+    <string name="account_title">Обліковий запис</string>
+    <string name="account_summary_local">Локальний режим · натисни, щоб увійти</string>
+    <string name="account_summary_logged">Увійшов як %1$s</string>
+    <string name="account_dialog_title">Обліковий запис</string>
+    <string name="account_url_line">Сервер: %1$s</string>
+    <string name="account_change_password">Змінити пароль</string>
+    <string name="account_logout">Вийти</string>
+    <string name="account_switch_account">Змінити акаунт</string>
+    <string name="local_mode_banner">Локальний режим. Увійди, щоб користуватися хмарою.</string>
+    <string name="local_mode_import_blocked">Увійди, щоб обробляти нові пісні на сервері</string>
+    <string name="change_password_title">Зміна пароля</string>
+    <string name="change_password_hint_old">Поточний пароль</string>
+    <string name="change_password_hint_new">Новий пароль</string>
+    <string name="change_password_hint_confirm">Підтвердь новий пароль</string>
+    <string name="change_password_submit">Оновити</string>
+    <string name="change_password_ok">Пароль оновлено</string>
+    <string name="change_password_err_bad_old">Поточний пароль неправильний</string>
+    <string name="change_password_err_bad_new">Новий пароль неприпустимий</string>
+    <string name="change_password_err_mismatch">Паролі не збігаються</string>
+    <string name="change_password_biometric_title">Підтверди свою особу</string>
+    <string name="change_password_biometric_sub">Біометрія або PIN пристрою</string>
+    <string name="account_change_photo">Змінити фото</string>
+    <string name="account_remove_photo">Видалити фото</string>
+    <string name="crop_hint">Пересувай і масштабуй для кадрування</string>
+    <string name="crop_save">Зберегти</string>
+    <string name="crop_read_fail">Не вдалося відкрити зображення</string>
+    <string name="crop_save_fail">Не вдалося зберегти зображення</string>
+    <string name="crop_upload_ok">Фото оновлено</string>
+    <string name="crop_err_too_large">Зображення завелике (макс 2 МБ)</string>
+    <string name="crop_err_bad_format">Непідтримуваний формат зображення</string>
+
     <!--- import / add song -->
     <string name="import_title">Додати пісню</string>
     <string name="import_pick_audio">Обрати аудіофайл</string>
