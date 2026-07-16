@@ -212,6 +212,11 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="server_status_offline">Servidor sense connexió</string>
     <string name="server_test_title">Provar connexió</string>
     <string name="server_test_summary">Llança un ping a /health del servidor configurat</string>
+    <string name="server_gpu_title">Estat GPU</string>
+    <string name="server_gpu_unknown">Inicia sessió per llegir la GPU</string>
+    <string name="server_gpu_ok_fmt">%1$s · %2$d GB VRAM</string>
+    <string name="server_gpu_ok_short">GPU disponible</string>
+    <string name="server_gpu_missing">GPU no disponible</string>
     <string name="server_test_running">Provant servidor…</string>
     <string name="server_test_ok">Servidor accessible</string>
     <string name="server_test_fail">Sense resposta</string>
@@ -287,17 +292,20 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="import_hint_drums_split">La bateria identificada a la cançó es separarà en els seus components principals: bombo, caixa, toms, hi-hat, plat i ride. La resta de percussió podria ser descartada.</string>
     <string name="import_send_short">Pujar</string>
     <string name="import_selected_header_placeholder">Selecciona un fitxer d\'àudio</string>
-    <string name="import_section_device">Processador</string>
-    <string name="import_device_cpu">CPU</string>
-    <string name="import_device_cuda">GPU · CUDA</string>
     <string name="import_no_server">Configura primer la URL del servidor a Ajustaments</string>
     <string name="import_uploading">Pujant…</string>
     <string name="import_upload_failed">Pujada fallida</string>
+    <string name="import_gpu_warning">No s\'ha detectat GPU al servidor. El procés continuarà a CPU (més lent).</string>
+    <string name="import_loading_server_info">Consultant el servidor…</string>
 
     <!--- cloud item / delete -->
     <string name="cloud_state_queued">A la cua…</string>
     <string name="cloud_state_queued_pos">A la cua (#%1$d)…</string>
     <string name="cloud_state_running">Processant…</string>
+    <string name="cloud_state_waiting_gpu">Esperant GPU…</string>
+    <string name="gpu_timeout_body">La GPU segueix ocupada després de 10 minuts. Pots reintentar o cancel·lar.</string>
+    <string name="gpu_timeout_retry">Reintentar</string>
+    <string name="gpu_timeout_cancel">Cancel·lar</string>
     <string name="cloud_state_downloading">Descarregant %1$d%%</string>
     <string name="cloud_state_cloud_only">Al núvol</string>
     <string name="cloud_state_error">Error</string>

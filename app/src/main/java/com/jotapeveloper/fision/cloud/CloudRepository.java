@@ -51,7 +51,15 @@ public class CloudRepository {
     public interface Listener {
         void onCloudChanged();
         default void onConnectivityChanged(boolean reachable) {}
+        /** Server aborted the job after 10 minutes without free VRAM. The UI
+         *  is expected to surface a retry dialog. Called once per transition
+         *  into the ERROR state carrying the "GPU ocupada" reason. */
+        default void onGpuTimeout(String hash) {}
     }
+
+    /** Exact error string the server returns when the 10-minute wait for the
+     *  GPU elapses. Compared case-insensitively. */
+    public static final String ERROR_GPU_BUSY = "GPU ocupada";
 
     private static CloudRepository INSTANCE;
     public static synchronized CloudRepository get(Context ctx) {
@@ -149,6 +157,14 @@ public class CloudRepository {
             for (Listener l : listeners) {
                 try { l.onConnectivityChanged(ok); }
                 catch (Throwable t) { Log.w(TAG, "listener.onConnectivityChanged threw", t); }
+            }
+        });
+    }
+    private void notifyGpuTimeout(String hash) {
+        main.post(() -> {
+            for (Listener l : listeners) {
+                try { l.onGpuTimeout(hash); }
+                catch (Throwable t) { Log.w(TAG, "listener.onGpuTimeout threw", t); }
             }
         });
     }
@@ -336,6 +352,40 @@ public class CloudRepository {
         notifyChanged();
     }
 
+    /** Re-submits the job that just failed with "GPU ocupada" by calling
+     *  POST /library/{hash}/reprocess with the same config that produced it.
+     *  The server preserves the input file so nothing has to be re-uploaded. */
+    public void retryGpuJob(String hash) {
+        String cfgJson;
+        synchronized (this) {
+            CloudItem it = items.get(hash);
+            if (it == null || it.config == null) return;
+            cfgJson = new com.google.gson.Gson().toJson(it.config);
+        }
+        FisionApi api = ApiClient.get(appCtx).api();
+        if (api == null) return;
+        api.reprocess(hash, cfgJson).enqueue(new Callback<JobSubmitResponse>() {
+            @Override public void onResponse(Call<JobSubmitResponse> c,
+                                             Response<JobSubmitResponse> r) {
+                if (!r.isSuccessful() || r.body() == null) return;
+                JobSubmitResponse resp = r.body();
+                synchronized (CloudRepository.this) {
+                    CloudItem ci = items.get(hash);
+                    if (ci == null) return;
+                    ci.jobId = resp.jobId;
+                    ci.state = "running".equalsIgnoreCase(resp.estado)
+                            ? CloudItem.State.RUNNING : CloudItem.State.QUEUED;
+                    ci.errorMessage = null;
+                    savePendingJobs();
+                }
+                notifyChanged();
+            }
+            @Override public void onFailure(Call<JobSubmitResponse> c, Throwable t) {
+                Log.w(TAG, "retryGpuJob network failure", t);
+            }
+        });
+    }
+
     /** Cancels a queued job (not yet started): DELETE /jobs/{jobId}. */
     public void cancelQueuedJob(String hash) {
         CloudItem it;
@@ -423,13 +473,26 @@ public class CloudRepository {
                 dirty = true;
             }
             String est = js.estado != null ? js.estado.toLowerCase() : "";
-            CloudItem.State target = "running".equals(est) ? CloudItem.State.RUNNING
-                                    : "queued".equals(est) ? CloudItem.State.QUEUED
+            CloudItem.State target = "running".equals(est)     ? CloudItem.State.RUNNING
+                                    : "waiting_gpu".equals(est) ? CloudItem.State.WAITING_GPU
+                                    : "queued".equals(est)      ? CloudItem.State.QUEUED
                                     : null;
             if (target != null && it.state != target && !it.isLocal()) {
                 it.state = target;
-                if (target == CloudItem.State.RUNNING) it.queuePosition = 0;
+                if (target == CloudItem.State.RUNNING
+                        || target == CloudItem.State.WAITING_GPU) {
+                    it.queuePosition = 0;
+                }
                 dirty = true;
+            }
+            // "GPU ocupada" timeout: the server aborts the job after 10 minutes
+            // without free VRAM. Surface the exact code so the UI can offer the
+            // retry dialog described in the server contract.
+            if ("error".equals(est) && !it.isLocal()) {
+                CloudItem.State prev = it.state;
+                it.state = CloudItem.State.ERROR;
+                it.errorMessage = js.error;
+                if (prev != CloudItem.State.ERROR) dirty = true;
             }
         }
         if (dirty) notifyChanged();
@@ -514,9 +577,14 @@ public class CloudRepository {
                     }
                 }
             } else if ("procesando".equals(est)) {
-                // Server thinks it is processing; the job poll refines it to RUNNING/QUEUED.
+                // Server thinks it is processing; the job poll refines it to
+                // RUNNING/QUEUED/WAITING_GPU.
                 if (it.state != CloudItem.State.DOWNLOADING) {
                     it.state = CloudItem.State.RUNNING;
+                }
+            } else if ("waiting_gpu".equals(est)) {
+                if (it.state != CloudItem.State.DOWNLOADING) {
+                    it.state = CloudItem.State.WAITING_GPU;
                 }
             } else if ("error".equals(est)) {
                 it.state = CloudItem.State.ERROR;
@@ -639,6 +707,7 @@ public class CloudRepository {
 
     private void applyJobStatus(String hash, JobStatusResponse js) {
         boolean trigger = false;
+        boolean gpuTimeout = false;
         synchronized (this) {
             CloudItem it = items.get(hash);
             if (it == null) return;
@@ -653,16 +722,24 @@ public class CloudRepository {
                     it.state = CloudItem.State.RUNNING;
                     it.queuePosition = 0;
                     break;
+                case "waiting_gpu":
+                    it.state = CloudItem.State.WAITING_GPU;
+                    it.queuePosition = 0;
+                    break;
                 case "cancelled":
                     it.state = CloudItem.State.CANCELLED;
                     it.jobId = null;
                     savePendingJobs();
                     break;
                 case "error":
+                    boolean wasError = it.state == CloudItem.State.ERROR;
                     it.state = CloudItem.State.ERROR;
                     it.errorMessage = js.error;
                     it.jobId = null;
                     savePendingJobs();
+                    if (!wasError && ERROR_GPU_BUSY.equalsIgnoreCase(js.error)) {
+                        gpuTimeout = true;
+                    }
                     break;
                 case "done":
                     it.jobId = null;
@@ -673,6 +750,7 @@ public class CloudRepository {
             }
         }
         notifyChanged();
+        if (gpuTimeout) notifyGpuTimeout(hash);
         if (trigger) {
             DownloadManagerLite.get(appCtx).start(hash);
         }

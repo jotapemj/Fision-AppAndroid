@@ -212,6 +212,11 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="server_status_offline">Сервер недоступний</string>
     <string name="server_test_title">Перевірити з\'єднання</string>
     <string name="server_test_summary">Пінг /health на налаштованому сервері</string>
+    <string name="server_gpu_title">Стан GPU</string>
+    <string name="server_gpu_unknown">Увійдіть, щоб побачити GPU</string>
+    <string name="server_gpu_ok_fmt">%1$s · %2$d ГБ VRAM</string>
+    <string name="server_gpu_ok_short">GPU доступний</string>
+    <string name="server_gpu_missing">GPU недоступний</string>
     <string name="server_test_running">Перевірка сервера…</string>
     <string name="server_test_ok">Сервер доступний</string>
     <string name="server_test_fail">Немає відповіді</string>
@@ -287,17 +292,20 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="import_hint_drums_split">Виявлена ​​барабанна установка буде розділена на основні компоненти: бочка, малий барабан, томи, хет, тарілка та райд. Решту перкусії може бути відкинуто.</string>
     <string name="import_send_short">Завантажити</string>
     <string name="import_selected_header_placeholder">Оберіть аудіофайл</string>
-    <string name="import_section_device">Процесор</string>
-    <string name="import_device_cpu">CPU</string>
-    <string name="import_device_cuda">GPU · CUDA</string>
     <string name="import_no_server">Спочатку налаштуй URL сервера в Налаштуваннях</string>
     <string name="import_uploading">Завантаження…</string>
     <string name="import_upload_failed">Помилка завантаження</string>
+    <string name="import_gpu_warning">Немає GPU на сервері. Обробка виконуватиметься на CPU (повільно).</string>
+    <string name="import_loading_server_info">Отримуємо дані сервера…</string>
 
     <!--- cloud item / delete -->
     <string name="cloud_state_queued">У черзі…</string>
     <string name="cloud_state_queued_pos">У черзі (#%1$d)…</string>
     <string name="cloud_state_running">Обробка…</string>
+    <string name="cloud_state_waiting_gpu">Очікування GPU…</string>
+    <string name="gpu_timeout_body">GPU досі зайнятий після 10 хвилин. Спробувати знову чи скасувати?</string>
+    <string name="gpu_timeout_retry">Спробувати знову</string>
+    <string name="gpu_timeout_cancel">Скасувати</string>
     <string name="cloud_state_downloading">Завантаження %1$d%%</string>
     <string name="cloud_state_cloud_only">У хмарі</string>
     <string name="cloud_state_error">Помилка</string>

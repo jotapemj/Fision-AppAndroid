@@ -232,6 +232,11 @@ HTTP client and server API bindings.]]></string>
     <string name="server_status_offline">Server offline</string>
     <string name="server_test_title">Test connection</string>
     <string name="server_test_summary">Pings /health on the configured server</string>
+    <string name="server_gpu_title">GPU status</string>
+    <string name="server_gpu_unknown">Sign in to read GPU info</string>
+    <string name="server_gpu_ok_fmt">%1$s · %2$d GB VRAM</string>
+    <string name="server_gpu_ok_short">GPU available</string>
+    <string name="server_gpu_missing">GPU not available</string>
     <string name="server_test_running">Pinging server…</string>
     <string name="server_test_ok">Server reachable</string>
     <string name="server_test_fail">No response</string>
@@ -307,17 +312,20 @@ HTTP client and server API bindings.]]></string>
     <string name="import_hint_drums_split">The identified drum kit will be split into its main components: kick, snare, toms, hi-hat, cymbal and ride. Other percussion may be discarded.</string>
     <string name="import_send_short">Upload</string>
     <string name="import_selected_header_placeholder">Select an audio file</string>
-    <string name="import_section_device">Device</string>
-    <string name="import_device_cpu">CPU</string>
-    <string name="import_device_cuda">GPU · CUDA</string>
     <string name="import_no_server">Set the server URL in Settings first</string>
     <string name="import_uploading">Uploading…</string>
     <string name="import_upload_failed">Upload failed</string>
+    <string name="import_gpu_warning">No GPU detected on server. Processing will run on CPU (slow).</string>
+    <string name="import_loading_server_info">Reading server info…</string>
 
     <!--- cloud item / delete -->
     <string name="cloud_state_queued">In queue…</string>
     <string name="cloud_state_queued_pos">In queue (#%1$d)…</string>
     <string name="cloud_state_running">Processing…</string>
+    <string name="cloud_state_waiting_gpu">Waiting for GPU…</string>
+    <string name="gpu_timeout_body">The GPU is still busy after 10 minutes. You can retry or cancel.</string>
+    <string name="gpu_timeout_retry">Retry</string>
+    <string name="gpu_timeout_cancel">Cancel</string>
     <string name="cloud_state_downloading">Downloading %1$d%%</string>
     <string name="cloud_state_cloud_only">In the cloud</string>
     <string name="cloud_state_error">Error</string>

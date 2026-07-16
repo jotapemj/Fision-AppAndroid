@@ -73,9 +73,16 @@ public class ImportActivity extends AppCompatActivity {
     private View tvDrumsSplitHint;
 
     private MaterialButtonToggleGroup segSepGroup, segClassicPreset, segVocalsVar,
-            segDrumsVar, segDevice;
+            segDrumsVar;
     private View panelClassic, panelPersonalized, segDrumsVarBar;
     private MaterialCheckBox cbGuitar, cbBass, cbDrums, cbPiano, cbBrass;
+
+    // GPU-aware submission: banner shown when the server has no GPU + blocking
+    // overlay while ServerInfo is still being fetched.
+    private View gpuWarningBanner;
+    private View loadingOverlay;
+    private final com.jotapeveloper.fision.cloud.ServerInfoManager.Listener serverInfoListener =
+            this::applyServerInfoState;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private AlertDialog uploadDialog;
@@ -135,10 +142,11 @@ public class ImportActivity extends AppCompatActivity {
         segClassicPreset  = findViewById(R.id.seg_classic_preset);
         segVocalsVar      = findViewById(R.id.seg_vocals_variant);
         segDrumsVar       = findViewById(R.id.seg_drums_variant);
-        segDevice         = findViewById(R.id.seg_device);
         panelClassic      = findViewById(R.id.panel_classic);
         panelPersonalized = findViewById(R.id.panel_personalized);
         segDrumsVarBar    = findViewById(R.id.seg_drums_variant);
+        gpuWarningBanner  = findViewById(R.id.ll_import_gpuWarning);
+        loadingOverlay    = findViewById(R.id.fl_import_loading);
 
         cbGuitar = findViewById(R.id.cb_stem_guitar);
         cbBass   = findViewById(R.id.cb_stem_bass);
@@ -151,7 +159,6 @@ public class ImportActivity extends AppCompatActivity {
         segClassicPreset.check(R.id.b_classic_4stem);
         segVocalsVar.check(R.id.b_vocals_single);
         segDrumsVar.check(R.id.b_drums_full);
-        segDevice.check(R.id.b_dev_cpu);
 
         // Separation mode change: animate the transition with TransitionManager so the
         // panel_personalized expands / collapses smoothly (fade + reflow).
@@ -194,13 +201,51 @@ public class ImportActivity extends AppCompatActivity {
         attachSegmentTint(segClassicPreset);
         attachSegmentTint(segVocalsVar);
         attachSegmentTint(segDrumsVar);
-        attachSegmentTint(segDevice);
 
         bSend.setOnClickListener(v -> onSendClicked());
 
         // Reprocess mode: hash passed via intent extra
         reprocessHash = getIntent().getStringExtra(EXTRA_REPROCESS_HASH);
         if (reprocessHash != null) applyReprocessMode();
+
+        // Gate the UI on the ServerInfo cache. If it is missing (fresh login
+        // that skipped the hook, first launch after a legacy migration, or a
+        // manual clear), trigger a refresh and keep the overlay up until the
+        // listener reports back.
+        com.jotapeveloper.fision.cloud.ServerInfoManager infoMgr =
+                com.jotapeveloper.fision.cloud.ServerInfoManager.get(this);
+        applyServerInfoState();
+        if (!infoMgr.isLoaded()) infoMgr.refresh();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        com.jotapeveloper.fision.cloud.ServerInfoManager.get(this)
+                .addListener(serverInfoListener);
+        applyServerInfoState();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        com.jotapeveloper.fision.cloud.ServerInfoManager.get(this)
+                .removeListener(serverInfoListener);
+    }
+
+    /** Reflects the ServerInfo cache into the UI:
+     *   - No cache yet → block the whole form with the loading overlay.
+     *   - Cache loaded + gpu=false → show the GPU warning banner.
+     *   - Cache loaded + gpu=true  → hide banner and overlay. */
+    private void applyServerInfoState() {
+        com.jotapeveloper.fision.cloud.ServerInfoManager mgr =
+                com.jotapeveloper.fision.cloud.ServerInfoManager.get(this);
+        boolean ready = mgr.isLoaded();
+        if (loadingOverlay != null)
+            loadingOverlay.setVisibility(ready ? View.GONE : View.VISIBLE);
+        if (gpuWarningBanner != null)
+            gpuWarningBanner.setVisibility(ready && !mgr.hasGpu() ? View.VISIBLE : View.GONE);
+        if (bSend != null) bSend.setEnabled(ready);
     }
 
     /** Configures the activity in reprocess mode: no picker, header from the
@@ -264,12 +309,10 @@ public class ImportActivity extends AppCompatActivity {
 
     /** Applies UI checks/segments from a previous server config
      *  ("rich" format: {sep:{mode, preset|vocals+stems}, device, chords}). Missing or
-     *  unknown fields keep the default already selected in onCreate. */
+     *  unknown fields keep the default already selected in onCreate. The device
+     *  field is ignored: the app now decides between cuda and cpu automatically
+     *  based on the cached ServerInfo. */
     private void prefillFromConfig(Map<String, Object> cfg) {
-        Object device = cfg.get("device");
-        if ("cuda".equals(device)) segDevice.check(R.id.b_dev_cuda);
-        else                        segDevice.check(R.id.b_dev_cpu);
-
         // Server "chords": BTC only in the current version. The field is ignored
         // (retro-compat with old configs that still carried "chordino").
 
@@ -687,7 +730,11 @@ public class ImportActivity extends AppCompatActivity {
     private Map<String, Object> buildConfig() {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("sep", buildSepConfig());
-        root.put("device", segDevice.getCheckedButtonId() == R.id.b_dev_cuda ? "cuda" : "cpu");
+        // Device follows the cached ServerInfo. Missing cache = safest fallback
+        // (CPU). The server also degrades cuda→cpu silently if it lacks a GPU.
+        boolean useCuda = com.jotapeveloper.fision.cloud.ServerInfoManager
+                .get(getApplicationContext()).hasGpu();
+        root.put("device", useCuda ? "cuda" : "cpu");
         // Chordino deprecated: always BTC. Field kept for server compatibility.
         root.put("chords", "btc");
         return root;

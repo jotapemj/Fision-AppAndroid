@@ -97,6 +97,7 @@ public class AuthManager {
         ApiClient.get(appCtx).notifyConfigChanged();
         CloudRepository.get(appCtx).notifyConfigChanged();
         AvatarManager.get(appCtx).clearLocal(outgoing);
+        ServerInfoManager.get(appCtx).clear();
     }
 
     /** Attempts a login against the given URL and stores everything on success. */
@@ -134,6 +135,9 @@ public class AuthManager {
                     // ensureFetched marks the user as attempted so the safety
                     // net in refreshToolbarAvatar does not re-fire this call.
                     AvatarManager.get(appCtx).ensureFetched(uname);
+                    // Cache /server/info so Settings and Import can immediately
+                    // reflect GPU availability without another round-trip.
+                    ServerInfoManager.get(appCtx).refresh();
                     main.post(() -> cb.onSuccess(uname));
                 } else {
                     int code = r.code();
@@ -196,5 +200,6 @@ public class AuthManager {
         ApiClient.get(appCtx).notifyConfigChanged();
         CloudRepository.get(appCtx).notifyConfigChanged();
         AvatarManager.get(appCtx).clearLocal(outgoing);
+        ServerInfoManager.get(appCtx).clear();
     }
 }

@@ -12,6 +12,8 @@ public class CloudItem {
         QUEUED,
         /** Server currently processing it. */
         RUNNING,
+        /** Job requested cuda but the GPU is busy with another process. */
+        WAITING_GPU,
         /** Server has it ready, zip being downloaded to the phone. */
         DOWNLOADING,
         /** Server has it ready but the phone does not have the stems downloaded. */
@@ -51,6 +53,7 @@ public class CloudItem {
     }
 
     public boolean isInFlight() {
-        return state == State.QUEUED || state == State.RUNNING || state == State.DOWNLOADING;
+        return state == State.QUEUED || state == State.RUNNING
+                || state == State.WAITING_GPU || state == State.DOWNLOADING;
     }
 }

@@ -37,6 +37,11 @@ public interface FisionApi {
     @GET("health")
     Call<Map<String, Object>> health();
 
+    /** Server hardware summary. Values are cached server-side at boot; the
+     *  client fetches this once after login and stores it locally. */
+    @GET("server/info")
+    Call<ServerInfoResponse> getServerInfo();
+
     /** Exchanges username+password for a bearer token. */
     @POST("login")
     Call<LoginResponse> login(@Body LoginRequest body);

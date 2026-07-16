@@ -21,6 +21,7 @@ import com.jotapeveloper.fision.cloud.AuthManager;
 import com.jotapeveloper.fision.cloud.AvatarManager;
 import com.jotapeveloper.fision.cloud.CloudRepository;
 import com.jotapeveloper.fision.cloud.FisionApi;
+import com.jotapeveloper.fision.cloud.ServerInfoManager;
 import com.jotapeveloper.fision.cloud.ServerPrefs;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -59,6 +60,8 @@ public class SettingsActivity extends AppCompatActivity {
         // because ActivityResultLauncher must be wired before STARTED.
         private ActivityResultLauncher<String> avatarPicker;
         private Preference accountPrefRef;
+        private Preference gpuPrefRef;
+        private final ServerInfoManager.Listener serverInfoListener = this::refreshGpuSummary;
 
         @Override
         public void onCreate(Bundle savedInstanceState) {
@@ -78,8 +81,62 @@ public class SettingsActivity extends AppCompatActivity {
 
             setupLanguage();
             setupAccount();
+            setupGpu();
             setupServerTest();
             setupAbout();
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            ServerInfoManager.get(requireContext()).addListener(serverInfoListener);
+            refreshGpuSummary();
+        }
+
+        @Override
+        public void onPause() {
+            super.onPause();
+            ServerInfoManager.get(requireContext()).removeListener(serverInfoListener);
+        }
+
+        // ---- GPU status row: reflects the cached /server/info response ---
+        private void setupGpu() {
+            gpuPrefRef = findPreference("server_gpu");
+            if (gpuPrefRef == null) return;
+            gpuPrefRef.setOnPreferenceClickListener(p -> {
+                if (AuthManager.get(requireContext()).isLoggedIn()) {
+                    ServerInfoManager.get(requireContext()).refresh();
+                }
+                return true;
+            });
+            refreshGpuSummary();
+        }
+
+        /** Icon + summary reflect the cached ServerInfo. Called on resume, on
+         *  every listener notification and on the manual refresh tap. */
+        private void refreshGpuSummary() {
+            if (gpuPrefRef == null) return;
+            Context ctx = requireContext();
+            ServerInfoManager mgr = ServerInfoManager.get(ctx);
+            if (!AuthManager.get(ctx).isLoggedIn() || !mgr.isLoaded()) {
+                gpuPrefRef.setIcon(null);
+                gpuPrefRef.setSummary(getString(R.string.server_gpu_unknown));
+                return;
+            }
+            if (mgr.hasGpu()) {
+                gpuPrefRef.setIcon(R.drawable.ic_check_circle);
+                gpuPrefRef.getIcon().setTint(
+                        ContextCompat.getColor(ctx, R.color.colorPrimary));
+                int vramGb = Math.max(0, mgr.getVramMb() / 1024);
+                String name = mgr.getGpuName();
+                if (name == null || name.isEmpty()) name = getString(R.string.server_gpu_ok_short);
+                gpuPrefRef.setSummary(getString(R.string.server_gpu_ok_fmt, name, vramGb));
+            } else {
+                gpuPrefRef.setIcon(R.drawable.ic_cross_circle);
+                gpuPrefRef.getIcon().setTint(
+                        ContextCompat.getColor(ctx, R.color.cloud_offline));
+                gpuPrefRef.setSummary(getString(R.string.server_gpu_missing));
+            }
         }
 
         // ---- About: dialog with name, version, developer and libraries ----

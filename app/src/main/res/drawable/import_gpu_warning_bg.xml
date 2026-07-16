@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Amber-tinted card behind the "no GPU available" warning in ImportActivity. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/gpu_warning_bg" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/gpu_warning_stroke" />
+    <corners android:radius="10dp" />
+</shape>

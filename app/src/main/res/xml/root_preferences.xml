@@ -16,6 +16,9 @@
             android:key="account"
             android:title="@string/account_title" />
         <Preference
+            android:key="server_gpu"
+            android:title="@string/server_gpu_title" />
+        <Preference
             android:key="server_test"
             android:title="@string/server_test_title"
             android:summary="@string/server_test_summary" />

@@ -48,6 +48,7 @@ import com.jotapeveloper.fision.cloud.AuthManager;
 import com.jotapeveloper.fision.cloud.AvatarManager;
 import com.jotapeveloper.fision.cloud.CloudItem;
 import com.jotapeveloper.fision.cloud.CloudRepository;
+import com.jotapeveloper.fision.cloud.ServerInfoManager;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -131,6 +132,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         @Override public void onConnectivityChanged(boolean reachable) {
             if (isFinishing() || isDestroyed()) return;
             updateCloudStatusIcon(reachable);
+        }
+        @Override public void onGpuTimeout(String hash) {
+            if (isFinishing() || isDestroyed()) return;
+            showGpuTimeoutDialog(hash);
         }
     };
 
@@ -1098,6 +1103,41 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         cancel.setOnClickListener(v -> sortDialog.dismiss());
     }
 
+    /** Blur dialog surfaced when the server aborts a job after 10 minutes of
+     *  waiting for a free GPU. Offers a single retry that reprocesses on the
+     *  server without re-uploading the audio. Package-private so the list
+     *  adapter can re-open it when the user taps an item stuck on this error. */
+    void showGpuTimeoutDialog(String hash) {
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View dv = inflater.inflate(R.layout.delete_alert_dialog, null);
+        android.widget.ImageView icon = dv.findViewById(R.id.iv_alertDialog_ic);
+        TextView body     = dv.findViewById(R.id.tv_alertDialog_text);
+        android.widget.Button retry  = dv.findViewById(R.id.b_yes);
+        android.widget.Button cancel = dv.findViewById(R.id.b_no);
+
+        icon.setImageResource(R.drawable.ic_warning);
+        icon.setColorFilter(ContextCompat.getColor(this, R.color.gpu_warning_accent));
+        body.setText(R.string.gpu_timeout_body);
+        retry.setText(R.string.gpu_timeout_retry);
+        cancel.setText(R.string.gpu_timeout_cancel);
+
+        AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
+                .setView(dv)
+                .create();
+        android.view.Window win = dlg.getWindow();
+        if (win != null) win.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        applyActivityBlur();
+        dlg.setOnDismissListener(d -> removeActivityBlur());
+        dlg.show();
+
+        cancel.setOnClickListener(v -> dlg.dismiss());
+        retry.setOnClickListener(v -> {
+            CloudRepository.get(this).retryGpuJob(hash);
+            dlg.dismiss();
+        });
+    }
+
     /** Two steps: when the song still has local content, delete local first (it turns
      *  CLOUD_ONLY); a second delete over the cloud_only item removes it from the server.
      *  QUEUED items: cancel the queued job (DELETE /jobs/{id}).
@@ -1495,6 +1535,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         CloudRepository.get(this).addListener(cloudListener);
         CloudRepository.get(this).startPolling();
         AvatarManager.get(this).addListener(avatarListener);
+        // Ensure the ServerInfo cache is populated for signed-in sessions.
+        // Covers legacy installs whose migration granted a session without
+        // ever hitting the login hook that seeds the cache.
+        if (AuthManager.get(this).isLoggedIn()
+                && !ServerInfoManager.get(this).isLoaded()) {
+            ServerInfoManager.get(this).refresh();
+        }
         // Session state may have changed since onCreate (Settings → logout, etc.)
         refreshToolbarAvatar();
         refreshCloudStatusIcon();

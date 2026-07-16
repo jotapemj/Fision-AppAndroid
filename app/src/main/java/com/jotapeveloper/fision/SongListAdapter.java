@@ -16,6 +16,7 @@ import androidx.collection.LruCache;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.jotapeveloper.fision.cloud.CloudItem;
+import com.jotapeveloper.fision.cloud.CloudRepository;
 import com.jotapeveloper.fision.cloud.DownloadManagerLite;
 
 import java.io.File;
@@ -116,6 +117,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             switch (c.state) {
                 case QUEUED:      return "queued";
                 case RUNNING:     return "running";
+                case WAITING_GPU: return "waiting_gpu";
                 case DOWNLOADING: return "downloading";
                 case CLOUD_ONLY:  return "cloud_only";
                 case ERROR:       return "error";
@@ -169,6 +171,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                             ? context.getString(R.string.cloud_state_queued_pos, c.queuePosition)
                             : context.getString(R.string.cloud_state_queued);
                 case RUNNING:     return context.getString(R.string.cloud_state_running);
+                case WAITING_GPU: return context.getString(R.string.cloud_state_waiting_gpu);
                 case DOWNLOADING: return context.getString(R.string.cloud_state_downloading, c.downloadPct);
                 case CLOUD_ONLY:  return context.getString(R.string.cloud_state_cloud_only);
                 case ERROR:       return context.getString(R.string.cloud_state_error);
@@ -191,6 +194,19 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             case RUNNING:
                 fadeDim(h, true);
                 h.pbSpinner.setVisibility(View.VISIBLE);
+                h.pbSpinner.setIndeterminateTintList(
+                        android.content.res.ColorStateList.valueOf(
+                                androidx.core.content.ContextCompat.getColor(
+                                        context, R.color.AppWhite)));
+                if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
+                break;
+            case WAITING_GPU:
+                fadeDim(h, true);
+                h.pbSpinner.setVisibility(View.VISIBLE);
+                h.pbSpinner.setIndeterminateTintList(
+                        android.content.res.ColorStateList.valueOf(
+                                androidx.core.content.ContextCompat.getColor(
+                                        context, R.color.gpu_waiting_spinner)));
                 if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
                 break;
             case DOWNLOADING:
@@ -272,7 +288,14 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                     return;
                 }
                 if (c.isInFlight()) {
-                    // Processing/queued/downloading: tap does nothing
+                    // Processing/queued/downloading/waiting-gpu: tap does nothing
+                    return;
+                }
+                // GPU-busy error: reopen the retry dialog so the user can act on
+                // items whose original popup was dismissed while off-screen.
+                if (c.state == CloudItem.State.ERROR
+                        && CloudRepository.ERROR_GPU_BUSY.equalsIgnoreCase(c.errorMessage)) {
+                    ParentActivity.showGpuTimeoutDialog(c.hash);
                     return;
                 }
             }

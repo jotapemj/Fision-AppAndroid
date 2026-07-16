@@ -18,4 +18,9 @@
     <!-- Fision server connection state -->
     <color name="cloud_online">#27B397</color>
     <color name="cloud_offline">#E04848</color>
+    <color name="gpu_warning_accent">#FFB74D</color>
+    <color name="gpu_warning_text">#FFE0B2</color>
+    <color name="gpu_warning_bg">#40B7791F</color>
+    <color name="gpu_warning_stroke">#66FFB74D</color>
+    <color name="gpu_waiting_spinner">#FFC107</color>
 </resources>

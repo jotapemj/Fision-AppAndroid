@@ -164,6 +164,36 @@
                 android:layout_height="0dp"
                 android:visibility="gone" />
 
+            <!-- GPU-missing warning: only visible when ServerInfo says gpu=false. -->
+            <LinearLayout
+                android:id="@+id/ll_import_gpuWarning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/import_gpu_warning_bg"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_warning"
+                    app:tint="@color/gpu_warning_accent"
+                    android:contentDescription="warning" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:text="@string/import_gpu_warning"
+                    android:textColor="@color/gpu_warning_text"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/yugothic_ui_regular" />
+            </LinearLayout>
+
             <!-- ====== Separation ====== -->
             <TextView style="@style/ImportSectionLabel"
                 android:text="@string/import_section_separation" />
@@ -326,28 +356,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ====== Device ====== -->
-            <TextView style="@style/ImportSectionLabel"
-                android:text="@string/import_section_device"
-                android:layout_marginTop="22dp" />
-
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/seg_device"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                app:singleSelection="true"
-                app:selectionRequired="true">
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/b_dev_cpu"
-                    style="@style/ImportSegmentButton"
-                    android:text="@string/import_device_cpu" />
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/b_dev_cuda"
-                    style="@style/ImportSegmentButton"
-                    android:text="@string/import_device_cuda" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-
         </LinearLayout>
     </ScrollView>
 
@@ -366,5 +374,45 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
 
+    <!-- Blocking overlay while ServerInfo is being fetched. It covers every
+         control (except the toolbar) so the user cannot start a job with
+         stale GPU knowledge. -->
+    <FrameLayout
+        android:id="@+id/fl_import_loading"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CC000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@+id/import_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ProgressBar
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/import_loading_server_info"
+                android:textColor="@color/AppWhite"
+                android:textSize="14sp"
+                android:fontFamily="@font/yugothic_ui_regular" />
+        </LinearLayout>
+
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
