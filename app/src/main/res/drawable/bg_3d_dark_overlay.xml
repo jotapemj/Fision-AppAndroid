@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Lights off" dim used by the ITD view. Vertical gradient so the top and
+     bottom fade to transparent, blending the 3D area into the toolbar fade
+     above and the bottom controls / animated background below without a hard
+     seam. Applied to v_3d_darkOverlay; the parent still animates the View's
+     own alpha to toggle the effect. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#00000000"
+        android:centerColor="#FF000000"
+        android:endColor="#00000000" />
+</shape>

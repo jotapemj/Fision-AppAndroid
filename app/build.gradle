@@ -85,4 +85,7 @@ dependencies {
 
     // EXIF orientation for picked images (avatar crop)
     implementation 'androidx.exifinterface:exifinterface:1.3.7'
+
+    // Palette extraction for the nebula background
+    implementation 'androidx.palette:palette:1.0.0'
 }

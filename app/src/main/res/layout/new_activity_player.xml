@@ -12,6 +12,18 @@
         android:layout_height="match_parent"
         android:background="#000000">
 
+    <!-- Ambient nebula background: drawn first so it sits behind the UI stack.
+         Palette + pulse are driven from PlayerActivity when the pref is on. -->
+    <com.jotapeveloper.fision.NebulaBackgroundView
+        android:id="@+id/v_nebula"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -90,6 +102,14 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.appcompat.widget.Toolbar>
 
+        <!-- Soft fade below the toolbar to blend the black title bar into the
+             animated background without a hard seam. With the animated
+             background off, the parent view stays black anyway so the fade
+             is invisible. -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:background="@drawable/toolbar_fade_bg" />
 
         <!-- Central container: wraps chords + stems + ITD overlay.
              The ITD view (include) is a sibling of the vertical stack and covers
@@ -117,19 +137,6 @@
                         android:layout_height="match_parent"
                         android:orientation="horizontal"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-
-                    <!-- Darkens edges to highlight the center chord -->
-                    <View
-                        android:layout_width="120dp"
-                        android:layout_height="match_parent"
-                        android:layout_gravity="start"
-                        android:background="@drawable/chords_fade_left" />
-
-                    <View
-                        android:layout_width="120dp"
-                        android:layout_height="match_parent"
-                        android:layout_gravity="end"
-                        android:background="@drawable/chords_fade_right" />
 
                 </FrameLayout>
 

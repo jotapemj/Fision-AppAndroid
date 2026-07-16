@@ -56,6 +56,7 @@
     <string name="metronome_half_variant_b">B</string>
 
     <string name="drawer_switch_playlist">Відтворити наступну після закінчення</string>
+    <string name="drawer_switch_nebula">Анімований фон</string>
     <string name="b_repeat_description">Режим повтору</string>
     <string name="drawer_switch_downbeat">Звук на сильній долі</string>
     <string name="drawer_item_downbeat_sound">Звук</string>

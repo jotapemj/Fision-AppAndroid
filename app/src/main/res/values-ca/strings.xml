@@ -57,6 +57,7 @@
     <string name="metronome_half_variant_b">B</string>
 
     <string name="drawer_switch_playlist">Reprodueix la següent en acabar</string>
+    <string name="drawer_switch_nebula">Fons animat</string>
     <string name="b_repeat_description">Mode de repetició</string>
     <string name="drawer_switch_downbeat">So al downbeat</string>
     <string name="drawer_item_downbeat_sound">So</string>

@@ -122,6 +122,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // persist across songs without having to reconfigure each one.
     private static final String PREF_DOWNBEAT_ENABLED = "downbeat_sound_enabled";
     private static final String PREF_DOWNBEAT_TYPE    = "downbeat_sound_type";
+    // Ambient nebula background (global switch)
+    private static final String PREF_NEBULA_ENABLED   = "nebula_enabled";
+    private boolean            nebulaEnabled         = false;
+    private NebulaBackgroundView nebulaView;
 
     // Per-song preferences (drawer): 0.5x metronome variant + sound on downbeat
     private com.google.android.material.switchmaterial.SwitchMaterial sw_drawer_downbeat;
@@ -349,6 +353,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Downbeat sound: now global (see PREF_DOWNBEAT_*).
         downbeatSoundEnabled       = globalPrefs.getBoolean(PREF_DOWNBEAT_ENABLED, false);
         downbeatSoundType          = globalPrefs.getInt    (PREF_DOWNBEAT_TYPE, 0);
+        nebulaEnabled              = globalPrefs.getBoolean(PREF_NEBULA_ENABLED, false);
 
         initializeUIComponents();
         readChordsFile(SongPath);
@@ -1101,7 +1106,76 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         refreshReprocessDrawerVisibility();
 
+        // Ambient nebula background: apply the saved state without animation
+        // on first inflate, then bind the drawer switch and kick off a palette
+        // extraction from the current artcover.
+        nebulaView = findViewById(R.id.v_nebula);
+        if (nebulaView != null) {
+            nebulaView.setNebulaEnabled(nebulaEnabled, false);
+        }
+        bindNebulaSwitch();
+        refreshNebulaPalette();
+
         SetControlsEnabled(false);
+    }
+
+    /** Binds the drawer switch that toggles the nebula background. Persists the
+     *  choice as a global preference and fades the view in/out. */
+    private void bindNebulaSwitch() {
+        com.google.android.material.switchmaterial.SwitchMaterial sw =
+                findViewById(R.id.sw_drawer_nebula);
+        if (sw == null) return;
+        sw.setOnCheckedChangeListener(null);
+        sw.setChecked(nebulaEnabled);
+        sw.setOnCheckedChangeListener((btn, isChecked) -> {
+            nebulaEnabled = isChecked;
+            PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
+                    .edit().putBoolean(PREF_NEBULA_ENABLED, isChecked).apply();
+            if (nebulaView != null) nebulaView.setNebulaEnabled(isChecked, true);
+            if (isChecked) refreshNebulaPalette();
+        });
+    }
+
+    /** Decodes the current artcover.png in the background and extracts a vibrant
+     *  palette for the nebula. Falls back to a neutral blue/teal palette when
+     *  the cover is missing or unreadable. */
+    private void refreshNebulaPalette() {
+        if (nebulaView == null || SongFolder == null) return;
+        final File cover = new File(SongFolder, "artcover.png");
+        final int primary = androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary);
+        final int[] fallback = new int[] { 0xFF2D6BB0, 0xFF3AA3B3, primary };
+        if (!cover.exists()) {
+            nebulaView.setPalette(fallback);
+            return;
+        }
+        new Thread(() -> {
+            try {
+                android.graphics.BitmapFactory.Options probe =
+                        new android.graphics.BitmapFactory.Options();
+                probe.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeFile(cover.getAbsolutePath(), probe);
+                int sample = 1;
+                while (probe.outWidth / sample > 512 && probe.outHeight / sample > 512) sample *= 2;
+                android.graphics.BitmapFactory.Options opts =
+                        new android.graphics.BitmapFactory.Options();
+                opts.inSampleSize = sample;
+                android.graphics.Bitmap bm =
+                        android.graphics.BitmapFactory.decodeFile(cover.getAbsolutePath(), opts);
+                if (bm == null) {
+                    runOnUiThread(() -> nebulaView.setPalette(fallback));
+                    return;
+                }
+                androidx.palette.graphics.Palette p = androidx.palette.graphics.Palette
+                        .from(bm).maximumColorCount(24).generate();
+                int c1 = p.getVibrantColor(p.getMutedColor(fallback[0]));
+                int c2 = p.getLightVibrantColor(p.getLightMutedColor(fallback[1]));
+                int c3 = p.getDarkVibrantColor(p.getDarkMutedColor(fallback[2]));
+                final int[] out = new int[] { c1, c2, c3 };
+                runOnUiThread(() -> nebulaView.setPalette(out));
+            } catch (Throwable t) {
+                runOnUiThread(() -> nebulaView.setPalette(fallback));
+            }
+        }, "nebula-palette").start();
     }
 
     /** Shows or hides the "Reprocess" item depending on whether the current song has
@@ -1959,6 +2033,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // 10) Refresh visibility of the "Reprocess" item based on whether the new
         // song exists in CloudRepository (came from the server or is LOCAL_ONLY).
         refreshReprocessDrawerVisibility();
+
+        // 11) Nebula palette follows the new artcover
+        refreshNebulaPalette();
     }
 
     /** Seek button (5s) bounce: scale-down on press, scale-up overshoot on release.
@@ -2191,6 +2268,19 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             // Pre-schedule clicks + metronome mute for the next downbeats.
                             // Only when both switches are active (downbeat + metronome).
                             scheduleUpcomingDownbeats();
+                            // Ambient nebula pulse. In 4/4 (or 6/8): soft on the
+                            // odd beats (1/3/5), strong on the even ones (2/4/6).
+                            // In ternary metres (3): only the downbeat pulses hard.
+                            if (nebulaView != null && nebulaEnabled) {
+                                int pos = beatCells.get(idx).positionInBar;
+                                float intensity;
+                                if (beatsPerBar == 3) {
+                                    intensity = pos == 1 ? 0.95f : 0.30f;
+                                } else {
+                                    intensity = (pos % 2 == 0) ? 0.90f : 0.35f;
+                                }
+                                nebulaView.pulse(intensity);
+                            }
                             final int targetIdx = idx;
                             rvChords.smoothScrollToPosition(targetIdx);
                             // Delay the highlight so the tile lights up once it has already

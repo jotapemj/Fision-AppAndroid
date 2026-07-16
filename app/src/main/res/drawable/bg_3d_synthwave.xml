@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Synthwave background for ITD mode. Black base + neon gradient with colorPrimary
-     (app green) from the center downwards. Almost black on top so it blends
-     smoothly with the toolbar (no contrasted seam). -->
+<!-- Synthwave background for ITD mode. Fades to transparent at the top and
+     bottom so the animated background (when on) or the black player root
+     (when off) blends smoothly into the view without a hard seam. Layers:
+       1. Vertical dark veil: transparent at edges, ~60% black in the middle.
+       2. Halo with colorPrimary from center to bottom. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Black base -->
+    <!-- Vertical dark veil that fades to transparent at top and bottom -->
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#000000" />
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#00000000"
+                android:centerColor="#99000000"
+                android:endColor="#00000000" />
         </shape>
     </item>
     <!-- Halo with colorPrimary from center to bottom -->
@@ -18,17 +25,6 @@
                 android:startColor="#0027B397"
                 android:centerColor="#3327B397"
                 android:endColor="#00000000" />
-        </shape>
-    </item>
-    <!-- Extra fade on top toward pure black to blend with the toolbar -->
-    <item>
-        <shape android:shape="rectangle">
-            <gradient
-                android:type="linear"
-                android:angle="270"
-                android:startColor="#00000000"
-                android:centerColor="#00000000"
-                android:endColor="#CC000000" />
         </shape>
     </item>
 </layer-list>

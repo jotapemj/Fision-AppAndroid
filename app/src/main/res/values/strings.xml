@@ -64,6 +64,7 @@
 
     <!--- playlist continuation -->
     <string name="drawer_switch_playlist">Play next song when this one ends</string>
+    <string name="drawer_switch_nebula">Animated background</string>
     <string name="b_repeat_description">Repeat mode</string>
 
     <!--- sound on downbeat -->

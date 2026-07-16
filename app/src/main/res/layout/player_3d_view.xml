@@ -38,12 +38,15 @@
         android:src="@drawable/head"
         android:contentDescription="listener head" />
 
-    <!-- 3) Black layer: lights off effect when 3D=off -->
+    <!-- 3) Dim layer: lights off effect when 3D=off. Vertical gradient so the
+         top and bottom fade to transparent — avoids a hard seam against the
+         toolbar fade above and the bottom controls / animated background
+         below. The View alpha itself is animated by the 3D switch. -->
     <View
         android:id="@+id/v_3d_darkOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#000000"
+        android:background="@drawable/bg_3d_dark_overlay"
         android:alpha="0.72"
         android:clickable="false"
         android:focusable="false" />

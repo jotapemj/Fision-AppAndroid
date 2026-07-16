@@ -38,7 +38,15 @@ The magic starts with the fision of your music.
 - 3D audio positioning per stem using HRTF convolution.
 - Cloud processing: pick a local file, choose the separation model, and get
   the stems back automatically.
+- Multi-user server access with signed sessions and per-account profile
+  avatar. Local-only mode is available for offline use.
 - Song library with sort, search, edit, and delete.
+- Repeat modes (off, all, one) and continuous playlist that advances to the
+  next song when the current one ends.
+- Reprocess a song on the server with a different separation setup without
+  losing its position in the library.
+- Optional animated ambient background driven by the current song's cover
+  palette, pulsing softly on every beat.
 - Export the current mix or individual stems to WAV, AAC, or M4A.
 - Background playback with Bluetooth and notification controls.
 
@@ -84,12 +92,37 @@ selector in the app.
   <img src="./docs/screenshots/005.jpeg" width="300" alt="Settings screen where language and server connection are set up">
 </div>
 
-The Settings screen holds the server URL and the bearer token. The URL
-is a plain preference. The token is stored in an encrypted preferences
-file and unlocked by biometric authentication before it can be shown or
-edited. A dedicated test button pings the server with a 5 second timeout
-and reports success or failure. The status icon in the toolbar of the
-main screen mirrors the connection state.
+Access to the Fision server is authenticated with a username and
+password. On the first launch the app shows a login dialog with an
+option to continue in local mode, which lets the player run entirely
+offline. Once signed in, the returned session token is stored in an
+encrypted preferences file and the connection status icon in the
+toolbar reflects reachability in real time.
+
+The Settings screen exposes an Account row that surfaces the current
+session and lets the user:
+
+- **Change password**: gated by biometric authentication, then a small
+  dialog with old, new, and confirmation fields. The server rotates the
+  session token on success.
+- **Switch account**: logs out and reopens the login dialog with the
+  URL pre-filled.
+- **Log out**: wipes the token and local cache for the outgoing user
+  and drops the app into local mode.
+
+A dedicated test button pings the server with a 5 second timeout and
+reports success or failure.
+
+### Profile avatar
+
+Each account can upload a profile picture. From the Account dialog, a
+pencil badge on the avatar opens the system gallery picker. The app
+applies the picture's EXIF orientation, opens a full-screen circular
+crop view with pinch to zoom and drag to pan, and uploads the result
+(512×512 JPEG) to the server. The avatar is cached locally per user so
+the toolbar shows it immediately after the next launch, and it is
+wiped on logout so that switching accounts always starts from a clean
+state.
 
 ### Cloud processing states
 
@@ -166,7 +199,11 @@ side to side you find:
   the default value, and a menu button that opens the stem bottom
   sheet.
 - **Playback controls**: play and pause, seek bar, previous and next
-  song buttons, and 5 second jump buttons.
+  song buttons, and 5 second jump buttons. The previous button rewinds
+  to the start of the current song when the position is past a short
+  threshold, otherwise it jumps to the previous song.
+- **Repeat button**: cycles through off, repeat all, and repeat one.
+  Its icon and tint change to reflect the active mode.
 - **Pitch button**: opens the pitch bottom sheet.
 - **Metronome button**: opens the dynamic metronome bottom sheet.
 - **Show/hide chords button**: collapses the chord section to give the
@@ -265,6 +302,12 @@ options.
 - **Sound on downbeat**: adds a click on the first beat of each bar.
   When enabled, a submenu lets you pick which sample to use for the
   click.
+- **Play next song when this one ends**: continues playback with the
+  next song in the library when repeat is off. The order follows the
+  main list sort preference.
+- **Animated background**: fades in an ambient nebula effect behind the
+  player. Colours are derived from the current cover art and pulse on
+  every beat. See the section below.
 - **Reset to default**: resets every stem volume to 75, every stem pan
   to 0, and exits solo mode if active. Pitch, tempo, and metronome
   settings are left untouched.
@@ -331,6 +374,23 @@ mix. Playback speed uses SoundTouch's tempo control, decoupled from
 pitch. You can slow the song down without pitching the vocals or the
 instruments.
 
+## Animated background
+
+An opt-in ambient layer that lives behind the player UI. Three large
+soft blobs orbit the phone frame with independent phases and radii, so
+the composition never freezes into a single shape. The palette is
+sampled from the current song's cover art, so the colours match the
+mood of what is playing. A dark frosted tint over the blobs keeps the
+UI on top perfectly readable.
+
+The background reacts to the beat. In 4/4 or 6/8 time the odd beats
+get a soft pulse and the even beats get a stronger one. In ternary
+time only the downbeat pulses strongly. The primary blob is smaller,
+faster, and picks up more of the pulse than the two ambient halos.
+
+Switching the effect on or off fades smoothly. When disabled the layer
+stops drawing entirely, so it costs nothing when not in use.
+
 ## Audio 3D
 
 <div align="center">
@@ -378,7 +438,8 @@ everything is restored exactly as you left it. Migrations are
 non-destructive between versions.
 
 Global preferences that do not belong to a single song (chord notation,
-sort order, downbeat sample choice, and so on) live in `SharedPreferences`.
+sort order, downbeat sample choice, repeat mode, playlist continuation,
+animated background flag, and so on) live in `SharedPreferences`.
 
 ## Mini player and background service
 

@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Small central star -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,10.5m-1.4,0a1.4,1.4 0 1,0 2.8,0a1.4,1.4 0 1,0 -2.8,0z" />
+    <!-- Two soft outer clouds -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M8,15c-2.5,0 -4.5,-1.6 -4.5,-3.6c0,-1.7 1.4,-3.1 3.3,-3.4c0.5,-1.6 2.2,-2.7 4.2,-2.7c1.9,0 3.6,1 4.1,2.5c2,0.2 3.4,1.6 3.4,3.4c0,2 -2,3.6 -4.5,3.6C11.6,15 10.5,15 8,15z" />
+    <!-- Small side blob -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.35"
+        android:pathData="M17.5,17.5m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0z" />
+</vector>
