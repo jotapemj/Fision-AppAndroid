@@ -78,9 +78,17 @@ server. There are two paths:
 - **Personalized**: enable or disable individual stems (guitar, bass,
   drums, piano, brass) and choose voice mode (single or split).
 
-You also pick the compute device (CPU or CUDA). The audio is streamed
-to the server without loading the whole file into memory, and a
-progress dialog shows the upload percentage with a cancel button.
+The compute device is decided automatically from the server's
+capabilities. On launch the app queries the server for its GPU state
+and caches the result. If a CUDA GPU is available the job runs on it;
+otherwise the import screen shows a warning banner explaining that
+processing will fall back to CPU and take longer. While the server
+info is being fetched, the send button is disabled behind a loading
+overlay so no request is issued with a wrong device value.
+
+The audio is streamed to the server without loading the whole file
+into memory, and a progress dialog shows the upload percentage with a
+cancel button.
 
 Chord detection on the server always uses BTC (Bidirectional
 Transformer for Chord recognition), so there is no chord backend
@@ -111,7 +119,9 @@ session and lets the user:
   and drops the app into local mode.
 
 A dedicated test button pings the server with a 5 second timeout and
-reports success or failure.
+reports success or failure. A GPU status row surfaces whether the
+server exposes a CUDA device, along with the GPU model and VRAM
+budget. Tapping the row refreshes the cached value on demand.
 
 ### Profile avatar
 
@@ -132,6 +142,12 @@ these states in the UI:
 - **Queued**: waiting in the server queue. The subtitle shows the queue
   position when known.
 - **Running**: the server is processing.
+- **Waiting for GPU**: the job asked for CUDA but the GPU is currently
+  busy with another process. The subtitle reflects the wait and the
+  spinner is tinted differently so it is easy to distinguish from a
+  regular queue slot. If the GPU stays busy for ten minutes the
+  server aborts the job and the app opens a retry dialog that
+  re-submits the same configuration in one tap.
 - **Downloading**: the ZIP is being fetched, with a percentage overlay
   and a wave animation on the cover.
 - **Cloud only**: available on the server, not yet downloaded. Tap to
