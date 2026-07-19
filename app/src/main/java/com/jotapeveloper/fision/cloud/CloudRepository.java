@@ -75,6 +75,12 @@ public class CloudRepository {
     private boolean reachable = false;
     private boolean polling = false;
 
+    /** In-flight ping tracking. Every ping() gets a monotonically increasing
+     *  sequence; callbacks with a stale seq are ignored so a slow "offline"
+     *  response cannot overwrite a fresh "online" one. */
+    private int pingSeq = 0;
+    private Call<Map<String, Object>> pingCall = null;
+
     private final Runnable listPoll = new Runnable() {
         @Override public void run() {
             if (!polling) return;
@@ -759,12 +765,27 @@ public class CloudRepository {
     private void ping() {
         FisionApi api = ApiClient.get(appCtx).api();
         if (api == null) { notifyConnectivity(false); return; }
+        // Cancel the previous in-flight ping so its late response cannot
+        // overwrite the state set by this one.
+        if (pingCall != null) {
+            try { pingCall.cancel(); } catch (Throwable ignored) {}
+        }
+        // Evict cached sockets when the last ping said offline: a stale
+        // connection (e.g. after Tailscale went down and back up) would
+        // otherwise consume the full connectTimeout before failing, blocking
+        // the reconnect signal for tens of seconds.
+        if (!reachable) ApiClient.get(appCtx).evictConnections();
+        final int seq = ++pingSeq;
         // GET /health without token: minimal cost and no auth dependency.
-        api.health().enqueue(new Callback<Map<String, Object>>() {
+        Call<Map<String, Object>> call = api.health();
+        pingCall = call;
+        call.enqueue(new Callback<Map<String, Object>>() {
             @Override public void onResponse(Call<Map<String, Object>> c, Response<Map<String, Object>> r) {
+                if (seq != pingSeq) return;      // stale response
                 notifyConnectivity(r.isSuccessful());
             }
             @Override public void onFailure(Call<Map<String, Object>> c, Throwable t) {
+                if (seq != pingSeq) return;      // cancelled or stale
                 notifyConnectivity(false);
             }
         });

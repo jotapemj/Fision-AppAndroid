@@ -117,7 +117,7 @@
             android:textColor="@color/AppWhite"
             app:strokeColor="@color/colorPrimary"
             app:rippleColor="@color/colorPrimary"
-            app:cornerRadius="30dp" />
+            app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/b_wizardSave"
@@ -131,7 +131,7 @@
             android:textColor="@color/colorPrimary"
             app:strokeColor="@color/colorPrimary"
             app:rippleColor="@color/colorPrimary"
-            app:cornerRadius="30dp" />
+            app:cornerRadius="20dp" />
 
     </LinearLayout>
 

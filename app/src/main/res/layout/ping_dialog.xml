@@ -52,6 +52,6 @@
         android:textColor="@color/AppWhite"
         android:backgroundTint="@color/colorPrimary"
         android:visibility="gone"
-        app:cornerRadius="30dp" />
+        app:cornerRadius="20dp" />
 
 </LinearLayout>

@@ -37,6 +37,15 @@ public class NebulaBackgroundView extends View {
             0xFF2D6BB0, 0xFF3AA3B3, 0xFF6C4CB0
     };
 
+    /** Static bottom anchor blob: sits below the bottom edge so only its top
+     *  arc bleeds into the view, lighting the playback control row like a
+     *  footlight. Shape is a horizontally-stretched ellipse with a long fade
+     *  that reaches up to the transport buttons. */
+    private static final float ANCHOR_Y_FRACTION = 1.02f;   // vertical centre (below edge)
+    private static final float ANCHOR_WIDTH_FRAC = 1.30f;   // horizontal reach
+    private static final float ANCHOR_SQUASH     = 0.36f;   // vertical squash
+    private int anchorColor = 0xFF27B397;                    // colorPrimary default
+
     /** Per-blob orbital phase (rad), angular frequency (Hz) and orbit radius
      *  scale so each blob traces a distinct path. */
     private final float[] phaseA  = new float[BLOB_COUNT];
@@ -52,6 +61,12 @@ public class NebulaBackgroundView extends View {
 
     private long startNanos = 0L;
     private boolean running = false;
+
+    /** Palette handshake: while false, onDraw skips every blob so the view
+     *  never paints the default colours. When the first real palette lands,
+     *  the pending fade-in is committed. */
+    private boolean paletteApplied = false;
+    private boolean pendingFadeIn  = false;
 
     private final Choreographer.FrameCallback frameCb = new Choreographer.FrameCallback() {
         @Override public void doFrame(long frameTimeNanos) {
@@ -94,6 +109,28 @@ public class NebulaBackgroundView extends View {
         for (int i = 0; i < BLOB_COUNT; i++) {
             palette[i] = colors[i % colors.length];
         }
+        // Anchor uses the most vibrant colour available; the primary blob
+        // shares the same slot in the palette array.
+        anchorColor = colors[0];
+        boolean firstApply = !paletteApplied;
+        paletteApplied = true;
+        if (firstApply && pendingFadeIn) {
+            pendingFadeIn = false;
+            animate().cancel();
+            animate().alpha(1f).setDuration(500).start();
+        }
+        invalidate();
+    }
+
+    /** Resets the palette handshake so the next {@link #setPalette(int[])}
+     *  call is treated as a fresh first-apply. Meant to be invoked on
+     *  song change so the new artwork drives a clean fade-in instead of a
+     *  flash between the previous song's colours and the new ones. */
+    public void resetPaletteFade() {
+        paletteApplied = false;
+        pendingFadeIn = true;
+        animate().cancel();
+        setAlpha(0f);
         invalidate();
     }
 
@@ -112,10 +149,18 @@ public class NebulaBackgroundView extends View {
                 setAlpha(0f);
                 setVisibility(VISIBLE);
             }
-            if (animate) animate().alpha(1f).setDuration(500).start();
-            else setAlpha(1f);
+            // If the palette is not yet known, defer the fade-in until
+            // setPalette() arrives so the user never sees the default colours.
+            if (paletteApplied) {
+                if (animate) animate().alpha(1f).setDuration(500).start();
+                else setAlpha(1f);
+            } else {
+                pendingFadeIn = true;
+                setAlpha(0f);
+            }
             start();
         } else {
+            pendingFadeIn = false;
             if (animate) {
                 animate().alpha(0f).setDuration(400).withEndAction(() -> {
                     setVisibility(GONE);
@@ -155,6 +200,9 @@ public class NebulaBackgroundView extends View {
         int w = getWidth();
         int h = getHeight();
         if (w <= 0 || h <= 0) return;
+        // Skip every draw until the real palette lands, so the view never
+        // paints its fallback colours even for a single frame.
+        if (!paletteApplied) return;
 
         float t = (System.nanoTime() - startNanos) / 1_000_000_000f;
 
@@ -205,6 +253,35 @@ public class NebulaBackgroundView extends View {
                     Shader.TileMode.CLAMP);
             blobPaint.setShader(rg);
             canvas.drawCircle(cx, cy, baseR, blobPaint);
+        }
+
+        // Static anchor blob: horizontal ellipse near the bottom edge. Pulses
+        // with the beat but never moves — reads as a stage-light glow behind
+        // the playback control row.
+        {
+            float ax = w * 0.5f;
+            float ay = h * ANCHOR_Y_FRACTION;
+            float radius = w * ANCHOR_WIDTH_FRAC * (1f + pulse * 0.15f);
+            int aAlpha = (int) (160 + pulse * 80);
+            if (aAlpha > 240) aAlpha = 240;
+            int aCore = (anchorColor & 0x00FFFFFF) | (aAlpha << 24);
+            int aEdge =  anchorColor & 0x00FFFFFF;
+
+            // Long-fade profile: no plateau, colour eases from core to edge in
+            // one smooth curve so the footlight blooms with a soft halo.
+            RadialGradient ag = new RadialGradient(
+                    ax, ay, radius,
+                    new int[] { aCore, aEdge },
+                    new float[] { 0f, 1f },
+                    Shader.TileMode.CLAMP);
+            blobPaint.setShader(ag);
+            // Squash vertically to draw a horizontal ellipse without switching
+            // shader math. Scaling is applied around (ax, ay) so the light
+            // stays anchored to the bottom row.
+            canvas.save();
+            canvas.scale(1f, ANCHOR_SQUASH, ax, ay);
+            canvas.drawCircle(ax, ay, radius, blobPaint);
+            canvas.restore();
         }
 
         canvas.restoreToCount(layer);

@@ -53,6 +53,10 @@ public class FisionDownloadService extends Service {
     private static final String TAG = "FisionDlService";
     private static final String CHANNEL_ID = "fision_cloud";
     private static final String CHANNEL_NAME = "Fision · Server";
+    // Separate high-importance channel so the "song ready" notif surfaces as
+    // a heads-up banner without impacting the low-importance progress notif.
+    private static final String CHANNEL_ID_READY   = "fision_cloud_ready";
+    private static final String CHANNEL_NAME_READY = "Fision · Song ready";
     private static final int    NOTIF_ID    = 91201;
     public  static final String EXTRA_HASH  = "hash";
 
@@ -235,11 +239,20 @@ public class FisionDownloadService extends Service {
     private void ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm == null || nm.getNotificationChannel(CHANNEL_ID) != null) return;
-        NotificationChannel ch = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW);
-        ch.setDescription("Fision server downloads");
-        nm.createNotificationChannel(ch);
+        if (nm == null) return;
+        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+            NotificationChannel ch = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_LOW);
+            ch.setDescription("Fision server downloads");
+            nm.createNotificationChannel(ch);
+        }
+        if (nm.getNotificationChannel(CHANNEL_ID_READY) == null) {
+            NotificationChannel ready = new NotificationChannel(CHANNEL_ID_READY,
+                    CHANNEL_NAME_READY, NotificationManager.IMPORTANCE_HIGH);
+            ready.setDescription("New song ready to play");
+            ready.enableVibration(false);
+            nm.createNotificationChannel(ready);
+        }
     }
 
     private static void unzip(File zip, File outDir) throws IOException {
@@ -276,6 +289,11 @@ public class FisionDownloadService extends Service {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return;
+        // Skip when the user is already looking at the app: MainActivity
+        // already refreshes the list and the notif would just clutter the
+        // shade. Only surface it when the user is elsewhere.
+        AppForegroundState fg = AppForegroundState.get(this);
+        if (fg.isInForeground()) return;
 
         // Tap opens PlayerActivity with the freshly downloaded song. autoCancel
         // dismisses the notification on tap.
@@ -289,15 +307,23 @@ public class FisionDownloadService extends Service {
                 | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
         PendingIntent pi = PendingIntent.getActivity(this, ("dl_" + hash).hashCode(), open, flags);
 
-        NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID)
+        // High-importance channel plus PRIORITY_HIGH so the system renders a
+        // brief heads-up banner at the top of the screen; setCategory=MESSAGE
+        // reinforces the "user should be told" hint on some OEMs.
+        NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID_READY)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setContentTitle(displayName != null ? displayName : "Song ready")
                 .setContentText(getString(R.string.dl_notif_ready))
                 .setContentIntent(pi)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-        try { nm.notify(("dl_" + hash).hashCode(), b.build()); }
-        catch (SecurityException ignored) {}
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setPriority(NotificationCompat.PRIORITY_HIGH);
+        int notifId = ("dl_" + hash).hashCode();
+        try { nm.notify(notifId, b.build()); }
+        catch (SecurityException ignored) { return; }
+        // Register the id so the foreground tracker can dismiss it as soon
+        // as the user returns to any activity in the app.
+        fg.trackReadyNotif(notifId);
     }
 
     /** Entry point from DownloadManagerLite.start(). */

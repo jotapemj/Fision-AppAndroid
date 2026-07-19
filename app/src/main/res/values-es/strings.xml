@@ -161,6 +161,7 @@
     <string name="title_crash">Crash</string>
     <string name="title_ride">Ride</string>
     <string name="title_toms">Toms</string>
+    <string name="title_perc">Percusión</string>
     <string name="title_drumset">Conjunto de batería</string>
 
     <!--- order by -->
@@ -187,6 +188,29 @@
 
     <string name="settings_title">Ajustes</string>
     <string name="title_activity_settings">Pantalla de ajustes</string>
+    <string name="settings_toolbar_title">Ajustes</string>
+    <string name="gpu_dialog_title_ok">GPU disponible</string>
+    <string name="gpu_dialog_title_missing">GPU no disponible</string>
+    <string name="gpu_dialog_title_unknown">Información no disponible</string>
+    <string name="gpu_dialog_label_vram">VRAM</string>
+    <string name="gpu_dialog_label_driver">Driver</string>
+    <string name="gpu_dialog_refresh">Refrescar</string>
+    <string name="gpu_dialog_close">Volver</string>
+    <string name="gpu_dialog_no_gpu_body">El servidor no expone GPU. Los trabajos correrán en CPU.</string>
+    <string name="gpu_dialog_no_data">Inicia sesión para consultar esta información.</string>
+    <string name="vram_gb_fmt">%1$d GB</string>
+    <string name="settings_donate_title">Apoya el proyecto</string>
+    <string name="settings_donate_subtitle">Invítame a un café para seguir mejorando Fision</string>
+    <string name="settings_header_local_title">Modo local</string>
+    <string name="settings_header_local_email">Inicia sesión para sincronizar con Fision</string>
+    <string name="settings_section_server">Servidor</string>
+    <string name="settings_section_app">Aplicación</string>
+    <string name="settings_section_about">Acerca de</string>
+    <string name="settings_language_title">Idioma</string>
+    <string name="settings_language_dialog_title">Elegir idioma</string>
+    <string name="settings_logout_title">Cerrar sesión</string>
+    <string name="settings_logout_subtitle">Finalizar tu sesión</string>
+    <string name="settings_account_subtitle_local">Toca para iniciar sesión o continuar en local</string>
     <string name="songs">canciones</string>
 
     <!--- Fision server -->

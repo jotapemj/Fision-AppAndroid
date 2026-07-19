@@ -150,6 +150,7 @@
     <string name="title_crash">Crash</string>
     <string name="title_ride">Ride</string>
     <string name="title_toms">Toms</string>
+    <string name="title_perc">Percussió</string>
     <string name="title_drumset">Conjunt de bateria</string>
 
     <string name="order_by_title">Ordenar per</string>
@@ -168,6 +169,29 @@
     <string name="tv_pitch_semitones">semitons</string>
     <string name="title_activity_settings">Pantalla de configuració</string>
     <string name="settings_title">Configuració</string>
+    <string name="settings_toolbar_title">Configuració</string>
+    <string name="gpu_dialog_title_ok">GPU disponible</string>
+    <string name="gpu_dialog_title_missing">GPU no disponible</string>
+    <string name="gpu_dialog_title_unknown">Informació no disponible</string>
+    <string name="gpu_dialog_label_vram">VRAM</string>
+    <string name="gpu_dialog_label_driver">Driver</string>
+    <string name="gpu_dialog_refresh">Refrescar</string>
+    <string name="gpu_dialog_close">Tornar</string>
+    <string name="gpu_dialog_no_gpu_body">El servidor no exposa GPU. Els treballs correran per CPU.</string>
+    <string name="gpu_dialog_no_data">Inicia sessió per consultar aquesta informació.</string>
+    <string name="vram_gb_fmt">%1$d GB</string>
+    <string name="settings_donate_title">Dona suport al projecte</string>
+    <string name="settings_donate_subtitle">Convida\'m a un cafè per seguir millorant Fision</string>
+    <string name="settings_header_local_title">Mode local</string>
+    <string name="settings_header_local_email">Inicia sessió per sincronitzar amb Fision</string>
+    <string name="settings_section_server">Servidor</string>
+    <string name="settings_section_app">Aplicació</string>
+    <string name="settings_section_about">Sobre</string>
+    <string name="settings_language_title">Idioma</string>
+    <string name="settings_language_dialog_title">Tria idioma</string>
+    <string name="settings_logout_title">Tanca sessió</string>
+    <string name="settings_logout_subtitle">Finalitza la sessió</string>
+    <string name="settings_account_subtitle_local">Toca per iniciar sessió o continuar en local</string>
 
     <!--- Fision server -->
     <string name="server_section_title">Servidor Fision</string>

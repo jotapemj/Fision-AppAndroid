@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginBottom="20dp"
+    android:background="@drawable/settings_card_bg"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="16dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@drawable/settings_card_ripple">
+
+    <!-- Avatar wrap: initial fallback + optional ShapeableImageView on top -->
+    <FrameLayout
+        android:id="@+id/fl_settings_avatarWrap"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            android:id="@+id/tv_settings_initial"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/settings_avatar_bg"
+            android:gravity="center"
+            android:textColor="#0A0A0A"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:text="JP"
+            xmlns:tools="http://schemas.android.com/tools" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/iv_settings_avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_settings_userName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#F0F0F0"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toEndOf="@id/fl_settings_avatarWrap"
+        app:layout_constraintEnd_toStartOf="@id/iv_settings_headerChevron"
+        app:layout_constraintTop_toTopOf="@id/fl_settings_avatarWrap"
+        app:layout_constraintBottom_toTopOf="@id/ll_settings_emailLine"
+        app:layout_constraintVertical_chainStyle="packed"
+        tools:text="Jotapeveloper"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <LinearLayout
+        android:id="@+id/ll_settings_emailLine"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toEndOf="@id/fl_settings_avatarWrap"
+        app:layout_constraintEnd_toStartOf="@id/iv_settings_headerChevron"
+        app:layout_constraintTop_toBottomOf="@id/tv_settings_userName"
+        app:layout_constraintBottom_toBottomOf="@id/fl_settings_avatarWrap">
+
+        <ImageView
+            android:id="@+id/iv_settings_emailIcon"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_cloud"
+            app:tint="#7A7A7A"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+        <TextView
+            android:id="@+id/tv_settings_userEmail"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#7A7A7A"
+            android:textSize="13sp"
+            tools:text="user@example.com"
+            xmlns:tools="http://schemas.android.com/tools" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_settings_headerChevron"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_chevron_right"
+        app:tint="#5A5A5A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/settings_card_bg"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="14dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@drawable/settings_card_ripple">
+
+    <FrameLayout
+        android:id="@+id/fl_settings_cardIconWrap"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/settings_icon_bg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_settings_cardIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="center"
+            app:tint="@color/colorPrimary"
+            xmlns:tools="http://schemas.android.com/tools"
+            tools:src="@drawable/ic_language" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_settings_cardTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#F0F0F0"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toEndOf="@id/fl_settings_cardIconWrap"
+        app:layout_constraintEnd_toStartOf="@id/iv_settings_cardChevron"
+        app:layout_constraintTop_toTopOf="@id/fl_settings_cardIconWrap"
+        app:layout_constraintBottom_toTopOf="@id/tv_settings_cardSubtitle"
+        app:layout_constraintVertical_chainStyle="packed"
+        xmlns:tools="http://schemas.android.com/tools"
+        tools:text="App and chat" />
+
+    <TextView
+        android:id="@+id/tv_settings_cardSubtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="#7A7A7A"
+        android:textSize="13sp"
+        app:layout_constraintStart_toEndOf="@id/fl_settings_cardIconWrap"
+        app:layout_constraintEnd_toStartOf="@id/iv_settings_cardChevron"
+        app:layout_constraintTop_toBottomOf="@id/tv_settings_cardTitle"
+        app:layout_constraintBottom_toBottomOf="@id/fl_settings_cardIconWrap"
+        xmlns:tools="http://schemas.android.com/tools"
+        tools:text="Theme, language and advanced overrides" />
+
+    <ImageView
+        android:id="@+id/iv_settings_cardChevron"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_chevron_right"
+        app:tint="#5A5A5A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -137,7 +137,7 @@
             android:textColor="@color/AppWhite"
             app:strokeColor="@color/colorPrimary"
             app:rippleColor="@color/colorPrimary"
-            app:cornerRadius="30dp" />
+            app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/b_dance_start"
@@ -148,7 +148,7 @@
             android:text="@string/stems_dance_start"
             android:textColor="@color/AppWhite"
             android:backgroundTint="@color/colorPrimary"
-            app:cornerRadius="30dp" />
+            app:cornerRadius="20dp" />
     </LinearLayout>
 
 </LinearLayout>

@@ -149,6 +149,7 @@
     <string name="title_crash">Креш</string>
     <string name="title_ride">Райд</string>
     <string name="title_toms">Томи</string>
+    <string name="title_perc">Перкусія</string>
     <string name="title_drumset">Барабанна установка</string>
 
     <string name="order_by_title">Сортувати за</string>
@@ -167,6 +168,29 @@
     <string name="tv_pitch_semitones">півтони</string>
     <string name="settings_title">Налаштування</string>
     <string name="title_activity_settings">Екран налаштувань</string>
+    <string name="settings_toolbar_title">Налаштування</string>
+    <string name="gpu_dialog_title_ok">GPU доступний</string>
+    <string name="gpu_dialog_title_missing">GPU недоступний</string>
+    <string name="gpu_dialog_title_unknown">Дані сервера недоступні</string>
+    <string name="gpu_dialog_label_vram">VRAM</string>
+    <string name="gpu_dialog_label_driver">Драйвер</string>
+    <string name="gpu_dialog_refresh">Оновити</string>
+    <string name="gpu_dialog_close">Назад</string>
+    <string name="gpu_dialog_no_gpu_body">Сервер не пропонує GPU. Обробка виконуватиметься на CPU.</string>
+    <string name="gpu_dialog_no_data">Увійдіть, щоб отримати цю інформацію.</string>
+    <string name="vram_gb_fmt">%1$d ГБ</string>
+    <string name="settings_donate_title">Підтримайте проєкт</string>
+    <string name="settings_donate_subtitle">Пригостіть кавою, щоб Fision розвивався далі</string>
+    <string name="settings_header_local_title">Локальний режим</string>
+    <string name="settings_header_local_email">Увійдіть, щоб синхронізуватися з Fision</string>
+    <string name="settings_section_server">Сервер</string>
+    <string name="settings_section_app">Застосунок</string>
+    <string name="settings_section_about">Про застосунок</string>
+    <string name="settings_language_title">Мова</string>
+    <string name="settings_language_dialog_title">Обрати мову</string>
+    <string name="settings_logout_title">Вийти</string>
+    <string name="settings_logout_subtitle">Завершити сесію</string>
+    <string name="settings_account_subtitle_local">Торкніться, щоб увійти або продовжити локально</string>
     <string name="songs">пісні</string>
 
     <!--- Fision server -->

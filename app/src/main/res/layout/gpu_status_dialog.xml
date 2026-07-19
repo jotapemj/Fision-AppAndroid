@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minWidth="320dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <FrameLayout
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/settings_icon_bg">
+
+        <ImageView
+            android:id="@+id/iv_gpu_dialogIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_gpu"
+            app:tint="@color/colorPrimary" />
+
+        <ImageView
+            android:id="@+id/iv_gpu_dialogBadge"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="end|bottom"
+            android:layout_marginEnd="-4dp"
+            android:layout_marginBottom="-4dp"
+            tools:src="@drawable/ic_check_circle" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_gpu_dialogState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        tools:text="GPU disponible" />
+
+    <TextView
+        android:id="@+id/tv_gpu_dialogName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:textColor="#F0F0F0"
+        android:textSize="15sp"
+        tools:text="NVIDIA GeForce RTX 4070" />
+
+    <LinearLayout
+        android:id="@+id/ll_gpu_dialogDetailsWrap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="20dp"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:background="@drawable/settings_card_bg">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/gpu_dialog_label_vram"
+                android:textColor="#9A9A9A"
+                android:textSize="13sp" />
+            <TextView
+                android:id="@+id/tv_gpu_dialogVram"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/AppWhite"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="12 GB" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/gpu_dialog_label_driver"
+                android:textColor="#9A9A9A"
+                android:textSize="13sp" />
+            <TextView
+                android:id="@+id/tv_gpu_dialogDriver"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/AppWhite"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="565.90" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_gpu_dialogRefresh"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:padding="10dp"
+            android:text="@string/gpu_dialog_refresh"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_gpu_dialogClose"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="10dp"
+            android:text="@string/gpu_dialog_close"
+            android:textColor="@color/AppWhite"
+            android:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="20dp" />
+    </LinearLayout>
+
+</LinearLayout>

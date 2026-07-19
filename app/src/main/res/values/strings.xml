@@ -160,6 +160,7 @@
     <string name="title_crash">Crash</string>
     <string name="title_ride">Ride</string>
     <string name="title_toms">Toms</string>
+    <string name="title_perc">Percussion</string>
     <string name="title_drumset">Drum kit</string>
 
     <!--- order by -->
@@ -188,6 +189,29 @@
 
     <string name="title_activity_settings">Settings Activity</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_toolbar_title">Settings</string>
+    <string name="gpu_dialog_title_ok">GPU available</string>
+    <string name="gpu_dialog_title_missing">GPU unavailable</string>
+    <string name="gpu_dialog_title_unknown">Server info unavailable</string>
+    <string name="gpu_dialog_label_vram">VRAM</string>
+    <string name="gpu_dialog_label_driver">Driver</string>
+    <string name="gpu_dialog_refresh">Refresh</string>
+    <string name="gpu_dialog_close">Back</string>
+    <string name="gpu_dialog_no_gpu_body">No GPU exposed by the server. Jobs will run on CPU.</string>
+    <string name="gpu_dialog_no_data">Sign in to fetch this information.</string>
+    <string name="vram_gb_fmt">%1$d GB</string>
+    <string name="settings_donate_title">Support the project</string>
+    <string name="settings_donate_subtitle">Buy me a coffee to keep Fision growing</string>
+    <string name="settings_header_local_title">Local mode</string>
+    <string name="settings_header_local_email">Sign in to sync with Fision server</string>
+    <string name="settings_section_server">Server</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_dialog_title">Choose language</string>
+    <string name="settings_logout_title">Sign out</string>
+    <string name="settings_logout_subtitle">End your session</string>
+    <string name="settings_account_subtitle_local">Tap to sign in or continue local</string>
 
     <!--- Fision server -->
     <string name="server_section_title">Fision Server</string>

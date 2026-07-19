@@ -26,6 +26,7 @@ public class ApiClient {
     private static ApiClient INSTANCE;
     private final Context appCtx;
     private FisionApi api;
+    private OkHttpClient http;
     private String currentBase = "";
     private String currentToken = "";
 
@@ -43,6 +44,17 @@ public class ApiClient {
     public synchronized void notifyConfigChanged() { rebuild(); }
 
     public synchronized FisionApi api() { return api; }
+
+    /** Exposes the underlying OkHttpClient so callers can evict cached
+     *  connections after a network drop (Tailscale up/down leaves stale
+     *  sockets in the pool that would otherwise block the reconnect ping). */
+    public synchronized OkHttpClient okHttpClient() { return http; }
+
+    /** Drops every idle connection from the pool. Called when a ping fails so
+     *  the next attempt opens a fresh socket instead of reusing a dead one. */
+    public synchronized void evictConnections() {
+        if (http != null) http.connectionPool().evictAll();
+    }
 
     /** Normalized base URL (with trailing "/"). Used to compose absolute URLs
      *  when the server returns relative paths (e.g. cover_url). */
@@ -67,7 +79,7 @@ public class ApiClient {
         HttpLoggingInterceptor log = new HttpLoggingInterceptor();
         log.setLevel(HttpLoggingInterceptor.Level.BASIC);
 
-        OkHttpClient http = new OkHttpClient.Builder()
+        http = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.MINUTES)
                 .readTimeout(30, TimeUnit.MINUTES)

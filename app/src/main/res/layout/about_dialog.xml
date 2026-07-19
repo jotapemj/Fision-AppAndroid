@@ -98,6 +98,6 @@
         android:text="@string/dialog_close"
         android:textColor="@color/AppWhite"
         android:backgroundTint="@color/colorPrimary"
-        app:cornerRadius="30dp" />
+        app:cornerRadius="20dp" />
 
 </LinearLayout>

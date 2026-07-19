@@ -23,4 +23,7 @@
     <color name="gpu_warning_bg">#40B7791F</color>
     <color name="gpu_warning_stroke">#66FFB74D</color>
     <color name="gpu_waiting_spinner">#FFC107</color>
+
+    <!-- Donation card accent -->
+    <color name="donate_amber">#FFB300</color>
 </resources>

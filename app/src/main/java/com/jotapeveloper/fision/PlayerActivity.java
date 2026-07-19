@@ -186,10 +186,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private BeatCellAdapter beatAdapter;
     private int currentBeatIdx = -1;
     private int beatCounter = 1;
-    private float[] LocalBeatsDiff = {0, 0, 0, 0};
-    private float[] LocalBPMAvg = {0, 0, 0, 0};
-    private float[] LocalBeats = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    private int LocalBPMAvgCounter = 0;
+    /** Window size used to average the interval between beats for the tv_bpm
+     *  display. Six beats keeps the readout responsive but stable. */
+    private static final int LOCAL_BPM_WINDOW = 6;
 
     SnapHelper helper = new LinearSnapHelper();
 
@@ -574,6 +573,18 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (pct < 0) pct = 0; if (pct > 100) pct = 100;
             sb_progressBar.setProgress(pct);
             tv_currentPos.setText(getTime(curMs));
+            // Seed the BPM readout with the current beat so it is not blank
+            // while paused (mini-player entry) or right after re-entering the
+            // Activity from MainActivity without hitting play first.
+            if (!beatCells.isEmpty()) {
+                float tSec = curMs / 1000f;
+                int seedIdx = -1;
+                for (int i = 0; i < beatCells.size(); i++) {
+                    if (beatCells.get(i).time <= tSec) seedIdx = i;
+                    else break;
+                }
+                if (seedIdx >= 0) updateLocalBpmDisplay(seedIdx);
+            }
         }
 
         // Now it is safe to start. The engine already has the correct volumes.
@@ -1108,9 +1119,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // Ambient nebula background: apply the saved state without animation
         // on first inflate, then bind the drawer switch and kick off a palette
-        // extraction from the current artcover.
+        // extraction from the current artcover. Reset the palette handshake
+        // so the view stays invisible until the first real palette lands and
+        // no default-colour flash is shown.
         nebulaView = findViewById(R.id.v_nebula);
         if (nebulaView != null) {
+            nebulaView.resetPaletteFade();
             nebulaView.setNebulaEnabled(nebulaEnabled, false);
         }
         bindNebulaSwitch();
@@ -1615,10 +1629,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         row.setBackgroundResource(selected
                 ? R.drawable.dialog_option_active
                 : R.drawable.dialog_option_inactive);
-        android.util.TypedValue tv = new android.util.TypedValue();
-        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            row.setForeground(androidx.core.content.ContextCompat.getDrawable(this, tv.resourceId));
+            // Ripple with a rounded mask that matches the option-row corners.
+            row.setForeground(androidx.core.content.ContextCompat.getDrawable(
+                    this, R.drawable.settings_card_ripple));
         }
         row.setPadding(padH, padV, padH, padV);
         row.setClickable(true);
@@ -2034,7 +2048,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // song exists in CloudRepository (came from the server or is LOCAL_ONLY).
         refreshReprocessDrawerVisibility();
 
-        // 11) Nebula palette follows the new artcover
+        // 11) Nebula palette follows the new artcover. Reset the handshake
+        // so the previous song's colours fade out cleanly and the new palette
+        // fades in only when it has actually been extracted.
+        if (nebulaView != null) nebulaView.resetPaletteFade();
         refreshNebulaPalette();
     }
 
@@ -2203,8 +2220,18 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (isDestroyed) return;
             if (engine == null) return;
 
+            // Source-side position: what the engine is consuming right now,
+            // typically ~100-250ms ahead of what the speaker is playing due
+            // to Oboe + SoundTouch buffering. Used for end-of-song detection
+            // (want to fire slightly before the audio actually ends).
             int CurrentPos = (int)engine.getCurrentPositionMs();
-            int PosPercentage = songDuration > 0 ? (CurrentPos * 100) / songDuration : 0;
+            // Perceived position: what the listener actually hears. This is
+            // the value that must drive the UI (progress bar, time display,
+            // chord highlight, nebula pulse), otherwise the visuals fire
+            // ahead of the audio and everything feels off-beat.
+            long latencyMs = engine.getOutputLatencyMs();
+            int PerceivedPos = (int) Math.max(0L, CurrentPos - latencyMs);
+            int PosPercentage = songDuration > 0 ? (PerceivedPos * 100) / songDuration : 0;
             sb_progressBar.setProgress(PosPercentage);
 
             // End of song: delegate to the service so repeat + playlist logic
@@ -2247,16 +2274,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
 
 
+            final int UiPos = PerceivedPos;
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
 
-                    String tvNewCurrentPos = getTime(CurrentPos);
+                    String tvNewCurrentPos = getTime(UiPos);
                     tv_currentPos.setText(tvNewCurrentPos);
 
-                    // Current beat: find the last beat whose time <= CurrentPos
+                    // Current beat: find the last beat whose time <= UiPos
                     if (!relocating && !movingChords && !beatCells.isEmpty()) {
-                        float tSec = CurrentPos / 1000f;
+                        float tSec = UiPos / 1000f;
                         int idx = currentBeatIdx;
                         // Linear advance while the next beat has already sounded
                         while (idx + 1 < beatCells.size() && beatCells.get(idx + 1).time <= tSec) {
@@ -2292,41 +2320,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                                 if (beatAdapter != null) beatAdapter.setHighlight(targetIdx);
                             };
                             rvChords.postDelayed(pendingTileHighlight, 80);
+
+                            // Refresh the local BPM readout on every beat
+                            // transition, so seek and coming back into the
+                            // activity always show an up-to-date value.
+                            updateLocalBpmDisplay(idx);
                         }
-                    }
-
-                    // Mean local BPM update
-                    float CurrentSecond = CurrentPos/1000; // Current time instant in seconds with decimals
-                    if ((CurrentSecond-(float)0.1 < beatCounter && beatCounter < CurrentSecond+(float)+0.1)){
-                        for(int x=0 ; x<LocalBeats.length; x++){
-                            if ((x+beatCounter)<beatsList.size()){
-                                LocalBeats[x] = beatsList.get(x+beatCounter);
-                            }
-                        }
-
-                        float LocalBeatsDiffSum = (float)0.0;
-                        for(int x=0 ; x<LocalBeatsDiff.length; x++){
-                            LocalBeatsDiff[x] = LocalBeats[(x*2)+1] - LocalBeats[x*2];
-                            LocalBeatsDiffSum += LocalBeatsDiff[x];
-                        }
-
-                        float localBPM = (float)(60/(LocalBeatsDiffSum/LocalBeatsDiff.length));
-
-                        float LocalBPMAvgSum = 0;
-                        if (LocalBPMAvgCounter < LocalBPMAvg.length){
-                            LocalBPMAvg[LocalBPMAvgCounter] = localBPM;
-                            LocalBPMAvgCounter += 1;
-                            if (LocalBPMAvgCounter == 4){LocalBPMAvgCounter = 0;}
-                        }
-                        for (int x=0 ; x<LocalBPMAvg.length; x++){
-                            LocalBPMAvgSum += LocalBPMAvg[x];
-                        }
-
-                        int BPM = ((int)LocalBPMAvgSum/LocalBPMAvg.length);
-                        String StringBPM = "BPM: " + BPM;
-                        tv_bpm.setText(StringBPM);
-
-                        beatCounter++;
                     }
 
                 }
@@ -3040,6 +3039,24 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         applyStemVolumeToEngine(stemType);
     }
 
+    /** Updates the "BPM" readout using the last {@link #LOCAL_BPM_WINDOW}
+     *  beats around {@code beatIdx}. Averages the interval between them and
+     *  converts to beats-per-minute. Safe to call from the timer thread's
+     *  runOnUiThread block: only touches the TextView and reads beatsList. */
+    private void updateLocalBpmDisplay(int beatIdx) {
+        if (tv_bpm == null || beatsList == null) return;
+        if (beatIdx < 1 || beatsList.size() < 2) return;
+        int endIdx = Math.min(beatsList.size() - 1, beatIdx);
+        int startIdx = Math.max(0, endIdx - LOCAL_BPM_WINDOW);
+        int intervals = endIdx - startIdx;
+        if (intervals < 1) return;
+        float span = beatsList.get(endIdx) - beatsList.get(startIdx);
+        if (span <= 0f) return;
+        float avgInterval = span / intervals;
+        int bpm = Math.round(60f / avgInterval);
+        tv_bpm.setText("BPM: " + bpm);
+    }
+
     public void relocateChords(int pos, List<ChordsFile> chordList ){
         relocating = true;
         // Position the visualizer at the beat matching pos (ms)
@@ -3057,6 +3074,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             rvChords.removeCallbacks(pendingTileHighlight);
         }
         if (beatAdapter != null) beatAdapter.setHighlight(idx);
+        // Immediate BPM refresh so the readout follows a seek without waiting
+        // for the next beat transition.
+        updateLocalBpmDisplay(idx);
         relocating = false;
     }
 

@@ -38,9 +38,12 @@
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/black"
+            android:layout_height="80dp"
+            android:background="@drawable/player_toolbar_bg"
             android:minHeight="?attr/actionBarSize"
+            android:paddingBottom="24dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:theme="?attr/actionBarTheme">
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -101,15 +104,6 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.appcompat.widget.Toolbar>
-
-        <!-- Soft fade below the toolbar to blend the black title bar into the
-             animated background without a hard seam. With the animated
-             background off, the parent view stays black anyway so the fade
-             is invisible. -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="24dp"
-            android:background="@drawable/toolbar_fade_bg" />
 
         <!-- Central container: wraps chords + stems + ITD overlay.
              The ITD view (include) is a sibling of the vertical stack and covers

@@ -276,6 +276,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Attach the app-wide foreground tracker: dismisses pending "song
+        // ready" notifications the moment the user returns to any screen.
+        com.jotapeveloper.fision.cloud.AppForegroundState.get(this);
+
         // load preferences language
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
