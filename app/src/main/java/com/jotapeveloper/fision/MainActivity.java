@@ -399,7 +399,15 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (TextEmpty){showClearButton(et_find_drawables, false);}
                 else{showClearButton(et_find_drawables, true);}
 
-                filterList(charSequence.toString(), SongsInDirectory, rvSongList);
+                if (TextEmpty) {
+                    // Empty query: rebuild the full merged list (local + cloud +
+                    // sticky order) instead of running filterList("") which only
+                    // sees local folders and re-adds them without the merge, so
+                    // sticky-ordered items ended up in the wrong slot.
+                    refreshSongList();
+                } else {
+                    filterList(charSequence.toString(), SongsInDirectory, rvSongList);
+                }
 
                 Animation songsCountAnimation_out = new AlphaAnimation(1.0f, 0.0f);
                 Animation songsCountAnimation_in = new AlphaAnimation(0.0f, 1.0f);

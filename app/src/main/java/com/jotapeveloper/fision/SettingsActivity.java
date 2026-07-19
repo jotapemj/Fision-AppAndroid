@@ -17,6 +17,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -324,7 +325,7 @@ public class SettingsActivity extends AppCompatActivity
     // ---------------- language dialog ----------------
     private void onLanguageClicked() {
         String[] entries = getResources().getStringArray(R.array.lang_entries);
-        String[] values = getResources().getStringArray(R.array.lang_entries_values);
+        String[] values  = getResources().getStringArray(R.array.lang_entries_values);
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         String current = sp.getString("language", Locale.getDefault().getLanguage());
         int checked = 0;
@@ -332,24 +333,67 @@ public class SettingsActivity extends AppCompatActivity
             if (values[i].equalsIgnoreCase(current)) { checked = i; break; }
         }
 
+        // Same look and feel as every other single-choice dialog in the app
+        // (single_choice_dialog + chip rows + activity blur).
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.single_choice_dialog, null);
+        TextView tvTitle = dialogView.findViewById(R.id.tv_singleChoiceTitle);
+        LinearLayout opts = dialogView.findViewById(R.id.ll_singleChoiceOptions);
+        MaterialButton bCancel = dialogView.findViewById(R.id.b_singleChoiceCancel);
+        tvTitle.setText(R.string.settings_language_dialog_title);
+
         AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
-                .setTitle(R.string.settings_language_dialog_title)
-                .setSingleChoiceItems(entries, checked, (d, which) -> {
-                    String chosen = values[which];
-                    sp.edit().putString("language", chosen).apply();
-                    updateLocale(chosen);
-                    Intent i = new Intent("com.jotapeveloper.fision.LANGUAGE_CHANGED");
-                    i.setPackage(getPackageName());
-                    sendBroadcast(i);
-                    d.dismiss();
-                    recreate();
-                })
+                .setView(dialogView)
                 .setCancelable(true)
                 .create();
         Window w = dlg.getWindow();
         if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        int primary = ContextCompat.getColor(this, R.color.colorPrimary);
+        int white   = ContextCompat.getColor(this, R.color.AppWhite);
+        float density = getResources().getDisplayMetrics().density;
+        int padH  = (int) (14f * density);
+        int padV  = (int) (12f * density);
+        int gapPx = (int) (8f  * density);
+
+        for (int i = 0; i < entries.length; i++) {
+            final int idx = i;
+            TextView row = new TextView(this);
+            row.setText(entries[i]);
+            row.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
+            row.setTypeface(
+                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
+                    idx == checked ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            row.setTextColor(idx == checked ? primary : white);
+            row.setBackgroundResource(idx == checked
+                    ? R.drawable.dialog_option_active
+                    : R.drawable.dialog_option_inactive);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                row.setForeground(ContextCompat.getDrawable(this, R.drawable.settings_card_ripple));
+            }
+            row.setPadding(padH, padV, padH, padV);
+            row.setClickable(true);
+            row.setFocusable(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            if (i > 0) lp.topMargin = gapPx;
+            row.setLayoutParams(lp);
+            row.setOnClickListener(v -> {
+                dlg.dismiss();
+                String chosen = values[idx];
+                sp.edit().putString("language", chosen).apply();
+                updateLocale(chosen);
+                Intent i2 = new Intent("com.jotapeveloper.fision.LANGUAGE_CHANGED");
+                i2.setPackage(getPackageName());
+                sendBroadcast(i2);
+                recreate();
+            });
+            opts.addView(row);
+        }
+
         applyActivityBlur();
         dlg.setOnDismissListener(d -> removeActivityBlur());
+        bCancel.setOnClickListener(v -> dlg.dismiss());
         dlg.show();
     }
 
