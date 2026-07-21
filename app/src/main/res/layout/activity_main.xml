@@ -439,7 +439,7 @@
             android:stateListAnimator="@null"
             android:elevation="0dp"
             app:elevation="0dp"
-            app:icon="@drawable/ic_play"
+            app:icon="@drawable/avd_ic_play"
             app:iconSize="28dp"
             app:iconTint="@color/AppWhite"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle"

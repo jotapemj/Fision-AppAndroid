@@ -304,8 +304,8 @@
                     android:backgroundTint="@color/AppWhite"
                     android:contentDescription="@string/b_play_description"
                     android:onClick="Play"
-                    app:icon="@raw/ic_play"
-                    app:iconSize="30dp"
+                    app:icon="@drawable/avd_ic_play"
+                    app:iconSize="42dp"
                     app:iconTint="@color/black"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 

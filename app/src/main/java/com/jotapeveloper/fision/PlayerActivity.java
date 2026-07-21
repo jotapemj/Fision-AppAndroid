@@ -78,6 +78,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // Controls
 
     private MaterialButton b_play;
+    // Play/pause icon morph state (avd_play_to_pause / avd_pause_to_play).
+    private boolean playIconState = false;   // false = play icon (paused), true = pause icon (playing)
+    private boolean playIconInitialized = false;
     private MaterialButton b_previous;
     private MaterialButton b_next;
     private MaterialButton b_seconds_back;
@@ -200,9 +203,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (playbackService == null) return;
             boolean playing = playbackService.isPlaying();
             paused = !playing;
-            if (b_play != null) {
-                b_play.setIconResource(playing ? R.raw.ic_pause : R.raw.ic_play);
-            }
+            applyPlayIcon(playing, true);
             if (playing) {
                 getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             } else {
@@ -300,12 +301,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             autoplayPending = !noAutoplay;
             if (noAutoplay) {
                 paused = true;
-                b_play.setIconResource(R.raw.ic_play);
+                applyPlayIcon(false, false);
             }
         } else {
             // Already playing: sync UI with state
             paused = false;
-            b_play.setIconResource(R.raw.ic_pause);
+            applyPlayIcon(true, false);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
         readDataBase(SongId);
@@ -2035,7 +2036,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         setupRecyclerViews();
         refreshRepeatButtonUi();
         bindPlaylistSwitch();
-        b_play.setIconResource(R.raw.ic_play);
+        applyPlayIcon(false, false);
 
         // 8) Pending autoplay: updateUI applies saved volumes before pressing play
         autoplayPending = true;
@@ -2159,6 +2160,25 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
+    // Swaps the play/pause icon on b_play. Uses an AVD morph when animate=true
+    // (state change during playback), or the static vector when animate=false
+    // (initial setup / song switch) to avoid firing an animation on entry.
+    private void applyPlayIcon(boolean playing, boolean animate) {
+        if (b_play == null) return;
+        if (playIconInitialized && playIconState == playing) return;
+        if (!playIconInitialized || !animate) {
+            b_play.setIconResource(playing ? R.drawable.avd_ic_pause : R.drawable.avd_ic_play);
+        } else {
+            b_play.setIconResource(playing ? R.drawable.avd_play_to_pause : R.drawable.avd_pause_to_play);
+            android.graphics.drawable.Drawable icon = b_play.getIcon();
+            if (icon instanceof android.graphics.drawable.Animatable) {
+                ((android.graphics.drawable.Animatable) icon).start();
+            }
+        }
+        playIconState = playing;
+        playIconInitialized = true;
+    }
+
     @SuppressLint("ResourceType")
     public void Play(View view){
         if (playbackService == null) return;
@@ -2166,11 +2186,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             playbackService.pause();
             cancelPendingDownbeats();
             paused = true;
-            b_play.setIconResource(R.raw.ic_play);
+            applyPlayIcon(false, true);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         } else {
             playbackService.play();
-            b_play.setIconResource(R.raw.ic_pause);
+            applyPlayIcon(true, true);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             paused = false;
         }
@@ -2179,7 +2199,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     @SuppressLint("ResourceType")
     public void Stop(){
         StopMedia();
-        b_play.setIconResource(R.raw.ic_play);
+        applyPlayIcon(false, true);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (playbackService != null) playbackService.releaseSongAndStop();
     }
@@ -2247,7 +2267,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     applyMetronomeHalfPhase(0);
                     paused = true;
                     runOnUiThread(() -> {
-                        b_play.setIconResource(R.raw.ic_play);
+                        applyPlayIcon(false, true);
                         sb_progressBar.setProgress(0);
                         tv_currentPos.setText("00:00");
                         chordCounter = 0;

@@ -96,6 +96,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private View flMiniTextWrap;
     private android.widget.ImageView ivMiniIcon;
     private MaterialButton bMiniPlayPause;
+    // Play/pause icon morph state for the mini-player button.
+    private boolean miniPlayIconState = false;   // false = play icon (paused), true = pause icon (playing)
+    private boolean miniPlayIconInitialized = false;
     private android.widget.ProgressBar pbMiniProgress;
     private final android.os.Handler miniHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable miniProgressTick = new Runnable() {
@@ -1595,6 +1598,25 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         AvatarManager.get(this).removeListener(avatarListener);
     }
 
+    // Swaps the mini-player play/pause icon. Uses an AVD morph when animate=true
+    // (state change while the mini-bar is visible), or the static vector when
+    // animate=false (first show / cold start) to avoid firing an animation on entry.
+    private void applyMiniPlayIcon(boolean playing, boolean animate) {
+        if (bMiniPlayPause == null) return;
+        if (miniPlayIconInitialized && miniPlayIconState == playing) return;
+        if (!miniPlayIconInitialized || !animate) {
+            bMiniPlayPause.setIconResource(playing ? R.drawable.avd_ic_pause : R.drawable.avd_ic_play);
+        } else {
+            bMiniPlayPause.setIconResource(playing ? R.drawable.avd_play_to_pause : R.drawable.avd_pause_to_play);
+            android.graphics.drawable.Drawable icon = bMiniPlayPause.getIcon();
+            if (icon instanceof android.graphics.drawable.Animatable) {
+                ((android.graphics.drawable.Animatable) icon).start();
+            }
+        }
+        miniPlayIconState = playing;
+        miniPlayIconInitialized = true;
+    }
+
     /** Refreshes the mini-player visibility/title/icon based on the service state. */
     private void refreshMiniPlayer() {
         if (miniPlayer == null) return;
@@ -1626,7 +1648,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         } else {
             ivMiniIcon.setImageResource(R.raw.artcover_generic);
         }
-        bMiniPlayPause.setIconResource(playbackService.isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
+        applyMiniPlayIcon(playbackService.isPlaying(), true);
         // Refresh prev/next previews in case the song list changed
         populateMiniPreviews();
         // Start / restart the progress tick (idempotent)
