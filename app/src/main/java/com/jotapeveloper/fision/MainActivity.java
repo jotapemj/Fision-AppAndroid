@@ -766,6 +766,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private Boolean lastReachable = null;
     private static final long CLOUD_RECONNECT_FLASH_MS = 3000;
     private static final long CLOUD_RECONNECT_FADE_MS  = 350;
+    // Cross-fade duration for the icon tint offline → online colour.
+    private static final long CLOUD_RECONNECT_TINT_MS  = 550;
     private final Runnable cloudReconnectFadeOut = new Runnable() {
         @Override public void run() {
             if (ivCloudStatus == null) return;
@@ -819,6 +821,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         lastReachable = reachable;
         ivCloudStatus.removeCallbacks(cloudReconnectFadeOut);
         ivCloudStatus.animate().cancel();
+        cancelCloudTintAnimator();
         if (!reachable) {
             ivCloudStatus.setImageResource(R.drawable.ic_cloud);
             ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
@@ -834,12 +837,31 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             return;
         }
         ivCloudStatus.setImageResource(R.drawable.ic_cloud);
-        ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.colorPrimary)));
         ivCloudStatus.setContentDescription(getString(R.string.server_status_online));
         ivCloudStatus.setAlpha(1f);
         ivCloudStatus.setVisibility(View.VISIBLE);
+        // Smooth colour transition offline (red) → online (green) before the
+        // idle fade-out fires. Uses ArgbEvaluator so the intermediate frames
+        // sweep through the natural interpolation between both hues.
+        int fromColor = ContextCompat.getColor(this, R.color.cloud_offline);
+        int toColor   = ContextCompat.getColor(this, R.color.colorPrimary);
+        cloudTintAnimator = android.animation.ValueAnimator.ofArgb(fromColor, toColor);
+        cloudTintAnimator.setDuration(CLOUD_RECONNECT_TINT_MS);
+        cloudTintAnimator.addUpdateListener(anim -> {
+            if (ivCloudStatus == null) return;
+            int c = (int) anim.getAnimatedValue();
+            ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(c));
+        });
+        cloudTintAnimator.start();
         ivCloudStatus.postDelayed(cloudReconnectFadeOut, CLOUD_RECONNECT_FLASH_MS);
+    }
+
+    private android.animation.ValueAnimator cloudTintAnimator;
+    private void cancelCloudTintAnimator() {
+        if (cloudTintAnimator != null) {
+            cloudTintAnimator.cancel();
+            cloudTintAnimator = null;
+        }
     }
 
     /** Swaps the toolbar between the settings gear (no session) and the

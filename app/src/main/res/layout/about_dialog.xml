@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  "About" dialog with: app name (large), version + developer,
-  scrollable block with the list of external dependencies and their licenses.
+  "About" dialog: app name, version and developer. The licenses list lives
+  in a dedicated LicensesActivity opened from the "View licenses" button.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -14,10 +15,10 @@
 
     <!-- Logo + app name -->
     <ImageView
-        android:layout_width="72dp"
-        android:layout_height="72dp"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="10dp"
+        android:layout_marginBottom="12dp"
         android:src="@mipmap/ic_launcher"
         android:contentDescription="@string/app_name" />
 
@@ -40,7 +41,7 @@
         android:textColor="#B3FFFFFF"
         android:textSize="13sp"
         android:fontFamily="@font/yugothic_ui_regular"
-        tools:text="v1.0.0" xmlns:tools="http://schemas.android.com/tools" />
+        tools:text="v1.0.0" />
 
     <TextView
         android:layout_width="match_parent"
@@ -52,48 +53,36 @@
         android:textSize="13sp"
         android:fontFamily="@font/yugothic_ui_regular" />
 
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginBottom="10dp"
-        android:background="#22FFFFFF" />
-
-    <TextView
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_about_licenses"
+        style="?attr/materialButtonOutlinedStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/about_libraries_title"
+        android:layout_marginTop="22dp"
+        android:padding="10dp"
+        android:text="@string/about_view_licenses"
         android:textColor="@color/AppWhite"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:fontFamily="@font/yugothic_ui_regular" />
+        app:icon="@drawable/ic_license"
+        app:iconGravity="textStart"
+        app:iconTint="@color/colorPrimary"
+        app:strokeColor="@color/colorPrimary"
+        app:rippleColor="@color/colorPrimary"
+        app:cornerRadius="20dp" />
 
-    <!-- Dependencies list with licenses — text formatted with line breaks -->
-    <ScrollView
-        android:layout_width="match_parent"
+    <!-- Legacy TextView kept for compatibility with existing find-by-id code
+         but no longer rendered. Height 0 keeps it invisible without touching
+         the About activity setup. -->
+    <TextView
+        android:id="@+id/tv_about_libraries"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:maxHeight="260dp"
-        android:layout_marginTop="8dp"
-        android:scrollbars="vertical">
-
-        <TextView
-            android:id="@+id/tv_about_libraries"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="#DDFFFFFF"
-            android:textSize="12sp"
-            android:lineSpacingExtra="3dp"
-            android:fontFamily="@font/yugothic_ui_regular" />
-    </ScrollView>
+        android:visibility="gone" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/b_about_close"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="10dp"
         android:padding="10dp"
         android:text="@string/dialog_close"
         android:textColor="@color/AppWhite"

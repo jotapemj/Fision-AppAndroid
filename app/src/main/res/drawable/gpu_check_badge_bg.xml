@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Round green badge with a dark border matching the dialog background so
+     the check icon reads as a separate element sitting on top of the GPU tile. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/colorPrimary" />
+    <stroke
+        android:width="3dp"
+        android:color="#181818" />
+</shape>

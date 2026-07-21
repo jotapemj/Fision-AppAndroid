@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minWidth="320dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <TextView
+        android:id="@+id/tv_avatarStudioTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/avatar_studio_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Preview row: arrow < |  circular preview  | > arrow -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_avatarStudioPrev"
+            style="@style/Widget.MaterialComponents.Button.IconOnly"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="@android:color/transparent"
+            app:icon="@drawable/ic_back"
+            app:iconSize="22dp"
+            app:iconTint="@color/AppWhite"
+            app:rippleColor="@color/colorPrimary"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+        <FrameLayout
+            android:id="@+id/fl_avatarStudioPreview"
+            android:layout_width="0dp"
+            android:layout_height="180dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="8dp">
+
+            <ImageView
+                android:id="@+id/iv_avatarStudioBg"
+                android:layout_width="180dp"
+                android:layout_height="180dp"
+                android:layout_gravity="center" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/iv_avatarStudioImage"
+                android:layout_width="180dp"
+                android:layout_height="180dp"
+                android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                android:contentDescription="@string/avatar_studio_title"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+        </FrameLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_avatarStudioNext"
+            style="@style/Widget.MaterialComponents.Button.IconOnly"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="@android:color/transparent"
+            app:icon="@drawable/ic_chevron_right"
+            app:iconSize="22dp"
+            app:iconTint="@color/AppWhite"
+            app:rippleColor="@color/colorPrimary"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_avatarStudioInstrument"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:textColor="#B0B0B0"
+        android:textSize="13sp"
+        tools:text="Piano" />
+
+    <!-- Male / Female toggle -->
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/tg_avatarStudioGender"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:singleSelection="true"
+        app:selectionRequired="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_avatarStudioMale"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/avatar_studio_male"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_avatarStudioFemale"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/avatar_studio_female"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="20dp" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <!-- Subject colour palette -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="6dp"
+        android:text="@string/avatar_studio_color_figure"
+        android:textColor="#9A9A9A"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_avatarStudioSubjectColors"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:clipToPadding="false"
+        android:paddingHorizontal="2dp"
+        android:gravity="center_vertical"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <!-- Background colour palette -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="6dp"
+        android:text="@string/avatar_studio_color_bg"
+        android:textColor="#9A9A9A"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_avatarStudioBgColors"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:clipToPadding="false"
+        android:paddingHorizontal="2dp"
+        android:gravity="center_vertical"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <!-- Pick from device (fallback to gallery crop flow) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_avatarStudioFromDevice"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:text="@string/avatar_studio_from_device"
+        android:textColor="@color/AppWhite"
+        app:icon="@drawable/ic_edit"
+        app:iconTint="@color/colorPrimary"
+        app:iconGravity="textStart"
+        app:strokeColor="@color/colorPrimary"
+        app:rippleColor="@color/colorPrimary"
+        app:cornerRadius="20dp" />
+
+    <!-- Footer: Cancel + Apply -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_avatarStudioCancel"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="@android:string/cancel"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="@color/colorPrimary"
+            app:rippleColor="@color/colorPrimary"
+            app:cornerRadius="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_avatarStudioApply"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/avatar_studio_apply"
+            android:textColor="@color/AppWhite"
+            android:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="20dp" />
+    </LinearLayout>
+
+</LinearLayout>

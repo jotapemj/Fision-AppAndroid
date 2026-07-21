@@ -27,7 +27,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.core.text.HtmlCompat;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -63,8 +62,8 @@ public class SettingsActivity extends AppCompatActivity
     private static final String ID_TEST      = "server_test";
     private static final String ID_ABOUT     = "about";
     private static final String ID_LOGOUT    = "logout";
-    private static final String ID_DONATE    = "donate";
-    private static final String DONATE_URL   = "https://buymeacoffee.com/jotapeveloper";
+    private static final String ID_GITHUB    = "github";
+    private static final String GITHUB_URL   = "https://github.com/jotapemj/FisionApp-Android";
 
     private RecyclerView rv;
     private SettingsAdapter adapter;
@@ -143,20 +142,19 @@ public class SettingsActivity extends AppCompatActivity
                 getString(R.string.settings_section_about)));
         items.add(SettingsItem.card(ID_ABOUT, R.drawable.ic_info,
                 getString(R.string.about_title),
-                getString(R.string.about_summary)));
+                null));
 
-        SettingsItem donate = SettingsItem.card(ID_DONATE, R.drawable.ic_coffee,
+        SettingsItem github = SettingsItem.card(ID_GITHUB, R.drawable.ic_github,
                 getString(R.string.settings_donate_title),
-                getString(R.string.settings_donate_subtitle));
-        donate.externalLink = true;
-        donate.iconTintOverride = R.color.donate_amber;
-        items.add(donate);
+                null);
+        github.externalLink = true;
+        items.add(github);
 
         // Optional sign-out card only when there is an active session
         if (auth.isLoggedIn()) {
             SettingsItem logout = SettingsItem.card(ID_LOGOUT, R.drawable.ic_logout,
                     getString(R.string.settings_logout_title),
-                    getString(R.string.settings_logout_subtitle));
+                    null);
             logout.iconTintOverride = R.color.cloud_offline;
             items.add(logout);
         }
@@ -199,13 +197,13 @@ public class SettingsActivity extends AppCompatActivity
             case ID_TEST:     runConnectionTest(); break;
             case ID_ABOUT:    showAboutDialog();   break;
             case ID_LOGOUT:   onLogoutClicked();   break;
-            case ID_DONATE:   openDonate();        break;
+            case ID_GITHUB:   openGithub();        break;
         }
     }
 
-    private void openDonate() {
+    private void openGithub() {
         try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(DONATE_URL));
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
         } catch (Throwable t) {
@@ -230,6 +228,7 @@ public class SettingsActivity extends AppCompatActivity
 
     private void showGpuDialog() {
         View v = getLayoutInflater().inflate(R.layout.gpu_status_dialog, null);
+        View badgeWrap    = v.findViewById(R.id.fl_gpu_dialogBadge);
         ImageView ivBadge = v.findViewById(R.id.iv_gpu_dialogBadge);
         TextView tvState  = v.findViewById(R.id.tv_gpu_dialogState);
         TextView tvName   = v.findViewById(R.id.tv_gpu_dialogName);
@@ -247,7 +246,7 @@ public class SettingsActivity extends AppCompatActivity
         if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
 
         // Paint the dialog against the current cache state
-        Runnable paint = () -> paintGpuDialog(ivBadge, tvState, tvName, tvVram,
+        Runnable paint = () -> paintGpuDialog(badgeWrap, ivBadge, tvState, tvName, tvVram,
                 tvDriver, detailsWrap, bRefresh);
         paint.run();
 
@@ -278,7 +277,7 @@ public class SettingsActivity extends AppCompatActivity
         dlg.show();
     }
 
-    private void paintGpuDialog(ImageView ivBadge, TextView tvState,
+    private void paintGpuDialog(View badgeWrap, ImageView ivBadge, TextView tvState,
                                  TextView tvName, TextView tvVram,
                                  TextView tvDriver, View detailsWrap,
                                  MaterialButton bRefresh) {
@@ -286,18 +285,18 @@ public class SettingsActivity extends AppCompatActivity
         ServerInfoManager mgr = ServerInfoManager.get(this);
 
         if (!auth.isLoggedIn() || !mgr.isLoaded()) {
-            ivBadge.setImageResource(R.drawable.ic_cross_circle);
-            ivBadge.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    ContextCompat.getColor(this, R.color.AppDarkGrey)));
+            badgeWrap.setBackgroundResource(R.drawable.gpu_cross_badge_bg);
+            badgeWrap.getBackground().setTint(
+                    ContextCompat.getColor(this, R.color.AppDarkGrey));
+            ivBadge.setImageResource(R.drawable.ic_cross_thin);
             tvState.setText(R.string.gpu_dialog_title_unknown);
             tvName.setText(R.string.gpu_dialog_no_data);
             detailsWrap.setVisibility(View.GONE);
             return;
         }
         if (mgr.hasGpu()) {
-            ivBadge.setImageResource(R.drawable.ic_check_circle);
-            ivBadge.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    ContextCompat.getColor(this, R.color.colorPrimary)));
+            badgeWrap.setBackgroundResource(R.drawable.gpu_check_badge_bg);
+            ivBadge.setImageResource(R.drawable.ic_check_thin);
             tvState.setText(R.string.gpu_dialog_title_ok);
             String name = mgr.getGpuName();
             if (name == null || name.isEmpty()) name = getString(R.string.server_gpu_ok_short);
@@ -308,9 +307,8 @@ public class SettingsActivity extends AppCompatActivity
             tvDriver.setText(driver == null || driver.isEmpty() ? "—" : driver);
             detailsWrap.setVisibility(View.VISIBLE);
         } else {
-            ivBadge.setImageResource(R.drawable.ic_cross_circle);
-            ivBadge.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    ContextCompat.getColor(this, R.color.cloud_offline)));
+            badgeWrap.setBackgroundResource(R.drawable.gpu_cross_badge_bg);
+            ivBadge.setImageResource(R.drawable.ic_cross_thin);
             tvState.setText(R.string.gpu_dialog_title_missing);
             tvName.setText(R.string.gpu_dialog_no_gpu_body);
             detailsWrap.setVisibility(View.GONE);
@@ -439,10 +437,11 @@ public class SettingsActivity extends AppCompatActivity
         });
 
         avatarWrap.setOnClickListener(x -> {
-            try { avatarPicker.launch("image/*"); }
-            catch (Throwable t) {
-                Toast.makeText(this, R.string.crop_read_fail, Toast.LENGTH_LONG).show();
-            }
+            // Open the preset-based avatar studio first. It exposes a
+            // "Pick from device" button that falls back to the gallery picker
+            // for users who prefer their own photo.
+            dlg.dismiss();
+            openAvatarStudio();
         });
         bRemovePhoto.setOnClickListener(x -> {
             bRemovePhoto.setEnabled(false);
@@ -463,6 +462,54 @@ public class SettingsActivity extends AppCompatActivity
             ChangePasswordDialog.show(this, new ChangePasswordDialog.Callback() {});
         });
         dlg.show();
+    }
+
+    /** Opens the preset-based avatar studio. Compose = upload directly.
+     *  "Pick from device" = fall back to the gallery + crop flow. */
+    private void openAvatarStudio() {
+        new AvatarStudioDialog(this, new AvatarStudioDialog.Callback() {
+            @Override public void onAvatarComposed(byte[] jpegBytes) {
+                uploadStudioBytes(jpegBytes);
+            }
+            @Override public void onPickFromDevice() {
+                try { avatarPicker.launch("image/*"); }
+                catch (Throwable t) {
+                    Toast.makeText(SettingsActivity.this,
+                            R.string.crop_read_fail, Toast.LENGTH_LONG).show();
+                }
+            }
+        }).show();
+    }
+
+    /** Writes the composed studio JPEG to cacheDir and uploads it via
+     *  AvatarManager so it appears immediately in the toolbar and syncs
+     *  with the server. */
+    private void uploadStudioBytes(byte[] jpegBytes) {
+        String user = com.jotapeveloper.fision.cloud.ServerPrefs.get(this).getUsername();
+        if (user == null || user.isEmpty()) {
+            Toast.makeText(this, R.string.login_status_unauthenticated,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        java.io.File out = new java.io.File(getCacheDir(),
+                "studio_avatar_" + System.currentTimeMillis() + ".jpg");
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {
+            fos.write(jpegBytes);
+        } catch (java.io.IOException e) {
+            Toast.makeText(this, R.string.login_err_server, Toast.LENGTH_LONG).show();
+            return;
+        }
+        AvatarManager.get(this).uploadAvatar(user, out, new AvatarManager.UploadCallback() {
+            @Override public void onSuccess() {
+                rebuildItems();
+                out.delete();
+            }
+            @Override public void onFailure(int code, String reason) {
+                Toast.makeText(SettingsActivity.this,
+                        R.string.login_err_server, Toast.LENGTH_LONG).show();
+                out.delete();
+            }
+        });
     }
 
     private void paintAvatarInto(String user, TextView tvInitial,
@@ -490,15 +537,13 @@ public class SettingsActivity extends AppCompatActivity
     private void showAboutDialog() {
         View dlgView = getLayoutInflater().inflate(R.layout.about_dialog, null);
         TextView tvVersion = dlgView.findViewById(R.id.tv_about_version);
-        TextView tvLibs    = dlgView.findViewById(R.id.tv_about_libraries);
+        MaterialButton bLicenses = dlgView.findViewById(R.id.b_about_licenses);
         MaterialButton bClose = dlgView.findViewById(R.id.b_about_close);
         String vName = "?";
         try {
             vName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Throwable ignored) {}
         tvVersion.setText(getString(R.string.about_version_fmt, vName));
-        tvLibs.setText(HtmlCompat.fromHtml(getString(R.string.about_libraries_body),
-                HtmlCompat.FROM_HTML_MODE_COMPACT));
 
         AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
                 .setView(dlgView)
@@ -508,6 +553,10 @@ public class SettingsActivity extends AppCompatActivity
         if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         applyActivityBlur();
         dlg.setOnDismissListener(d -> removeActivityBlur());
+        bLicenses.setOnClickListener(x -> {
+            dlg.dismiss();
+            startActivity(new Intent(this, LicensesActivity.class));
+        });
         bClose.setOnClickListener(x -> dlg.dismiss());
         dlg.show();
     }

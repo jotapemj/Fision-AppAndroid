@@ -87,6 +87,20 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
+        <!-- LicensesActivity: list of open-source dependencies -->
+        <activity
+            android:name=".LicensesActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <!-- LicenseDetailActivity: full text of a single licence -->
+        <activity
+            android:name=".LicenseDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
         <!-- Foreground service: persistent audio engine -->
         <service
             android:name=".PlaybackService"

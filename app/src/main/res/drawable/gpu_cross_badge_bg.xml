@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Round red badge with a dark border, mirror of the check badge for the
+     "GPU unavailable" state. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/cloud_offline" />
+    <stroke
+        android:width="3dp"
+        android:color="#181818" />
+</shape>
