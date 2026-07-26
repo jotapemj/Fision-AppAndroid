@@ -77,8 +77,14 @@ int AudioEngine::addTrack(const char* path, bool loop){
         LOGE("addTrack rejected: engine already started");
         return -1;
     }
+    // Decode outside the mutex — this is the expensive part (WAV/FLAC decode,
+    // resampler warm-up) and we want parallel callers to overlap here.
     auto t = std::make_unique<Track>(path, loop, mDeviceSampleRate, /*outCh=*/2);
     if (mHrtf.isLoaded()) t->setHrtfBank(&mHrtf);
+    // Only serialise the push_back so parallel Java callers cannot race on the
+    // vector's storage. Once the stream is started the audio thread reads
+    // mTracks lock-free — addTrack is rejected at that point (see above).
+    std::lock_guard<std::mutex> lock(mAddTrackMutex);
     int id = (int)mTracks.size();
     mTracks.push_back(std::move(t));
     return id;

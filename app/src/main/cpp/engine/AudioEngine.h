@@ -73,6 +73,10 @@ private:
 
     std::unique_ptr<oboe::AudioStream> mStream;
     std::vector<std::unique_ptr<Track>> mTracks;
+    // Serialises push_back into mTracks when multiple Java threads call
+    // addTrack in parallel to decode stems concurrently. Only used during
+    // song load — never touched from the audio thread.
+    std::mutex mAddTrackMutex;
     HrtfBank mHrtf;  // shared by all tracks
     // SoundTouch ALWAYS on (init true). All tracks are forced through the same
     // path so latency and mSrcPos consumption stay uniform; disabling it when

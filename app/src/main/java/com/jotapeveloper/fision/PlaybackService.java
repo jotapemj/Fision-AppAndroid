@@ -270,38 +270,80 @@ public class PlaybackService extends Service {
         stemTracks.clear();
         stemOrder.clear();
 
+        // Pre-filter valid audio files once so the parallel decode pool knows the
+        // amount of work up front and can size itself accordingly.
+        java.util.List<File> workFiles = new java.util.ArrayList<>();
         for (File f : files) {
             if (!f.isFile()) continue;
             String rawName = f.getName();
             if (rawName == null) continue;
-            // Use Locale.ROOT to avoid surprises with odd locales (e.g. Turkish i/I)
             String name = rawName.toLowerCase(java.util.Locale.ROOT).trim();
-            // Accept WAV and FLAC. The C++ engine picks the decoder by extension.
-            boolean isWav  = name.endsWith(".wav");
-            boolean isFlac = name.endsWith(".flac");
-            if (!isWav && !isFlac) continue;
-            int extLen = isFlac ? 5 : 4;
-            String bare = name.substring(0, name.length() - extLen);
-            String absPath = f.getAbsolutePath();
-            // Metronomes (always looping) — matched by base name, format-agnostic.
-            switch (bare) {
-                case "metronome":        metronomeTrack       = engine.addTrack(absPath, true); engine.setVolume(metronomeTrack,       0f, 0f); continue;
-                case "metronome_half":   metronomeHalfTrack   = engine.addTrack(absPath, true); engine.setVolume(metronomeHalfTrack,   0f, 0f); continue;
-                case "metronome_double": metronomeDoubleTrack = engine.addTrack(absPath, true); engine.setVolume(metronomeDoubleTrack, 0f, 0f); continue;
+            if (name.endsWith(".wav") || name.endsWith(".flac")) workFiles.add(f);
+        }
+
+        // Adaptive worker count: half of the available cores, capped at 4 to
+        // avoid saturating slower storage on low-end devices while still letting
+        // flagships decode 4 stems in parallel. Never more workers than files.
+        int cores = Runtime.getRuntime().availableProcessors();
+        int workers = Math.max(1, Math.min(4, Math.min(workFiles.size(), cores / 2)));
+        java.util.concurrent.ExecutorService pool =
+                java.util.concurrent.Executors.newFixedThreadPool(workers);
+
+        for (File f : workFiles) {
+            pool.submit(() -> {
+                String rawName = f.getName();
+                String name = rawName.toLowerCase(java.util.Locale.ROOT).trim();
+                boolean isFlac = name.endsWith(".flac");
+                int extLen = isFlac ? 5 : 4;
+                String bare = name.substring(0, name.length() - extLen);
+                String absPath = f.getAbsolutePath();
+                switch (bare) {
+                    case "metronome": {
+                        int id = engine.addTrack(absPath, true);
+                        if (id >= 0) { engine.setVolume(id, 0f, 0f); metronomeTrack = id; }
+                        return;
+                    }
+                    case "metronome_half": {
+                        int id = engine.addTrack(absPath, true);
+                        if (id >= 0) { engine.setVolume(id, 0f, 0f); metronomeHalfTrack = id; }
+                        return;
+                    }
+                    case "metronome_double": {
+                        int id = engine.addTrack(absPath, true);
+                        if (id >= 0) { engine.setVolume(id, 0f, 0f); metronomeDoubleTrack = id; }
+                        return;
+                    }
+                }
+                String stem = bare;
+                if (!StemSpec.isKnown(stem)) {
+                    Log.w(TAG, "  ignored (not in StemSpec catalog): " + rawName);
+                    return;
+                }
+                int tid = engine.addTrack(absPath, false);
+                if (tid < 0) {
+                    Log.e(TAG, "  addTrack rejected: " + rawName);
+                    return;
+                }
+                engine.setVolume(tid, 0.75f, 0.75f);
+                synchronized (stemTracks) {
+                    stemTracks.put(stem, tid);
+                }
+            });
+        }
+        pool.shutdown();
+        try {
+            // 60 s is comfortably above the worst-case decode budget for even
+            // very long songs on slow storage; anything longer would already be
+            // a user-visible timeout that the caller should surface.
+            if (!pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
+                Log.e(TAG, "loadSong decode timed out");
+                pool.shutdownNow();
+                return false;
             }
-            // Dynamic stems from the catalog (no loop)
-            String stem = bare;
-            if (!StemSpec.isKnown(stem)) {
-                Log.w(TAG, "  ignored (not in StemSpec catalog): " + rawName);
-                continue;
-            }
-            int tid = engine.addTrack(absPath, false);
-            if (tid < 0) {
-                Log.e(TAG, "  addTrack rejected: " + rawName);
-                continue;
-            }
-            engine.setVolume(tid, 0.75f, 0.75f);
-            stemTracks.put(stem, tid);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            pool.shutdownNow();
+            return false;
         }
 
         Log.i(TAG, "loadSong tracks: stems=" + stemTracks + " metronome=" + metronomeTrack
