@@ -168,7 +168,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     public boolean metronomeEnabled = false;
     public int selectedMetronome = 1;
-    public int selectedPlaybackSpeed = numberPickerData.CENTRAL_INDEX;
+    /** Playback speed as multiplier * 1000. 1000 = 1.0x (neutral). The ruler
+     *  picker works in absolute BPM (globalBpm * mult) but persistence and the
+     *  engine keep using the multiplier so the value is meaningful across
+     *  songs with different tempos. */
+    public int selectedTempoMultMilli = 1000;
     public int selectedPitch = numberPickerData.CENTRAL_PITCH_INDEX;
 
     public float metronomeVol = 100;
@@ -416,8 +420,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 // in onCreate (PREF_DOWNBEAT_*). Legacy Room columns ignored.
                 selectedPitch = (parameters.pitchIndex > 0)
                         ? parameters.pitchIndex : numberPickerData.CENTRAL_PITCH_INDEX;
-                selectedPlaybackSpeed = (parameters.tempoIndex > 0)
-                        ? parameters.tempoIndex : numberPickerData.CENTRAL_INDEX;
+                // v7: multiplier persisted directly (mult * 1000). Migration
+                // populates this column from the legacy `tempoIndex`, so a value
+                // of 1000 always represents neutral 1.0x.
+                selectedTempoMultMilli = (parameters.tempoMultMilli > 0)
+                        ? parameters.tempoMultMilli : 1000;
 
                 // v3: per-stem settings from JSON. Soft migration from v2 columns.
                 java.util.Map<String, StemSetting> parsed = StemSettingsCodec.parse(parameters.stemSettingsJson);
@@ -457,7 +464,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void updateUI() {
 
         // Apply the saved tempo to ALL stems + metronomes
-        float tempoFactor = Float.parseFloat(numberPickerData.VALUES[selectedPlaybackSpeed - 1]);
+        float tempoFactor = selectedTempoMultMilli / 1000f;
         for (String stem : playbackService.getStemOrder()) {
             Integer t = playbackService.getStemTrack(stem);
             if (t != null) engine.setTempo(t, tempoFactor);
@@ -2664,15 +2671,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         Slider s_metronomeVolume = metronomeBottomSheet.findViewById(R.id.s_metronomeVolume);
         s_metronomeVolume.setValue(metronomeVol);
         Slider s_metronomePan = metronomeBottomSheet.findViewById(R.id.s_metronomePan);
-        NumberPicker np_metronome_speed = metronomeBottomSheet.findViewById(R.id.np_metronome_speed);
+        RulerPickerView rulerTempo   = metronomeBottomSheet.findViewById(R.id.ruler_tempo);
+        TextView tvTempoRulerValue   = metronomeBottomSheet.findViewById(R.id.tv_tempoRulerValue);
+        TextView tvTempoLocalHud     = metronomeBottomSheet.findViewById(R.id.tv_tempoLocalHud);
         TextView tv_metronome_volume = metronomeBottomSheet.findViewById(R.id.tv_metronome_volume);
         TextView tv_metronome_panning = metronomeBottomSheet.findViewById(R.id.tv_metronome_panning);
 
-        String[] numberPickerData = com.jotapeveloper.fision.numberPickerData.VALUES;
-        np_metronome_speed.setMinValue(1);
-        np_metronome_speed.setMaxValue(numberPickerData.length);
-        np_metronome_speed.setDisplayedValues(numberPickerData);
-        np_metronome_speed.setValue(selectedPlaybackSpeed);
+        configureTempoRuler(rulerTempo, tvTempoRulerValue, tvTempoLocalHud);
 
         sw_enableMetronome.setUseMaterialThemeColors(true);
 
@@ -2801,26 +2806,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             });
         }
 
-        np_metronome_speed.setOnScrollListener(new NumberPicker.OnScrollListener() {
-            @Override
-            public void onScrollStateChange(NumberPicker picker, int scrollState) {
-                if (scrollState == SCROLL_STATE_IDLE) {
-                    float factor = Float.parseFloat(numberPickerData[picker.getValue() - 1]);
-                    selectedPlaybackSpeed = picker.getValue();
-                    updateDB("tempoIndex", selectedPlaybackSpeed);
-
-                    // Tempo applied to ALL stems + metronomes
-                    for (String s : playbackService.getStemOrder()) {
-                        Integer t = playbackService.getStemTrack(s);
-                        if (t != null) engine.setTempo(t, factor);
-                    }
-                    if (metronomeTrack >= 0)       engine.setTempo(metronomeTrack, factor);
-                    if (metronomeDoubleTrack >= 0) engine.setTempo(metronomeDoubleTrack, factor);
-                    if (metronomeHalfTrack >= 0)   engine.setTempo(metronomeHalfTrack, factor);
-
-                }
-            }
-        });
+        // Tempo control now lives inside configureTempoRuler above.
 
         // Label Formatters for sliders
 
@@ -2931,58 +2917,172 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         View bottomSheetView = getLayoutInflater().inflate(R.layout.pitch_modal_sheet_dialog, null);
 
         pitchBottomSheet.setContentView(bottomSheetView);
-        NumberPicker np_pitch = bottomSheetView.findViewById(R.id.np_pitch);
+        RulerPickerView rulerPitch  = bottomSheetView.findViewById(R.id.ruler_pitch);
+        TextView tvPitchRulerValue  = bottomSheetView.findViewById(R.id.tv_pitchRulerValue);
         TextView tv_pitch_semitones = bottomSheetView.findViewById(R.id.tv_pitch_semitones);
 
-        // Display values: -12..+12
-        String[] pitchValues = com.jotapeveloper.fision.numberPickerData.PITCH_VALUES;
-        np_pitch.setMinValue(1);
-        np_pitch.setMaxValue(pitchValues.length);
-        np_pitch.setDisplayedValues(pitchValues);
-        np_pitch.setValue(selectedPitch);
-
-        // Update tint if pitch != 0
-        if (selectedPitch != com.jotapeveloper.fision.numberPickerData.CENTRAL_PITCH_INDEX) {
-            b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
-            tv_pitch_semitones.setTextColor(Color.rgb(39,179,151));
-        } else {
-            b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(255,255,255)));
-            tv_pitch_semitones.setTextColor(Color.rgb(255,255,255));
-        }
-
-        np_pitch.setOnScrollListener(new NumberPicker.OnScrollListener() {
-            @Override
-            public void onScrollStateChange(NumberPicker picker, int scrollState) {
-                if (scrollState == SCROLL_STATE_IDLE) {
-                    selectedPitch = picker.getValue();
-                    updateDB("pitchIndex", selectedPitch);
-
-                    // Convert index -> semitone float (array is 1-based in the picker)
-                    float semitones = Float.parseFloat(pitchValues[selectedPitch - 1]);
-
-                    // Pitch applied to pitched stems (percussion excluded by design)
-                    for (String s : playbackService.getStemOrder()) {
-                        if (!StemSpec.isPitched(s)) continue;
-                        Integer t = playbackService.getStemTrack(s);
-                        if (t != null) engine.setPitch(t, semitones);
-                    }
-
-                    // Update UI tint
-                    if (selectedPitch != com.jotapeveloper.fision.numberPickerData.CENTRAL_PITCH_INDEX) {
-                        b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
-                        tv_pitch_semitones.setTextColor(Color.rgb(39,179,151));
-                    } else {
-                        b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(255,255,255)));
-                        tv_pitch_semitones.setTextColor(Color.rgb(255,255,255));
-                    }
-
-                    // If the drawer switch is on, repaint chord names
-                    applyDisplayShiftToAdapter();
-                }
-            }
-        });
+        configurePitchRuler(rulerPitch, tvPitchRulerValue, tv_pitch_semitones);
 
         pitchBottomSheet.show();
+    }
+
+    /** Sets up the tempo ruler with either BPM units (when globalBpm > 0) or a
+     *  multiplier fallback. Also refreshes the "this section plays at X BPM"
+     *  HUD from the current playback position. */
+    private void configureTempoRuler(RulerPickerView ruler, TextView tvValue, TextView tvHud) {
+        // Tempo is a finer adjustment — moderate spacing so many BPM fit on screen.
+        ruler.setTickSpacingDp(14f);
+        boolean bpmMode = globalBpm > 0f;
+        if (bpmMode) {
+            ruler.setStep(1);
+            ruler.setRange(50, 200);
+            int targetBpm = Math.round(globalBpm * (selectedTempoMultMilli / 1000f));
+            targetBpm = Math.max(50, Math.min(200, targetBpm));
+            ruler.setValue(targetBpm);
+            ruler.setNeutralValue(Math.round(globalBpm));   // stronger haptic at original BPM
+            ruler.setLabelFormatter(v -> getString(R.string.tempo_display_bpm, v));
+            tvValue.setText(getString(R.string.tempo_display_bpm, targetBpm));
+        } else {
+            // Fallback: ruler counts mult * 100 in steps of 5 (0.50 .. 1.50, 0.05x)
+            ruler.setStep(5);
+            ruler.setRange(50, 150);
+            int centi = Math.round(selectedTempoMultMilli / 10f);
+            centi = Math.round(centi / 5f) * 5;
+            centi = Math.max(50, Math.min(150, centi));
+            ruler.setValue(centi);
+            ruler.setNeutralValue(100);                     // 1.00x
+            ruler.setLabelFormatter(v -> getString(R.string.tempo_display_mult, v / 100f));
+            tvValue.setText(getString(R.string.tempo_display_mult, centi / 100f));
+        }
+        updateTempoLocalHud(tvHud);
+
+        ruler.setOnValueChangeListener((value, fromUser) -> {
+            int milli;
+            CharSequence display;
+            if (bpmMode) {
+                milli = Math.round((value / globalBpm) * 1000f);
+                display = getString(R.string.tempo_display_bpm, value);
+            } else {
+                milli = value * 10;   // centi to milli
+                display = getString(R.string.tempo_display_mult, value / 100f);
+            }
+            tvValue.setText(display);
+            if (!fromUser) return;
+            selectedTempoMultMilli = milli;
+            updateDB("tempoMultMilli", milli);
+            float factor = milli / 1000f;
+            if (playbackService != null && engine != null) {
+                for (String s : playbackService.getStemOrder()) {
+                    Integer t = playbackService.getStemTrack(s);
+                    if (t != null) engine.setTempo(t, factor);
+                }
+                if (metronomeTrack >= 0)       engine.setTempo(metronomeTrack, factor);
+                if (metronomeDoubleTrack >= 0) engine.setTempo(metronomeDoubleTrack, factor);
+                if (metronomeHalfTrack >= 0)   engine.setTempo(metronomeHalfTrack, factor);
+            }
+        });
+    }
+
+    /** Refreshes the local-BPM HUD under the ruler. Shown whenever the local
+     *  BPM at the playback cursor is computable — even when it matches the
+     *  global BPM, so the reader always has the current section's tempo in
+     *  view. Hidden only when the song has no beats data at all. */
+    private void updateTempoLocalHud(TextView tvHud) {
+        if (tvHud == null) return;
+        int localBpm = computeLocalBpmAtCurrentPosition();
+        if (localBpm <= 0) { tvHud.setVisibility(View.GONE); return; }
+        tvHud.setText(androidx.core.text.HtmlCompat.fromHtml(
+                getString(R.string.tempo_local_hud_html, localBpm),
+                androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY));
+        tvHud.setVisibility(View.VISIBLE);
+    }
+
+    /** Original BPM of the beat currently under the playback cursor (60 / delta
+     *  to the next beat, from beatsList). Falls back to the global BPM when the
+     *  position is before the first beat or past the last one, and returns 0
+     *  only when the song has no usable beats at all. */
+    private int computeLocalBpmAtCurrentPosition() {
+        if (beatsList == null || beatsList.size() < 2) {
+            return globalBpm > 0f ? Math.round(globalBpm) : 0;
+        }
+        long uiPos = 0L;
+        if (engine != null) {
+            uiPos = Math.max(0L, engine.getCurrentPositionMs() - engine.getOutputLatencyMs());
+        }
+        float tSec = uiPos / 1000f;
+        int idx = -1;
+        for (int i = 0; i < beatsList.size(); i++) {
+            if (beatsList.get(i) > tSec) break;
+            idx = i;
+        }
+        if (idx < 0 || idx >= beatsList.size() - 1) {
+            return globalBpm > 0f ? Math.round(globalBpm) : 0;
+        }
+        float delta = beatsList.get(idx + 1) - beatsList.get(idx);
+        if (delta <= 0f) return globalBpm > 0f ? Math.round(globalBpm) : 0;
+        return Math.round(60f / delta);
+    }
+
+    /** Sets up the pitch ruler (-12..+12 semitones, step 1). Keeps `selectedPitch`
+     *  (legacy 1-based index into PITCH_VALUES) in sync so drawer transposition
+     *  and Room persistence continue to work unchanged. */
+    private void configurePitchRuler(RulerPickerView ruler, TextView tvValue, TextView tvSubtitle) {
+        // Pitch changes are more disruptive musically — wider ticks so each
+        // semitone takes a deliberate horizontal drag.
+        ruler.setTickSpacingDp(28f);
+        ruler.setStep(1);
+        ruler.setRange(-12, 12);
+        ruler.setNeutralValue(0);                    // stronger haptic at unison
+        int semi = pitchSemitonesFromIndex(selectedPitch);
+        ruler.setValue(semi);
+        ruler.setLabelFormatter(this::formatPitchDisplay);
+        tvValue.setText(formatPitchDisplay(semi));
+        applyPitchTint(tvSubtitle, semi != 0);
+
+        ruler.setOnValueChangeListener((value, fromUser) -> {
+            tvValue.setText(formatPitchDisplay(value));
+            if (!fromUser) return;
+            selectedPitch = pitchIndexFromSemitones(value);
+            updateDB("pitchIndex", selectedPitch);
+            if (playbackService != null && engine != null) {
+                for (String s : playbackService.getStemOrder()) {
+                    if (!StemSpec.isPitched(s)) continue;
+                    Integer t = playbackService.getStemTrack(s);
+                    if (t != null) engine.setPitch(t, value);
+                }
+            }
+            applyPitchTint(tvSubtitle, value != 0);
+            applyDisplayShiftToAdapter();
+        });
+    }
+
+    private CharSequence formatPitchDisplay(int semitones) {
+        return semitones == 0
+                ? getString(R.string.pitch_display_zero)
+                : getString(R.string.pitch_display_signed, semitones);
+    }
+
+    private void applyPitchTint(TextView tvSubtitle, boolean active) {
+        int color = active ? Color.rgb(39, 179, 151) : Color.rgb(255, 255, 255);
+        if (b_pitch != null) b_pitch.setIconTint(ColorStateList.valueOf(color));
+        if (tvSubtitle != null) tvSubtitle.setTextColor(color);
+    }
+
+    private int pitchSemitonesFromIndex(int idx) {
+        if (idx <= 0 || idx > numberPickerData.PITCH_VALUES.length) return 0;
+        try { return (int) Float.parseFloat(numberPickerData.PITCH_VALUES[idx - 1]); }
+        catch (Exception e) { return 0; }
+    }
+
+    private int pitchIndexFromSemitones(int semitones) {
+        for (int i = 0; i < numberPickerData.PITCH_VALUES.length; i++) {
+            try {
+                if ((int) Float.parseFloat(numberPickerData.PITCH_VALUES[i]) == semitones) {
+                    return i + 1;
+                }
+            } catch (Exception ignored) {}
+        }
+        return numberPickerData.CENTRAL_PITCH_INDEX;
     }
 
     public void showOptionsBottomDialog(String stemType){
@@ -3201,6 +3301,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
                 case "tempoIndex":
                     db.DAO_db_SongParameters().updateTempoIndex(SongId, value);
+                    break;
+
+                case "tempoMultMilli":
+                    db.DAO_db_SongParameters().updateTempoMultMilli(SongId, value);
                     break;
 
                 case "chordsBasic":

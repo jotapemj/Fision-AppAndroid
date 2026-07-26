@@ -962,6 +962,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     newEntry.metronomePan = 0f;
                     newEntry.pitchIndex = numberPickerData.CENTRAL_PITCH_INDEX;
                     newEntry.tempoIndex = numberPickerData.CENTRAL_INDEX;
+                    // v7: neutral tempo (1.0x = 1000 milli). Used by the ruler picker.
+                    newEntry.tempoMultMilli = 1000;
                     // v3: empty JSON; stems are populated on demand
                     newEntry.stemSettingsJson = "{}";
                     // v4: advanced chords by default (chords.txt)

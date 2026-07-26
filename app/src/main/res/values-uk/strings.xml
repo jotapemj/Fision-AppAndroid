@@ -166,6 +166,11 @@
     <string name="b_metronomeDouble">2x</string>
     <string name="tv_pitch_title">Транспозиція</string>
     <string name="tv_pitch_semitones">півтони</string>
+    <string name="tempo_display_bpm">%1$d BPM</string>
+    <string name="tempo_display_mult">%1$.2f×</string>
+    <string name="tempo_local_hud_html">Ця частина пісні йде на &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="pitch_display_zero">0</string>
+    <string name="pitch_display_signed">%1$+d</string>
     <string name="settings_title">Налаштування</string>
     <string name="title_activity_settings">Екран налаштувань</string>
     <string name="settings_toolbar_title">Налаштування</string>

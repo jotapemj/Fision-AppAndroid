@@ -1,82 +1,80 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/dialogbg">
-
-
-
-        <ImageView
-            android:layout_width="80dp"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_round_remove_24"
-            android:layout_gravity="center|top"
-            android:scaleType="centerCrop"
-            android:layout_marginBottom="10dp"/>
-
-        <TextView
-            android:id="@+id/tv_playback_pitch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:fontFamily="@font/yugothic_ui_regular"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:scrollHorizontally="true"
-            android:singleLine="true"
-            android:text="@string/tv_pitch_title"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="15dp" />
-
-
-        <TextView
-            android:id="@+id/tv_pitch_semitones"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:fontFamily="@font/yugothic_ui_regular"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:scrollHorizontally="true"
-            android:singleLine="true"
-            android:text="@string/tv_pitch_semitones"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="15dp" />
-
-        <com.shawnlin.numberpicker.NumberPicker
-            android:id="@+id/np_pitch"
-            android:layout_width="match_parent"
-            android:layout_marginStart="50dp"
-            android:layout_marginEnd="50dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            app:np_orientation="horizontal"
-            app:np_width="170dp"
-            app:np_height="64dp"
-            app:np_dividerColor="@color/AppDarkGrey"
-            app:np_textColor="@color/AppWhite"
-            app:np_min="-12"
-            app:np_max="12"
-            app:np_selectedTextColor="@color/colorPrimary"
-            app:np_wrapSelectorWheel="false"
-            app:np_wheelItemCount="3"
-            app:np_textSize="20dp"
-            app:np_selectedTextSize="35dp"
-            app:np_value="0" />
-
-
-
-
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/dialogbg">
+
+
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_round_remove_24"
+            android:layout_gravity="center|top"
+            android:scaleType="centerCrop"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:id="@+id/tv_playback_pitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/tv_pitch_title"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="15dp" />
+
+
+        <TextView
+            android:id="@+id/tv_pitch_semitones"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/tv_pitch_semitones"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="15dp" />
+
+        <!-- Central big display: shows the ruler's current semitone value.
+             Populated from PlayerActivity on open and on every ruler change. -->
+        <TextView
+            android:id="@+id/tv_pitchRulerValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:textColor="@color/colorPrimary"
+            android:textSize="34sp"
+            android:textStyle="bold"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="4dp"
+            tools:text="+3" />
+
+        <com.jotapeveloper.fision.RulerPickerView
+            android:id="@+id/ruler_pitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp" />
 
 </LinearLayout>

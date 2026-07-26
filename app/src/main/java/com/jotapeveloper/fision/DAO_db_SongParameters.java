@@ -94,6 +94,10 @@ public interface DAO_db_SongParameters {
     @Query("UPDATE songParameters SET `3D enabled` = :enabled WHERE `Song ID` = :songId")
     void updateAudio3DEnabled(int songId, boolean enabled);
 
+    // === v7: tempo multiplier persisted as mult * 1000 (int) ===
+    @Query("UPDATE songParameters SET `Tempo mult milli` = :milli WHERE `Song ID` = :songId")
+    void updateTempoMultMilli(int songId, int milli);
+
 
     @Update
     void update(db_SongParameters SongParameters);

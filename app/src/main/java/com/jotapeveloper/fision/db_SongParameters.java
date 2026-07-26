@@ -96,4 +96,13 @@ public class db_SongParameters {
     // (x/y fields per stem in stemSettingsJson).
     @ColumnInfo(name = "3D enabled", defaultValue = "0")
     public boolean audio3DEnabled;
+
+    // === v7: tempo multiplier as an integer in thousandths (mult * 1000). ===
+    // Replaces `tempoIndex` (index into a fixed VALUES table with 0.01x steps)
+    // with the actual multiplier, so playback speed can be selected in real BPM
+    // steps independent of the ruler resolution. `tempoIndex` remains for
+    // backward compatibility and is populated during migration; new code reads
+    // and writes `tempoMultMilli`.
+    @ColumnInfo(name = "Tempo mult milli", defaultValue = "1000")
+    public int tempoMultMilli;
 }

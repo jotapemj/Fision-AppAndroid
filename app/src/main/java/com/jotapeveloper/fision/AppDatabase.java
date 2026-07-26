@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {db_settings.class, db_SongParameters.class}, version = 6)
+@Database(entities = {db_settings.class, db_SongParameters.class}, version = 7)
 public abstract class AppDatabase extends RoomDatabase {
 
     // Static field for the singleton database instance
@@ -46,6 +46,20 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** v6 → v7: adds `Tempo mult milli` (int, mult*1000). Rows with a legacy
+     *  `Tempo index` are converted to their equivalent multiplier so users do not
+     *  lose their per-song tempo when upgrading. Mapping mirrors the old fixed
+     *  table numberPickerData.VALUES: mult = 0.24 + (idx - 1) * 0.01, which in
+     *  thousandths becomes an exact integer (idx - 1) * 10 + 240. Rows with
+     *  `Tempo index` = 0 (never touched) get the neutral 1000 default. */
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE songParameters ADD COLUMN `Tempo mult milli` INTEGER NOT NULL DEFAULT 1000");
+            database.execSQL("UPDATE songParameters SET `Tempo mult milli` = (`Tempo index` - 1) * 10 + 240 WHERE `Tempo index` > 0");
+        }
+    };
+
     // Static method to obtain the database instance
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -53,7 +67,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "app_database")  // database name
-                            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                             .fallbackToDestructiveMigration()  // fallback if explicit migration fails
                             .build();
                 }

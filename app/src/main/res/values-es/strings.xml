@@ -185,6 +185,11 @@
     <!--- pitch -->
     <string name="tv_pitch_title">Transposición</string>
     <string name="tv_pitch_semitones">semitonos</string>
+    <string name="tempo_display_bpm">%1$d BPM</string>
+    <string name="tempo_display_mult">%1$.2f×</string>
+    <string name="tempo_local_hud_html">Esta parte de la canción va a &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="pitch_display_zero">0</string>
+    <string name="pitch_display_signed">%1$+d</string>
 
     <string name="settings_title">Ajustes</string>
     <string name="title_activity_settings">Pantalla de ajustes</string>

@@ -18,6 +18,9 @@
     <!-- Biometrics to reveal/edit the Bearer token -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- Haptic feedback for the ruler pickers (pitch/tempo). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Storage to Export to /Fision/<song>/ at the root of storage.
          API <= 28: WRITE_EXTERNAL_STORAGE (declared with maxSdkVersion).
          API >= 30: MANAGE_EXTERNAL_STORAGE — must be granted manually in system

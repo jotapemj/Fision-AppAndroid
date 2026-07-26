@@ -356,7 +356,9 @@ can:
 </div>
 
 The pitch bottom sheet lets you transpose the song in semitones. The
-range covers a comfortable interval around the original key. 
+range covers a comfortable interval around the original key. The value
+is picked on a horizontal ruler with snap and haptic feedback, showing
+the signed semitone number above the ruler in large type.
 >[!NOTE]
 >The stem`drums` is excluded from pitch shifting on purpose, 
 >so the drum kit never sounds detuned. The rest of the stems are
@@ -392,6 +394,14 @@ Stem pan is applied by the C++ engine as a per-channel gain on the
 mix. Playback speed uses SoundTouch's tempo control, decoupled from
 pitch. You can slow the song down without pitching the vocals or the
 instruments.
+
+The playback speed picker inside the metronome bottom sheet works in
+absolute BPM (steps of one BPM) whenever the song has a detected
+tempo, so you always see the target speed instead of an abstract
+multiplier. When the current section runs at a different local BPM
+than the song average, a small hint underneath the ruler surfaces it
+so the number you dial stays meaningful. Songs without a detected
+tempo fall back to a multiplier picker in 0.05× steps.
 
 ## Animated background
 

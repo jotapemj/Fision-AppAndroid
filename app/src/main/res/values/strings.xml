@@ -181,9 +181,15 @@
     <string name="b_metronomeHalf">0.5x</string>
     <string name="b_metronomeDouble">2x</string>
 
+    <string name="tempo_display_bpm">%1$d BPM</string>
+    <string name="tempo_display_mult">%1$.2f×</string>
+    <string name="tempo_local_hud_html">This section plays at &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+
     <!--- pitch -->
     <string name="tv_pitch_title">Transposition</string>
     <string name="tv_pitch_semitones">semitones</string>
+    <string name="pitch_display_zero">0</string>
+    <string name="pitch_display_signed">%1$+d</string>
 
     <!--- settings -->
 
