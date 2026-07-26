@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="16dp"
+    android:paddingBottom="24dp"
+    android:background="@drawable/lyrics_sheet_bg">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/lyrics_sheet_grabber_bg"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="10dp"
+        android:text="@string/lyrics_options_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/yugothic_ui_regular" />
+
+    <LinearLayout
+        android:id="@+id/row_lyricsReprocess"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="14dp"
+            android:src="@drawable/ic_reprocess"
+            app:tint="@color/AppWhite" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/lyrics_reprocess"
+            android:textColor="@color/AppWhite"
+            android:textSize="15sp"
+            android:fontFamily="@font/yugothic_ui_regular" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Toolbar background used only while the lyrics overlay is visible.
+     Longer gradient (whole toolbar height) that finishes at #00 so it hands
+     the fade off to the recycler's DST_OUT fade without a visible seam
+     between two overlapping fades. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#FF000000"
+        android:centerColor="#FF000000"
+        android:endColor="#00000000" />
+</shape>

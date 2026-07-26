@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/tv_lyricsLine"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_horizontal"
+    android:textColor="@color/lyrics_line_dim"
+    android:textSize="20sp"
+    android:lineSpacingExtra="2dp"
+    android:fontFamily="@font/yugothic_ui_regular"
+    tools:text="I feel the rain on my skin" />

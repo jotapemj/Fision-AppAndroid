@@ -359,4 +359,48 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="cloud_cancel_queue">Скасувати (черга)</string>
     <string name="cloud_cancel_queue_confirm">Прибрати цю пісню з черги?</string>
 
+    <!-- Тексти пісень -->
+    <string name="lyrics_button_description">Показати текст</string>
+    <string name="lyrics_title_process">Обробити текст</string>
+    <string name="lyrics_card_title">Мова тексту</string>
+    <string name="lyrics_card_subtitle_auto">Авто</string>
+    <string name="lyrics_confirm">Підтвердити</string>
+    <string name="lyrics_cancel">Скасувати</string>
+    <string name="lyrics_processing">Обробка тексту</string>
+    <string name="lyrics_error">Не вдалося обробити текст</string>
+    <string name="lyrics_no_vocals">Вокал ще не готовий</string>
+    <string name="lyrics_reprocess">Обробити знову</string>
+    <string name="lyrics_options_title">Опції</string>
+    <string name="lyrics_cancel_dialog_title">Скасувати обробку тексту?</string>
+    <string name="lyrics_dialog_yes">Підтвердити</string>
+    <string name="lyrics_dialog_no">Ні</string>
+    <string name="lyrics_lang_auto">Авто</string>
+    <string name="lyrics_lang_en">Англійська</string>
+    <string name="lyrics_lang_es">Іспанська</string>
+    <string name="lyrics_lang_pt">Португальська</string>
+    <string name="lyrics_lang_ja">Японська</string>
+    <string name="lyrics_lang_ko">Корейська</string>
+    <string name="lyrics_lang_hi">Хінді</string>
+    <string name="lyrics_lang_fr">Французька</string>
+    <string name="lyrics_lang_zh">Китайська</string>
+    <string name="lyrics_lang_de">Німецька</string>
+    <string name="lyrics_lang_it">Італійська</string>
+    <string name="lyrics_lang_ar">Арабська</string>
+    <string name="lyrics_lang_ru">Російська</string>
+    <string name="lyrics_lang_tr">Турецька</string>
+    <string name="lyrics_lang_id">Індонезійська</string>
+    <string name="lyrics_lang_pa">Панджабі</string>
+    <string name="lyrics_lang_sv">Шведська</string>
+    <string name="lyrics_lang_nl">Нідерландська</string>
+    <string name="lyrics_lang_vi">В\'єтнамська</string>
+    <string name="lyrics_lang_tl">Тагальська</string>
+    <string name="lyrics_lang_el">Грецька</string>
+    <string name="lyrics_lang_th">Тайська</string>
+    <string name="lyrics_lang_fa">Перська</string>
+    <string name="lyrics_lang_he">Іврит</string>
+    <string name="lyrics_lang_ta">Тамільська</string>
+    <string name="lyrics_lang_ca">Каталонська</string>
+    <string name="lyrics_lang_uk">Українська</string>
+    <string name="lyrics_lang_pl">Польська</string>
+
 </resources>

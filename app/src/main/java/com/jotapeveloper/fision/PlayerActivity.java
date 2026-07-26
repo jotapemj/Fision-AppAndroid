@@ -922,6 +922,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         b_back = findViewById(R.id.b_back);
         b3d = findViewById(R.id.b_3d);
         if (b3d != null) b3d.setOnClickListener(v -> toggle3DView());
+        bLyrics = findViewById(R.id.b_lyrics);
+        if (bLyrics != null) bLyrics.setOnClickListener(v -> toggleLyricsView());
         b_repeat = findViewById(R.id.b_repeat);
         if (b_repeat != null) b_repeat.setOnClickListener(v -> cycleRepeatMode());
 
@@ -2037,6 +2039,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         refreshRepeatButtonUi();
         bindPlaylistSwitch();
         applyPlayIcon(false, false);
+        // Wipe any lyrics state from the previous song. If the overlay was open
+        // it will land on the picker for the new song.
+        resetLyricsForNewSong();
+        if (isLyricsViewShown) {
+            // Force it back to the picker so the new song's flow starts clean.
+            setLyricsUiState(LyricsUiState.PICKER);
+        }
 
         // 8) Pending autoplay: updateUI applies saved volumes before pressing play
         autoplayPending = true;
@@ -2347,6 +2356,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             updateLocalBpmDisplay(idx);
                         }
                     }
+
+                    // Advance the lyrics highlight when the overlay is on top.
+                    updateLyricsHighlight(UiPos);
 
                 }
             });
@@ -3120,6 +3132,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onDestroy() {
         DestroyPlayers();
+        releaseLyrics();
         danceActive = false;
         danceHandler.removeCallbacks(danceTick);
         if (serviceBound) {
@@ -3482,6 +3495,34 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  its tint can be updated when the effect toggles on/off. */
     private com.google.android.material.button.MaterialButton b3d;
 
+    // ---------------------------------------------------------------------
+    //   Lyrics overlay (opt-in Whisper transcription).
+    // ---------------------------------------------------------------------
+    private enum LyricsUiState { PICKER, SKELETON, ERROR, CONTENT }
+
+    private com.google.android.material.button.MaterialButton bLyrics;
+    private View lyricsRoot;
+    private com.google.android.material.card.MaterialCardView cardLyricsLanguage;
+    private android.widget.ImageView ivLyricsFlag;
+    private android.widget.TextView tvLyricsCardSubtitle;
+    private com.google.android.material.button.MaterialButton bLyricsConfirm;
+    private com.google.android.material.button.MaterialButton bLyricsPickerCancel;
+    private android.widget.LinearLayout llLyricsSkeleton;
+    private android.widget.TextView tvLyricsStatus;
+    private LyricsSkeletonView lyricsSkeletonView;
+    private com.google.android.material.button.MaterialButton bLyricsCancelJob;
+    private androidx.recyclerview.widget.RecyclerView rvLyrics;
+    private android.widget.ImageButton bLyricsOptions;
+
+    private LyricsManager mLyricsMgr;
+    private LyricsLinesAdapter mLyricsLinesAdapter;
+    private Lyrics mLoadedLyrics;
+    private LyricsLanguage mSelectedLyricsLanguage = LyricsLanguage.LANGUAGES[0]; // Auto
+    private LyricsUiState mLyricsUiState = LyricsUiState.PICKER;
+    private boolean isLyricsViewShown = false;
+    private boolean lyricsReprocessMode = false;
+    private int mLyricsActiveIdx = -1;
+
     /** Lazy init of the 3D view references. Idempotent. */
     private void ensure3DRefs() {
         if (view3DRoot == null) {
@@ -3568,6 +3609,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Toggles between the normal view (stems + chords) and the 3D view with crossfade. */
     private void toggle3DView() {
         ensure3DRefs();
+        // Never overlap with the lyrics overlay.
+        if (isLyricsViewShown) return;
         is3DViewShown = !is3DViewShown;
         View chordsContainer = findViewById(R.id.chords_container);
         if (is3DViewShown) transitionInto3D(chordsContainer);
@@ -4561,4 +4604,430 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         persistStemSettings();
     }
 
+    // ==================================================================
+    //   LYRICS OVERLAY
+    // ==================================================================
+
+    /** Lazy findViewById + one-time listener wiring for the lyrics overlay. */
+    private void ensureLyricsRefs() {
+        if (lyricsRoot != null) return;
+        lyricsRoot            = findViewById(R.id.lyricsRoot);
+        cardLyricsLanguage    = findViewById(R.id.card_lyricsLanguage);
+        ivLyricsFlag          = findViewById(R.id.iv_lyricsFlag);
+        tvLyricsCardSubtitle  = findViewById(R.id.tv_lyricsCardSubtitle);
+        bLyricsConfirm        = findViewById(R.id.b_lyricsConfirm);
+        bLyricsPickerCancel   = findViewById(R.id.b_lyricsPickerCancel);
+        llLyricsSkeleton      = findViewById(R.id.ll_lyricsSkeleton);
+        tvLyricsStatus        = findViewById(R.id.tv_lyricsStatus);
+        lyricsSkeletonView    = findViewById(R.id.lyricsSkeleton);
+        bLyricsCancelJob      = findViewById(R.id.b_lyricsCancelJob);
+        rvLyrics              = findViewById(R.id.rv_lyrics);
+        bLyricsOptions        = findViewById(R.id.b_lyricsOptions);
+
+        rvLyrics.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        mLyricsLinesAdapter = new LyricsLinesAdapter();
+        rvLyrics.setAdapter(mLyricsLinesAdapter);
+
+        cardLyricsLanguage.setOnClickListener(v -> openLanguagePickerDialog());
+        bLyricsConfirm.setOnClickListener(v -> onLyricsConfirmClicked());
+        bLyricsPickerCancel.setOnClickListener(v -> onLyricsPickerCancelClicked());
+        bLyricsCancelJob.setOnClickListener(v -> showCancelJobDialog());
+        bLyricsOptions.setOnClickListener(v -> LyricsOptionsBottomSheet.show(this,
+                this::onLyricsReprocessRequested));
+
+        if (mLyricsMgr == null) {
+            mLyricsMgr = new LyricsManager(this);
+        }
+        mLyricsMgr.setListener(new LyricsManager.Listener() {
+            @Override public void onLyricsStateChanged(LyricsManager.State state, String errorMsg) {
+                applyLyricsManagerState(state, errorMsg);
+            }
+            @Override public void onLyricsLoaded(Lyrics lyrics) {
+                mLoadedLyrics = lyrics;
+                mLyricsLinesAdapter.setSegments(lyrics != null ? lyrics.segments : null);
+                mLyricsActiveIdx = -1;
+                setLyricsUiState(LyricsUiState.CONTENT);
+            }
+        });
+        refreshLyricsCardFlag();
+    }
+
+    /** Toggles the lyrics overlay on / off. Wired to b_lyrics. */
+    public void ShowLyrics(View v) {
+        toggleLyricsView();
+    }
+
+    private void toggleLyricsView() {
+        ensureLyricsRefs();
+        if (is3DViewShown) return;  // never overlap with the 3D view
+        isLyricsViewShown = !isLyricsViewShown;
+        refreshBLyricsTint();
+        View chordsContainer = findViewById(R.id.chords_container);
+        if (isLyricsViewShown) {
+            lyricsReprocessMode = false;
+            refreshLyricsViewForCurrentSong();
+            transitionIntoLyrics(chordsContainer);
+        } else {
+            transitionOutOfLyrics(chordsContainer);
+        }
+    }
+
+    /** Decides which lyrics sub-state to show for the currently loaded song.
+     *  Called on overlay open and on automatic song advance so the view stays
+     *  in sync with what's on disk / in memory. Safe to invoke when the
+     *  overlay is not visible: only mutates the ui state variables. */
+    private void refreshLyricsViewForCurrentSong() {
+        java.io.File folder = SongFolder;
+        if (folder == null) {
+            setLyricsUiState(LyricsUiState.PICKER);
+            return;
+        }
+        if (mLoadedLyrics != null) {
+            setLyricsUiState(LyricsUiState.CONTENT);
+            return;
+        }
+        if (LyricsManager.hasLocal(folder)) {
+            setLyricsUiState(LyricsUiState.CONTENT);
+            final java.io.File f = folder;
+            new Thread(() -> {
+                try {
+                    Lyrics ly = mLyricsMgr.parseLocal(f);
+                    runOnUiThread(() -> {
+                        mLoadedLyrics = ly;
+                        if (mLyricsLinesAdapter != null) {
+                            mLyricsLinesAdapter.setSegments(ly != null ? ly.segments : null);
+                        }
+                        mLyricsActiveIdx = -1;
+                    });
+                } catch (Exception ignored) {
+                    runOnUiThread(() -> setLyricsUiState(LyricsUiState.PICKER));
+                }
+            }, "lyrics-parse").start();
+        } else if (mLyricsMgr != null && mLyricsMgr.isActive()) {
+            setLyricsUiState(LyricsUiState.SKELETON);
+        } else {
+            setLyricsUiState(LyricsUiState.PICKER);
+        }
+    }
+
+    private void refreshBLyricsTint() {
+        if (bLyrics == null) return;
+        int tint = isLyricsViewShown
+                ? androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary)
+                : androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite);
+        bLyrics.setIconTint(android.content.res.ColorStateList.valueOf(tint));
+    }
+
+    /** Swaps the toolbar background so its bottom fade hands off cleanly to
+     *  the lyrics recycler's DST_OUT fade (no double-fade band). Restores the
+     *  default background when leaving the lyrics view. */
+    private void applyToolbarBgForLyrics(boolean lyricsVisible) {
+        View tb = findViewById(R.id.toolbar);
+        if (tb == null) return;
+        tb.setBackgroundResource(lyricsVisible
+                ? R.drawable.player_toolbar_bg_lyrics
+                : R.drawable.player_toolbar_bg);
+    }
+
+    private void transitionIntoLyrics(View chordsContainer) {
+        final long OUT_DUR = 200L;
+        final long IN_DUR  = 300L;
+        float density = getResources().getDisplayMetrics().density;
+        float slidePx = 18f * density;
+
+        applyToolbarBgForLyrics(true);
+
+        View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
+        if (stemsStack != null) {
+            stemsStack.animate().cancel();
+            stemsStack.setAlpha(1f);
+            stemsStack.setTranslationY(0f);
+            stemsStack.animate().alpha(0f).translationY(slidePx)
+                    .withLayer()
+                    .setDuration(OUT_DUR)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        stemsStack.setVisibility(View.GONE);
+                        stemsStack.setTranslationY(0f);
+                    }).start();
+        }
+        lyricsRoot.setAlpha(0f);
+        lyricsRoot.setScaleX(0.94f);
+        lyricsRoot.setScaleY(0.94f);
+        lyricsRoot.setVisibility(View.VISIBLE);
+        lyricsRoot.animate().cancel();
+        lyricsRoot.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .withLayer()
+                .setStartDelay(OUT_DUR - 80L)
+                .setDuration(IN_DUR)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+    }
+
+    private void transitionOutOfLyrics(View chordsContainer) {
+        final long OUT_DUR = 200L;
+        final long IN_DUR  = 260L;
+        float density = getResources().getDisplayMetrics().density;
+        float slidePx = 18f * density;
+
+        applyToolbarBgForLyrics(false);
+
+        lyricsRoot.animate().cancel();
+        lyricsRoot.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+                .withLayer()
+                .setDuration(OUT_DUR)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> lyricsRoot.setVisibility(View.GONE)).start();
+
+        View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
+        if (stemsStack != null) {
+            stemsStack.setAlpha(0f);
+            stemsStack.setTranslationY(slidePx);
+            stemsStack.setVisibility(View.VISIBLE);
+            stemsStack.animate().cancel();
+            stemsStack.animate().alpha(1f).translationY(0f)
+                    .withLayer()
+                    .setStartDelay(OUT_DUR - 80L)
+                    .setDuration(IN_DUR)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        }
+        if (chordsContainer != null) {
+            chordsContainer.setVisibility(chordsActive ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /** Applies the picker/skeleton/error/content grouping to the overlay. */
+    private void setLyricsUiState(LyricsUiState s) {
+        mLyricsUiState = s;
+        if (lyricsRoot == null) return;
+        boolean picker  = s == LyricsUiState.PICKER;
+        boolean loading = s == LyricsUiState.SKELETON;
+        boolean err     = s == LyricsUiState.ERROR;
+        boolean content = s == LyricsUiState.CONTENT;
+
+        // Picker widgets.
+        int pickerVis = picker ? View.VISIBLE : View.GONE;
+        findViewById(R.id.tv_lyricsPickerTitle).setVisibility(pickerVis);
+        cardLyricsLanguage.setVisibility(pickerVis);
+        bLyricsConfirm.setVisibility(pickerVis);
+        bLyricsPickerCancel.setVisibility(picker && lyricsReprocessMode ? View.VISIBLE : View.GONE);
+
+        // Skeleton / error share the same container; only the text changes.
+        int skeletonVis = (loading || err) ? View.VISIBLE : View.GONE;
+        llLyricsSkeleton.setVisibility(skeletonVis);
+        if (loading) {
+            tvLyricsStatus.setText(R.string.lyrics_processing);
+            lyricsSkeletonView.setVisibility(View.VISIBLE);
+        } else if (err) {
+            tvLyricsStatus.setText(R.string.lyrics_error);
+            lyricsSkeletonView.setVisibility(View.GONE);
+        }
+        bLyricsCancelJob.setVisibility(loading ? View.VISIBLE : View.GONE);
+
+        // Content widgets.
+        rvLyrics.setVisibility(content ? View.VISIBLE : View.GONE);
+        bLyricsOptions.setVisibility(content ? View.VISIBLE : View.GONE);
+    }
+
+    private void applyLyricsManagerState(LyricsManager.State state, String errorMsg) {
+        switch (state) {
+            case ENQUEUED:
+            case RUNNING:
+            case DOWNLOADING:
+                setLyricsUiState(LyricsUiState.SKELETON);
+                break;
+            case ERROR:
+                if ("409".equals(errorMsg)) {
+                    android.widget.Toast.makeText(this,
+                            R.string.lyrics_no_vocals, android.widget.Toast.LENGTH_SHORT).show();
+                    setLyricsUiState(LyricsUiState.PICKER);
+                } else {
+                    setLyricsUiState(LyricsUiState.ERROR);
+                }
+                break;
+            case CANCELLED:
+                setLyricsUiState(LyricsUiState.PICKER);
+                break;
+            case DONE:
+                // The follow-up onLyricsLoaded promotes state to CONTENT.
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void onLyricsConfirmClicked() {
+        if (SongFolder == null || playbackService == null) return;
+        String hash = SongFolder.getName();
+        String lang = mSelectedLyricsLanguage != null ? mSelectedLyricsLanguage.code : null;
+        // Reprocess mode wipes the server JSON first so the new POST is not
+        // rejected with 409 for "already exists".
+        if (lyricsReprocessMode) {
+            mLyricsMgr.deleteRemote(hash);
+            mLoadedLyrics = null;
+            mLyricsLinesAdapter.setSegments(null);
+        }
+        lyricsReprocessMode = false;
+        mLyricsMgr.startJob(hash, SongFolder, lang);
+    }
+
+    private void onLyricsPickerCancelClicked() {
+        // Only visible when reprocess is in progress and we still have the previous
+        // lyrics loaded. Fall back to the picker if the earlier JSON is missing.
+        lyricsReprocessMode = false;
+        if (mLoadedLyrics != null) setLyricsUiState(LyricsUiState.CONTENT);
+        else                       setLyricsUiState(LyricsUiState.PICKER);
+    }
+
+    private void onLyricsReprocessRequested() {
+        lyricsReprocessMode = true;
+        setLyricsUiState(LyricsUiState.PICKER);
+    }
+
+    private void showCancelJobDialog() {
+        View v = getLayoutInflater().inflate(R.layout.delete_alert_dialog, null, false);
+        ((android.widget.ImageView) v.findViewById(R.id.iv_alertDialog_ic))
+                .setImageResource(R.drawable.ic_warning);
+        ((android.widget.TextView) v.findViewById(R.id.tv_alertDialog_text))
+                .setText(R.string.lyrics_cancel_dialog_title);
+        com.google.android.material.button.MaterialButton bNo  = v.findViewById(R.id.b_no);
+        com.google.android.material.button.MaterialButton bYes = v.findViewById(R.id.b_yes);
+        bNo.setText(R.string.lyrics_dialog_no);
+        bYes.setText(R.string.lyrics_dialog_yes);
+        androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(
+                this, R.style.Theme_Fision_BlurDialog)
+                .setView(v).create();
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+        applyActivityBlur();
+        dlg.setOnDismissListener(d -> removeActivityBlur());
+        bNo.setOnClickListener(x -> dlg.dismiss());
+        bYes.setOnClickListener(x -> {
+            dlg.dismiss();
+            mLyricsMgr.cancelJob();
+        });
+        dlg.show();
+    }
+
+    private void openLanguagePickerDialog() {
+        View v = getLayoutInflater().inflate(R.layout.lyrics_language_picker_dialog, null, false);
+        androidx.recyclerview.widget.RecyclerView rv = v.findViewById(R.id.rv_langPicker);
+        rv.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        String selected = mSelectedLyricsLanguage != null ? mSelectedLyricsLanguage.code : null;
+        androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(
+                this, R.style.Theme_Fision_BlurDialog)
+                .setView(v).create();
+        LyricsLanguageAdapter adapter = new LyricsLanguageAdapter(selected, lang -> {
+            mSelectedLyricsLanguage = lang;
+            refreshLyricsCardFlag();
+            dlg.dismiss();
+        });
+        rv.setAdapter(adapter);
+        // Preselect the current one visually + scroll into view.
+        int currentIdx = 0;
+        for (int i = 0; i < LyricsLanguage.LANGUAGES.length; i++) {
+            String c = LyricsLanguage.LANGUAGES[i].code;
+            if ((c == null && selected == null) || (c != null && c.equals(selected))) {
+                currentIdx = i; break;
+            }
+        }
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+        applyActivityBlur();
+        dlg.setOnDismissListener(d -> removeActivityBlur());
+        dlg.show();
+        rv.scrollToPosition(currentIdx);
+    }
+
+    private void refreshLyricsCardFlag() {
+        if (ivLyricsFlag == null || tvLyricsCardSubtitle == null) return;
+        if (mSelectedLyricsLanguage == null) mSelectedLyricsLanguage = LyricsLanguage.LANGUAGES[0];
+        ivLyricsFlag.setImageResource(mSelectedLyricsLanguage.flagRes);
+        tvLyricsCardSubtitle.setText(mSelectedLyricsLanguage.labelRes);
+        // Auto uses the square artcover asset — keep it inside with margin so it
+        // doesn't stretch to the 3:2 flag container.
+        if (mSelectedLyricsLanguage.isAuto()) {
+            int pad = (int) (5 * getResources().getDisplayMetrics().density);
+            ivLyricsFlag.setPadding(pad, pad, pad, pad);
+            ivLyricsFlag.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        } else {
+            ivLyricsFlag.setPadding(0, 0, 0, 0);
+            ivLyricsFlag.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
+        }
+    }
+
+    /** Called from the playback timer to move the active line highlight and
+     *  scroll it towards the vertical centre of the recycler. Cheap linear
+     *  advance keyed off the previous index so the average update is O(1). */
+    private void updateLyricsHighlight(int uiPosMs) {
+        if (!isLyricsViewShown || mLyricsUiState != LyricsUiState.CONTENT) return;
+        if (mLoadedLyrics == null || mLoadedLyrics.segments == null) return;
+        java.util.List<Lyrics.Segment> segs = mLoadedLyrics.segments;
+        double posSec = uiPosMs / 1000.0;
+        int idx = mLyricsActiveIdx;
+        // Rewind if seek went backwards.
+        while (idx >= 0 && idx < segs.size() && segs.get(idx).start > posSec) idx--;
+        // Advance while the next line has already started.
+        while (idx + 1 < segs.size() && segs.get(idx + 1).start <= posSec) idx++;
+        // Clamp to -1 while before the first line so nothing is highlighted.
+        if (idx < 0 || segs.get(idx).end < posSec - 2.0) {
+            if (mLyricsActiveIdx != -1) {
+                mLyricsActiveIdx = -1;
+                mLyricsLinesAdapter.setActiveIndex(-1);
+            }
+            return;
+        }
+        if (idx == mLyricsActiveIdx) return;
+        mLyricsActiveIdx = idx;
+        mLyricsLinesAdapter.setActiveIndex(idx);
+        // Center the active line in the viewport.
+        androidx.recyclerview.widget.LinearLayoutManager lm =
+                (androidx.recyclerview.widget.LinearLayoutManager) rvLyrics.getLayoutManager();
+        if (lm != null) {
+            int halfH = rvLyrics.getHeight() / 2 - 40;
+            lm.scrollToPositionWithOffset(idx, Math.max(0, halfH));
+        }
+    }
+
+    private void releaseLyrics() {
+        if (mLyricsMgr != null) mLyricsMgr.release();
+        mLoadedLyrics = null;
+        mLyricsActiveIdx = -1;
+        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setSegments(null);
+    }
+
+    private void resetLyricsForNewSong() {
+        // Song change wipes the loaded JSON reference; hasLocal() will re-probe
+        // on the next open. Any polling job for the previous hash is cancelled
+        // so its DONE callback does not overwrite the new state.
+        releaseLyrics();
+        if (mLyricsMgr != null) {
+            mLyricsMgr.setListener(new LyricsManager.Listener() {
+                @Override public void onLyricsStateChanged(LyricsManager.State state, String errorMsg) {
+                    applyLyricsManagerState(state, errorMsg);
+                }
+                @Override public void onLyricsLoaded(Lyrics lyrics) {
+                    mLoadedLyrics = lyrics;
+                    if (mLyricsLinesAdapter != null) {
+                        mLyricsLinesAdapter.setSegments(lyrics != null ? lyrics.segments : null);
+                    }
+                    mLyricsActiveIdx = -1;
+                    setLyricsUiState(LyricsUiState.CONTENT);
+                }
+            });
+        }
+        mSelectedLyricsLanguage = LyricsLanguage.LANGUAGES[0];
+        refreshLyricsCardFlag();
+        // If the overlay is still open, refresh in place with the new song's
+        // state — pick up a cached lyrics.json if it exists, otherwise land
+        // on the picker.
+        if (isLyricsViewShown && lyricsRoot != null) {
+            refreshLyricsViewForCurrentSong();
+        }
+    }
 }

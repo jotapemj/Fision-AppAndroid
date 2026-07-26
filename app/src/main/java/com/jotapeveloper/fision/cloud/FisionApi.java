@@ -104,4 +104,20 @@ public interface FisionApi {
 
     @DELETE("library/{h}")
     Call<Map<String, Object>> deleteLibrary(@Path("h") String hash);
+
+    /** Opt-in lyrics transcription (Whisper). Server 409 means vocals.flac
+     *  is not ready yet or another lyrics job is already active for this hash. */
+    @POST("library/{h}/lyrics")
+    Call<JobSubmitResponse> submitLyrics(@Path("h") String hash,
+                                         @Body LyricsRequest body);
+
+    /** Downloads lyrics.json for a hash. 404 when it was never generated. */
+    @Streaming
+    @GET("library/{h}/lyrics")
+    Call<ResponseBody> downloadLyrics(@Path("h") String hash);
+
+    /** Removes the server-side lyrics.json so a new job can be launched
+     *  in a different language. */
+    @DELETE("library/{h}/lyrics")
+    Call<Map<String, Object>> deleteLyrics(@Path("h") String hash);
 }

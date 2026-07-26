@@ -26,4 +26,11 @@
 
     <!-- Donation card accent -->
     <color name="donate_amber">#FFB300</color>
+
+    <!-- Lyrics -->
+    <color name="lyrics_cancel_red">#8B1E1E</color>
+    <color name="lyrics_skeleton_base">#2E2E2E</color>
+    <color name="lyrics_skeleton_shimmer">#5A5A5A</color>
+    <color name="lyrics_line_dim">#8AFFFFFF</color>
+    <color name="lyrics_flag_stroke">#33FFFFFF</color>
 </resources>

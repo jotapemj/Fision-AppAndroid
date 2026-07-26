@@ -379,4 +379,48 @@ HTTP client and server API bindings.]]></string>
     <string name="cloud_cancel_queue">Cancel (queue)</string>
     <string name="cloud_cancel_queue_confirm">Remove this song from the queue?</string>
 
+    <!-- Lyrics feature (opt-in transcription via server Whisper) -->
+    <string name="lyrics_button_description">Show lyrics</string>
+    <string name="lyrics_title_process">Process lyrics</string>
+    <string name="lyrics_card_title">Lyrics language</string>
+    <string name="lyrics_card_subtitle_auto">Auto</string>
+    <string name="lyrics_confirm">Confirm</string>
+    <string name="lyrics_cancel">Cancel</string>
+    <string name="lyrics_processing">Processing lyrics</string>
+    <string name="lyrics_error">Couldn\'t process lyrics</string>
+    <string name="lyrics_no_vocals">Vocals not ready yet</string>
+    <string name="lyrics_reprocess">Reprocess</string>
+    <string name="lyrics_options_title">Options</string>
+    <string name="lyrics_cancel_dialog_title">Cancel lyrics process?</string>
+    <string name="lyrics_dialog_yes">Confirm</string>
+    <string name="lyrics_dialog_no">No</string>
+    <string name="lyrics_lang_auto">Auto</string>
+    <string name="lyrics_lang_en">English</string>
+    <string name="lyrics_lang_es">Spanish</string>
+    <string name="lyrics_lang_pt">Portuguese</string>
+    <string name="lyrics_lang_ja">Japanese</string>
+    <string name="lyrics_lang_ko">Korean</string>
+    <string name="lyrics_lang_hi">Hindi</string>
+    <string name="lyrics_lang_fr">French</string>
+    <string name="lyrics_lang_zh">Chinese</string>
+    <string name="lyrics_lang_de">German</string>
+    <string name="lyrics_lang_it">Italian</string>
+    <string name="lyrics_lang_ar">Arabic</string>
+    <string name="lyrics_lang_ru">Russian</string>
+    <string name="lyrics_lang_tr">Turkish</string>
+    <string name="lyrics_lang_id">Indonesian</string>
+    <string name="lyrics_lang_pa">Punjabi</string>
+    <string name="lyrics_lang_sv">Swedish</string>
+    <string name="lyrics_lang_nl">Dutch</string>
+    <string name="lyrics_lang_vi">Vietnamese</string>
+    <string name="lyrics_lang_tl">Tagalog</string>
+    <string name="lyrics_lang_el">Greek</string>
+    <string name="lyrics_lang_th">Thai</string>
+    <string name="lyrics_lang_fa">Persian</string>
+    <string name="lyrics_lang_he">Hebrew</string>
+    <string name="lyrics_lang_ta">Tamil</string>
+    <string name="lyrics_lang_ca">Catalan</string>
+    <string name="lyrics_lang_uk">Ukrainian</string>
+    <string name="lyrics_lang_pl">Polish</string>
+
 </resources>

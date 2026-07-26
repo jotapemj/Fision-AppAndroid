@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lyrics overlay is fully transparent. Lines fade in and out only through
+     the recycler's fadingEdge (top + around the overflow button at bottom)
+     against real transparency, not against a black band. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#00000000" />
+</shape>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <FrameLayout
+        android:layout_width="36dp"
+        android:layout_height="24dp"
+        android:background="@drawable/lyrics_flag_bg"
+        android:clipToOutline="true"
+        android:layout_marginEnd="14dp">
+        <ImageView
+            android:id="@+id/iv_langFlag"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            tools:src="@drawable/flag_es"
+            tools:ignore="ContentDescription" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_langLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/AppWhite"
+        android:textSize="15sp"
+        android:fontFamily="@font/yugothic_ui_regular"
+        tools:text="English" />
+
+    <ImageView
+        android:id="@+id/iv_langCheck"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_check_thin"
+        app:tint="@color/colorPrimary"
+        android:visibility="gone"
+        tools:visibility="visible"
+        tools:ignore="ContentDescription" />
+</LinearLayout>

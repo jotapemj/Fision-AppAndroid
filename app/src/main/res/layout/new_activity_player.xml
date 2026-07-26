@@ -165,6 +165,9 @@
                  to bottomLayout, including the chords_container height. -->
             <include layout="@layout/player_3d_view" />
 
+            <!-- Overlaid lyrics view: same coverage as the ITD view above. -->
+            <include layout="@layout/player_lyrics_view" />
+
         </FrameLayout>
 
 
@@ -376,6 +379,19 @@
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
                     app:icon="@drawable/ic_repeat"
+                    app:iconSize="24dp"
+                    app:iconTint="@color/white"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/b_lyrics"
+                    android:contentDescription="@string/lyrics_button_description"
+                    style="@style/Widget.MaterialComponents.Button.IconOnly"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:backgroundTint="@color/black"
+                    android:layout_marginEnd="20dp"
+                    app:icon="@raw/ic_lyrics"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />

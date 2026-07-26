@@ -379,4 +379,48 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="cloud_cancel_queue">Cancelar (cola)</string>
     <string name="cloud_cancel_queue_confirm">¿Quitar esta canción de la cola?</string>
 
+    <!-- Letras -->
+    <string name="lyrics_button_description">Mostrar letra</string>
+    <string name="lyrics_title_process">Procesar letra</string>
+    <string name="lyrics_card_title">Idioma de la letra</string>
+    <string name="lyrics_card_subtitle_auto">Auto</string>
+    <string name="lyrics_confirm">Confirmar</string>
+    <string name="lyrics_cancel">Cancelar</string>
+    <string name="lyrics_processing">Procesando letra</string>
+    <string name="lyrics_error">No se pudo procesar la letra</string>
+    <string name="lyrics_no_vocals">Voces aún no disponibles</string>
+    <string name="lyrics_reprocess">Reprocesar</string>
+    <string name="lyrics_options_title">Opciones</string>
+    <string name="lyrics_cancel_dialog_title">¿Cancelar proceso de letra?</string>
+    <string name="lyrics_dialog_yes">Confirmar</string>
+    <string name="lyrics_dialog_no">No</string>
+    <string name="lyrics_lang_auto">Auto</string>
+    <string name="lyrics_lang_en">Inglés</string>
+    <string name="lyrics_lang_es">Español</string>
+    <string name="lyrics_lang_pt">Portugués</string>
+    <string name="lyrics_lang_ja">Japonés</string>
+    <string name="lyrics_lang_ko">Coreano</string>
+    <string name="lyrics_lang_hi">Hindi</string>
+    <string name="lyrics_lang_fr">Francés</string>
+    <string name="lyrics_lang_zh">Chino</string>
+    <string name="lyrics_lang_de">Alemán</string>
+    <string name="lyrics_lang_it">Italiano</string>
+    <string name="lyrics_lang_ar">Árabe</string>
+    <string name="lyrics_lang_ru">Ruso</string>
+    <string name="lyrics_lang_tr">Turco</string>
+    <string name="lyrics_lang_id">Indonesio</string>
+    <string name="lyrics_lang_pa">Panyabí</string>
+    <string name="lyrics_lang_sv">Sueco</string>
+    <string name="lyrics_lang_nl">Neerlandés</string>
+    <string name="lyrics_lang_vi">Vietnamita</string>
+    <string name="lyrics_lang_tl">Tagalo</string>
+    <string name="lyrics_lang_el">Griego</string>
+    <string name="lyrics_lang_th">Tailandés</string>
+    <string name="lyrics_lang_fa">Persa</string>
+    <string name="lyrics_lang_he">Hebreo</string>
+    <string name="lyrics_lang_ta">Tamil</string>
+    <string name="lyrics_lang_ca">Catalán</string>
+    <string name="lyrics_lang_uk">Ucraniano</string>
+    <string name="lyrics_lang_pl">Polaco</string>
+
 </resources>

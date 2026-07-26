@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Overlay view that sits on top of the chords+stems stack.
+     Visibility toggles from PlayerActivity based on the lyrics button. -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/lyricsRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_lyrics_dark_overlay"
+    android:clickable="true"
+    android:focusable="true"
+    android:visibility="gone"
+    tools:visibility="visible">
+
+    <!-- Shared vertical bounds so the lyrics recycler + skeleton respect the
+         same top/bottom that the picker layout uses, keeping the overlay
+         visually consistent between the two states. -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guide_lyricsContentTop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="100dp" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guide_lyricsContentBottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_end="110dp" />
+
+    <!-- =============  PICKER STATE  ============= -->
+    <TextView
+        android:id="@+id/tv_lyricsPickerTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:layout_marginTop="28dp"
+        android:gravity="center"
+        android:text="@string/lyrics_title_process"
+        android:textColor="@color/AppWhite"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/yugothic_ui_regular"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_lyricsLanguage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="24dp"
+        app:cardBackgroundColor="#1F1F1F"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeColor="#33FFFFFF"
+        app:strokeWidth="1dp"
+        app:rippleColor="@color/colorPrimary"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/tv_lyricsPickerTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp">
+
+            <FrameLayout
+                android:layout_width="42dp"
+                android:layout_height="28dp"
+                android:background="@drawable/lyrics_flag_bg"
+                android:clipToOutline="true"
+                android:layout_marginEnd="14dp">
+                <ImageView
+                    android:id="@+id/iv_lyricsFlag"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_flag_auto"
+                    tools:ignore="ContentDescription" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_lyricsCardTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/lyrics_card_title"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/yugothic_ui_regular" />
+
+                <TextView
+                    android:id="@+id/tv_lyricsCardSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/lyrics_card_subtitle_auto"
+                    android:textColor="#B0B0B0"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/yugothic_ui_regular" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_chevron_right"
+                app:tint="#A0A0A0"
+                tools:ignore="ContentDescription" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Bottom action row: Confirm centered by default. In reprocess mode a
+         small red Cancel button appears above it (see below). -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_lyricsConfirm"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:padding="12dp"
+        android:text="@string/lyrics_confirm"
+        android:textColor="@color/AppWhite"
+        android:backgroundTint="@color/colorPrimary"
+        app:cornerRadius="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_lyricsPickerCancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="@string/lyrics_cancel"
+        android:textColor="@color/AppWhite"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:backgroundTint="@color/lyrics_cancel_red"
+        app:cornerRadius="18dp"
+        app:layout_constraintBottom_toTopOf="@id/b_lyricsConfirm"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible" />
+
+    <!-- =============  SKELETON / PROCESSING STATE  ============= -->
+    <LinearLayout
+        android:id="@+id/ll_lyricsSkeleton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/guide_lyricsContentTop"
+        app:layout_constraintBottom_toTopOf="@id/guide_lyricsContentBottom"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tv_lyricsStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/lyrics_processing"
+            android:textColor="@color/AppWhite"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:layout_marginBottom="20dp" />
+
+        <com.jotapeveloper.fision.LyricsSkeletonView
+            android:id="@+id/lyricsSkeleton"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_lyricsCancelJob"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="@string/lyrics_cancel"
+        android:textColor="@color/AppWhite"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:backgroundTint="@color/lyrics_cancel_red"
+        app:cornerRadius="18dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- =============  LYRICS RECYCLER STATE  ============= -->
+    <!-- Uses FadingEdgeRecyclerView so the top/bottom fades dissolve to real
+         transparency (via DST_OUT) instead of the native fadingEdge which
+         paints over the framebuffer with the opaque window background. -->
+    <com.jotapeveloper.fision.FadingEdgeRecyclerView
+        android:id="@+id/rv_lyrics"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginBottom="10dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="80dp"
+        android:clipToPadding="false"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Overflow options: bottom-right, subtle circular tint for visibility. -->
+    <ImageButton
+        android:id="@+id/b_lyricsOptions"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="20dp"
+        android:layout_marginEnd="20dp"
+        android:padding="9dp"
+        android:background="@drawable/lyrics_overflow_bg"
+        android:src="@drawable/ic_lyrics_overflow"
+        android:contentDescription="@string/lyrics_options_title"
+        android:alpha="0.9"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
