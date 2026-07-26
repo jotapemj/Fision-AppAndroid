@@ -124,6 +124,9 @@ void AudioEngine::setTrack3DPosition(int id, float azimuthRad, float distance, f
 void AudioEngine::setTrack3DOmnipresent(int id, bool o){
     if(id>=0 && id<(int)mTracks.size()) mTracks[id]->set3DOmnipresent(o);
 }
+void AudioEngine::setTrack3DMuted(int id, bool m){
+    if(id>=0 && id<(int)mTracks.size()) mTracks[id]->set3DMuted(m);
+}
 
 int64_t AudioEngine::getOutputLatencyMs() const {
     if (!mStream) return 0;

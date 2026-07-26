@@ -37,6 +37,7 @@ public:
     void  setTrack3DEnabled(int trackId, bool enabled);
     void  setTrack3DPosition(int trackId, float azimuthRad, float distance, float elevationDeg);
     void  setTrack3DOmnipresent(int trackId, bool omni);
+    void  setTrack3DMuted(int trackId, bool muted);
     /** Loads the HRIRs from `assets/<assetPath>` and propagates them to all tracks
      *  (new and existing). Call once at startup. Returns true when loaded. */
     bool  initHrtfFromAssets(AAssetManager* mgr, const char* assetPath);

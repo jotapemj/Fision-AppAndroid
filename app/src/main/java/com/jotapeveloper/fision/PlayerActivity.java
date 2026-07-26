@@ -556,14 +556,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         java.util.List<String> order = playbackService.getStemOrder();
         for (String stem : order) applyStemVolumeToEngine(stem);
 
-        // When this song has 3D mode active, apply it to the engine, lock sliders
-        // and show the ITD view without animation (open into the previous state).
-        if (is3DEnabled) {
-            apply3DEnabled(true);
-            show3DViewNoAnim();
-        } else {
-            refreshB3dTint();
-        }
+        // Reconcile the 3D view + engine + switch state with the value read from
+        // the current song. Handles Activity-open, song-switch and end-of-song
+        // autoplay uniformly — old-song vista state gets cleaned or rebuilt.
+        refresh3DForCurrentSong();
 
         // Refresh progressbar + clock when entering the Activity (useful when arriving
         // from the mini-player with NoAutoplay: the normal timer does not update while
@@ -2039,13 +2035,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         refreshRepeatButtonUi();
         bindPlaylistSwitch();
         applyPlayIcon(false, false);
-        // Wipe any lyrics state from the previous song. If the overlay was open
-        // it will land on the picker for the new song.
+        // Wipe any lyrics state from the previous song. If the overlay was open,
+        // resetLyricsForNewSong triggers refreshLyricsViewForCurrentSong so the
+        // new song's cached lyrics.json (if any) resolves to CONTENT; otherwise
+        // it lands on the picker.
         resetLyricsForNewSong();
-        if (isLyricsViewShown) {
-            // Force it back to the picker so the new song's flow starts clean.
-            setLyricsUiState(LyricsUiState.PICKER);
-        }
 
         // 8) Pending autoplay: updateUI applies saved volumes before pressing play
         autoplayPending = true;
@@ -3638,6 +3632,79 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, 400L);
     }
 
+    /** Symmetric to show3DViewNoAnim. Closes the ITD overlay instantly and
+     *  restores the stems + chords stack. Used when the new song has 3D off but
+     *  the previous one had the vista open. */
+    private void hide3DViewNoAnim() {
+        ensure3DRefs();
+        if (!is3DViewShown) return;
+        is3DViewShown = false;
+        if (danceActive) stopDance();
+        if (view3DRoot != null) {
+            view3DRoot.animate().cancel();
+            view3DRoot.setVisibility(View.GONE);
+        }
+        View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
+        if (stemsStack != null) {
+            stemsStack.animate().cancel();
+            stemsStack.setAlpha(1f);
+            stemsStack.setTranslationY(0f);
+            stemsStack.setVisibility(View.VISIBLE);
+        }
+        View chordsContainer = findViewById(R.id.chords_container);
+        if (chordsContainer != null) {
+            chordsContainer.setVisibility(chordsActive ? View.VISIBLE : View.GONE);
+        }
+        if (b3DReset != null) {
+            b3DReset.animate().cancel();
+            b3DReset.setAlpha(0f);
+            b3DReset.setVisibility(View.GONE);
+        }
+        selected3DStem = null;
+    }
+
+    /** Reconciles the 3D view, engine and switch state with the value freshly
+     *  read from the current song's Room row. Called from updateUI on Activity
+     *  open, song switch and end-of-song autoplay. Covers the four transitions
+     *  between the previous and current is3DEnabled flags without duplicating
+     *  logic across callers. */
+    private void refresh3DForCurrentSong() {
+        ensure3DRefs();
+        boolean want = is3DEnabled;
+
+        // Silent sync of the switch to avoid re-triggering apply3DEnabled below.
+        if (sw3DEnabled != null && sw3DEnabled.isChecked() != want) {
+            sw3DEnabled.setOnCheckedChangeListener(null);
+            sw3DEnabled.setChecked(want);
+            sw3DEnabled.setOnCheckedChangeListener((btn, checked) -> apply3DEnabled(checked));
+        }
+
+        if (want) {
+            apply3DEnabled(true);
+            if (is3DViewShown) {
+                // Vista already open from previous song — rebuild icons for the
+                // new stem catalog and re-evaluate reset button visibility.
+                if (danceActive) stopDance();
+                selected3DStem = null;
+                build3DIcons();
+                fl3DStemContainer.postDelayed(this::animateStemIconsIn, 100L);
+                fl3DStemContainer.postDelayed(() -> {
+                    if (has3DModifications()) showResetButton();
+                    else hideResetButton();
+                }, 400L);
+            } else {
+                show3DViewNoAnim();
+            }
+        } else {
+            if (is3DViewShown) hide3DViewNoAnim();
+            // Sliders back to normal (previous song may have locked them).
+            if (stemsAdapter != null) stemsAdapter.setEditingLocked(false);
+            // Lights-off overlay reflects the off state.
+            if (v3DDarkOverlay != null) v3DDarkOverlay.setAlpha(0.72f);
+            refreshB3dTint();
+        }
+    }
+
     /** Crossfade + slide + zoom toward the 3D view. The ITD view covers chords and stems
      *  at the same time (shared central FrameLayout parent) — no ceiling jump when hiding
      *  chords. The whole stack (chords + stems) does fade+slide as a block so the exit
@@ -3900,6 +3967,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (enabled) {
                 float[] pos = stem3DPositions.get(stem);
                 if (pos != null) apply3DPositionToEngine(stem, pos[0], pos[1]);
+                // Push the saved 3D mute flag so muted stems stay silent as soon
+                // as the pipeline turns on (before the user interacts).
+                StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
+                engine.setTrack3DMuted(trackId, s.mute3D);
             } else {
                 // On disable, re-apply the normal volume/pan (saved in Room)
                 applyStemVolumeToEngine(stem);
@@ -4113,7 +4184,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             String stem = order.get(i);
             StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
             if (s.omnipresent) return true;
-            if (s.volume == 0) return true;
+            if (s.mute3D) return true;
             if (Math.abs(s.elevationDeg) > 0.5f) return true;
             if (!Float.isNaN(s.pos3DX) && !Float.isNaN(s.pos3DY)) {
                 float t = (N > 1) ? (float) i / (N - 1) : 0.5f;
@@ -4178,9 +4249,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
             ss.elevationDeg = 0f;
             ss.omnipresent  = false;
+            ss.mute3D       = false;
             ss.pos3DX = nxT;
             ss.pos3DY = nyT;
             applyOmnipresentTint(iv, false);
+            iv.setAlpha(StemListAdapter.ALPHA_ACTIVE);
+            Integer trackId = playbackService != null ? playbackService.getStemTrack(stem) : null;
+            if (trackId != null && engine != null) engine.setTrack3DMuted(trackId, false);
 
             android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(0f, 1f);
             va.setDuration(700L);
@@ -4513,35 +4588,26 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 .start();
     }
 
-    /** Toggles mute of the stem in 3D mode. Muted = vol=0 → the track plays silent.
-     *  Stores the previous volume so it can be restored with another long press. */
+    /** Toggles mute of the stem in 3D mode via the independent m3D flag. Does
+     *  not touch the volume slider (the slider stays at whatever value it had
+     *  outside 3D). The engine's Track applies the flag inside apply3D /
+     *  apply3D_Hrtf; the normal setVolume path is unused here. */
     private void toggle3DStemMute(String stem, View icon) {
         StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
-        boolean nowMuted;
-        if (s.volume > 0) {
-            stemLastVol.put(stem, s.volume);
-            s.volume = 0;
-            nowMuted = true;
-        } else {
-            Integer prev = stemLastVol.get(stem);
-            s.volume = (prev != null && prev > 0) ? prev : 75;
-            nowMuted = false;
-        }
+        s.mute3D = !s.mute3D;
         persistStemSettings();
-        // Apply to the engine: use setVolume directly (3D mode respects 0 as silence).
         Integer trackId = playbackService != null ? playbackService.getStemTrack(stem) : null;
         if (trackId != null && engine != null) {
-            float g = s.volume * 0.01f;
-            engine.setVolume(trackId, g, g);
+            engine.setTrack3DMuted(trackId, s.mute3D);
         }
-        icon.setAlpha(nowMuted ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
+        icon.setAlpha(s.mute3D ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
         showResetButton();
     }
 
-    /** True if the stem volume is 0 (muted). */
+    /** True if the stem is muted inside 3D mode. Decoupled from the slider. */
     private boolean is3DStemMuted(String stem) {
         StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
-        return s.volume == 0;
+        return s.mute3D;
     }
 
     /** Confirmation dialog for resetting stems to default. */

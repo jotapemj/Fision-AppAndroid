@@ -12,6 +12,9 @@ public class StemSetting {
     public float elevationDeg = 0f;
     /** Omnipresent mode: stem playing at the center with no specific direction. */
     public boolean omnipresent = false;
+    /** 3D mute flag, independent from the volume slider. Toggled by long-press
+     *  on the stem icon inside the 3D view. */
+    public boolean mute3D = false;
 
     public StemSetting() {}
     public StemSetting(int volume, float pan) {

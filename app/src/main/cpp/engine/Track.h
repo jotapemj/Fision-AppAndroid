@@ -19,7 +19,9 @@ public:
     // === 3D mode (ITD + ILD + distance) ===
     // When active, mVolL/R + the user pan are ignored; the spatial position
     // (azimuth + distance) of the stem around the head drives volume and the
-    // interaural delay instead.
+    // interaural delay instead. A fixed safe base gain is applied so mixing all
+    // stems at once does not exceed a comfortable listening level regardless of
+    // the sliders' state outside 3D.
     void set3DEnabled(bool e);
     // azimuthRad: 0=front, +pi/2=right, -pi/2=left, +/-pi=behind.
     // distance: meters (approx); 1.0 = base distance. Clamped to [0.1, +inf).
@@ -29,6 +31,9 @@ public:
     // (azimuth=0, distance=1 internally). Still routed through frontal HRTF to
     // preserve color, but without laterality.
     void set3DOmnipresent(bool o);
+    // Per-stem mute inside 3D mode (independent from the user sliders). When
+    // muted, apply3D / apply3D_Hrtf output silence for this stem.
+    void set3DMuted(bool m);
     // Engine-controlled "duck" multiplier (independent of the user volume).
     // Output_final = sample * mVolL/R * mEngineDuckMul. Atomic, lock-free.
     void  setEngineDuckMul(float m){ mEngineDuckMul.store(m, std::memory_order_release); }
@@ -100,6 +105,9 @@ private:
     std::atomic<float> m3DDistance{1.f};   // approx meters
     std::atomic<float> m3DElevation{0.f};  // degrees (-40..+90)
     std::atomic<bool>  m3DOmnipresent{false};
+    // Independent 3D mute: not coupled to mVolL/R, so muting a stem in 3D does
+    // not change the value shown by its normal slider outside 3D mode.
+    std::atomic<bool>  m3DMuted{false};
     // Circular per-channel delay lines (fixed, generous size). 96 samples cover
     // >= 2ms at 48kHz — MORE than enough for the maximum ITD (~660us / ~32 samples).
     static constexpr int DELAY_BUF_SIZE = 128;

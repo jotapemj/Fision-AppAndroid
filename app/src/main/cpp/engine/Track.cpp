@@ -66,6 +66,10 @@ void Track::set3DOmnipresent(bool o){
     m3DOmnipresent.store(o, std::memory_order_release);
 }
 
+void Track::set3DMuted(bool m){
+    m3DMuted.store(m, std::memory_order_release);
+}
+
 void Track::setHrtfBank(const HrtfBank* b){
     mHrtfBank = b;
     if (b && b->isLoaded()) {
@@ -284,13 +288,13 @@ void Track::apply3D(float* buf, int frames, float engineMul){
     float distGain = std::min(MAX_DIST_GAIN, 1.f / d);
     gL *= distGain * engineMul;
     gR *= distGain * engineMul;
-    // User volume respected: average of mVolL/R (the user pan is ignored in 3D;
-    // only its magnitude is used to allow muting/attenuating the stem). Without
-    // this, setVolume(id, 0, 0) from Java did not silence the stem in 3D mode.
-    float userVol = 0.5f * (mVolL.load(std::memory_order_acquire)
-                          + mVolR.load(std::memory_order_acquire));
-    gL *= userVol;
-    gR *= userVol;
+    // Fixed safe base gain so 3D mode is decoupled from the user sliders.
+    // BASE_GAIN_3D matches the default slider (75%) to keep a comfortable
+    // reference level across the mix even when many stems are present.
+    static constexpr float BASE_GAIN_3D = 0.75f;
+    float base = m3DMuted.load(std::memory_order_acquire) ? 0.f : BASE_GAIN_3D;
+    gL *= base;
+    gR *= base;
 
     const int N = (int)mDelayBufL.size();
     for (int i = 0; i < frames; ++i) {
@@ -324,7 +328,7 @@ void Track::apply3D(float* buf, int frames, float engineMul){
 // between the 2 neighboring azimuths of HrtfBank. When the position changes, a
 // crossfade of mHrtfCrossTotal samples between the previous and the new HRIR
 // avoids clicks (otherwise each position change would inject an impulse).
-// Distance + engineMul + userVol are applied at the end, same as apply3D.
+// Distance + engineMul + BASE_GAIN_3D are applied at the end, same as apply3D.
 // Returns true when HRTF is available; false otherwise (caller falls back to apply3D).
 // ------------------------------------------------------------
 bool Track::apply3D_Hrtf(float* buf, int frames, float engineMul){
@@ -338,9 +342,10 @@ bool Track::apply3D_Hrtf(float* buf, int frames, float engineMul){
     float d      = omni ? 1.f : std::max(0.5f, m3DDistance.load(std::memory_order_acquire));
     float elev   = omni ? 0.f : m3DElevation.load(std::memory_order_acquire);
     float distGain = std::min(2.f, 1.f / d);
-    float userVol  = 0.5f * (mVolL.load(std::memory_order_acquire)
-                           + mVolR.load(std::memory_order_acquire));
-    float overall  = distGain * engineMul * userVol;
+    // Independent 3D gain: user sliders ignored, mute goes through m3DMuted.
+    static constexpr float BASE_GAIN_3D = 0.75f;
+    float base     = m3DMuted.load(std::memory_order_acquire) ? 0.f : BASE_GAIN_3D;
+    float overall  = distGain * engineMul * base;
 
     // Change threshold: when azimuth OR elev moved more than its threshold,
     // resample the new HRIR and start the crossfade. Otherwise the HRIR would be

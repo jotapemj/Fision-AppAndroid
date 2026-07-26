@@ -61,6 +61,11 @@ public class AudioEngine {
     public void setTrack3DOmnipresent(int trackId, boolean omni) {
         nativeSetTrack3DOmnipresent(handle, trackId, omni);
     }
+    /** Per-stem mute inside 3D mode. Independent from the user slider so muting
+     *  in 3D does not touch the slider's stored value outside 3D. */
+    public void setTrack3DMuted(int trackId, boolean muted) {
+        nativeSetTrack3DMuted(handle, trackId, muted);
+    }
 
     /** Loads the HRIR bank from `assets/<assetPath>`. Must be called before
      *  addTrack so the first song already uses HRTF. Returns true when loaded. */
@@ -100,6 +105,7 @@ public class AudioEngine {
     private static native void    nativeSetTrack3DEnabled(long h, int id, boolean enabled);
     private static native void    nativeSetTrack3DPosition(long h, int id, float azimuthRad, float distance, float elevationDeg);
     private static native void    nativeSetTrack3DOmnipresent(long h, int id, boolean omni);
+    private static native void    nativeSetTrack3DMuted(long h, int id, boolean muted);
     private static native boolean nativeInitHrtf(long h, android.content.res.AssetManager mgr, String assetPath);
 }
 
