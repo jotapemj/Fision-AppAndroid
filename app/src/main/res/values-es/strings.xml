@@ -66,6 +66,7 @@
     <!--- playlist continuation -->
     <string name="drawer_switch_playlist">Reproducir la siguiente al terminar</string>
     <string name="drawer_switch_nebula">Fondo animado</string>
+    <string name="drawer_switch_nebula_haptics">Vibración al ritmo</string>
     <string name="b_repeat_description">Modo repetición</string>
 
     <!--- sound on downbeat -->
@@ -188,6 +189,8 @@
     <string name="tempo_display_bpm">%1$d BPM</string>
     <string name="tempo_display_mult">%1$.2f×</string>
     <string name="tempo_local_hud_html">Esta parte de la canción va a &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">Restaurar tempo original</string>
+    <string name="pitch_restore_desc">Restaurar tono original</string>
     <string name="pitch_display_zero">0</string>
     <string name="pitch_display_signed">%1$+d</string>
 

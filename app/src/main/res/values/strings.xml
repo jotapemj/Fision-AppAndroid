@@ -65,6 +65,7 @@
     <!--- playlist continuation -->
     <string name="drawer_switch_playlist">Play next song when this one ends</string>
     <string name="drawer_switch_nebula">Animated background</string>
+    <string name="drawer_switch_nebula_haptics">Haptic beat</string>
     <string name="b_repeat_description">Repeat mode</string>
 
     <!--- sound on downbeat -->
@@ -184,6 +185,8 @@
     <string name="tempo_display_bpm">%1$d BPM</string>
     <string name="tempo_display_mult">%1$.2f×</string>
     <string name="tempo_local_hud_html">This section plays at &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">Restore original tempo</string>
+    <string name="pitch_restore_desc">Restore original pitch</string>
 
     <!--- pitch -->
     <string name="tv_pitch_title">Transposition</string>

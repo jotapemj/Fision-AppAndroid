@@ -57,10 +57,11 @@ public class RulerPickerView extends View {
     private static final long SNAP_DURATION_MS = 180L;
 
     // Drawing paints
-    private final Paint mTickMinorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint mTickMajorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint mTickLabelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint mMarkerPaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mTickMinorPaint     = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mTickMajorPaint     = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mTickReferencePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mTickLabelPaint     = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mMarkerPaint        = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     // Layout in pixels — cached from dp on init
     private float mSpacingPx;      // horizontal distance between consecutive ticks (one per step)
@@ -129,6 +130,12 @@ public class RulerPickerView extends View {
         mTickMajorPaint.setStrokeWidth(1.5f * density);
         mTickMajorPaint.setStrokeCap(Paint.Cap.ROUND);
 
+        // Reference tick: same height as the major tick, brighter colour and
+        // wider stroke so it stands out from the regular grid at a glance.
+        mTickReferencePaint.setColor(primary);
+        mTickReferencePaint.setStrokeWidth(3f * density);
+        mTickReferencePaint.setStrokeCap(Paint.Cap.ROUND);
+
         mTickLabelPaint.setColor(white85);
         mTickLabelPaint.setTextSize(mTickLabelSize);
         mTickLabelPaint.setTextAlign(Paint.Align.CENTER);
@@ -190,17 +197,25 @@ public class RulerPickerView extends View {
      *  release). Emits an intermediate haptic if the animation crosses the
      *  neutral value, and a final onChanged when it settles. */
     private void animateSnap() {
+        animateToValue(snapToStep(mScrollValue), SNAP_DURATION_MS);
+    }
+
+    /** Publicly-driven animation towards an arbitrary target value (used by
+     *  the "restore" buttons on the pitch / tempo sheets). Emits haptic on
+     *  every tick crossing and fires the final onChanged when it settles. */
+    public void animateToValue(int target, long durationMs) {
         cancelSnapAnimation();
-        final int target = snapToStep(mScrollValue);
+        final int clampedTarget = snapToStep(target);
         final float from = mScrollValue;
-        if (Math.abs(from - target) < 0.01f) {
-            mScrollValue = target;
+        if (Math.abs(from - clampedTarget) < 0.01f) {
+            mScrollValue = clampedTarget;
             invalidate();
-            emitFinalSnap(target);
+            emitFinalSnap(clampedTarget);
             return;
         }
-        mSnapAnimator = ValueAnimator.ofFloat(from, target);
-        mSnapAnimator.setDuration(SNAP_DURATION_MS);
+        mLastHapticValue = snapToStep(from);
+        mSnapAnimator = ValueAnimator.ofFloat(from, clampedTarget);
+        mSnapAnimator.setDuration(Math.max(60L, durationMs));
         mSnapAnimator.setInterpolator(new DecelerateInterpolator(1.6f));
         mSnapAnimator.addUpdateListener(a -> {
             mScrollValue = (float) a.getAnimatedValue();
@@ -208,15 +223,19 @@ public class RulerPickerView extends View {
             if (nowValue != mLastHapticValue) {
                 emitHapticForValue(nowValue);
                 mLastHapticValue = nowValue;
+                // Match the drag behaviour: the audio engine sees a continuous
+                // stream of tempo/pitch updates so playback slides towards the
+                // target instead of jumping at the end of the animation.
+                if (mListener != null) mListener.onChanged(nowValue, /*fromUser=*/true);
             }
             invalidate();
         });
         mSnapAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(android.animation.Animator anim) {
                 if (mSnapAnimator != anim) return;
-                mScrollValue = target;
+                mScrollValue = clampedTarget;
                 invalidate();
-                emitFinalSnap(target);
+                emitFinalSnap(clampedTarget);
             }
         });
         mSnapAnimator.start();
@@ -306,8 +325,12 @@ public class RulerPickerView extends View {
             // Major tick every ten values (independent of mStep), so labels
             // land on the natural round numbers (0, 10, 20, ...).
             boolean major = (v % 10) == 0;
-            Paint p = major ? mTickMajorPaint : mTickMinorPaint;
-            float h = major ? mTickMajorH : mTickMinorH;
+            boolean reference = (v == mNeutralValue);
+            Paint p = reference ? mTickReferencePaint
+                                : (major ? mTickMajorPaint : mTickMinorPaint);
+            // Reference tick shares the major height so the row keeps a clean
+            // top line — it stands out via colour + thickness instead.
+            float h = (reference || major) ? mTickMajorH : mTickMinorH;
             float top = tickBottom - h;
             canvas.drawLine(x, top, x, tickBottom, p);
             if (major) {

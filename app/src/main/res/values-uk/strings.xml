@@ -57,6 +57,7 @@
 
     <string name="drawer_switch_playlist">Відтворити наступну після закінчення</string>
     <string name="drawer_switch_nebula">Анімований фон</string>
+    <string name="drawer_switch_nebula_haptics">Вібрація у ритмі</string>
     <string name="b_repeat_description">Режим повтору</string>
     <string name="drawer_switch_downbeat">Звук на сильній долі</string>
     <string name="drawer_item_downbeat_sound">Звук</string>
@@ -169,6 +170,8 @@
     <string name="tempo_display_bpm">%1$d BPM</string>
     <string name="tempo_display_mult">%1$.2f×</string>
     <string name="tempo_local_hud_html">Ця частина пісні йде на &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">Відновити початковий темп</string>
+    <string name="pitch_restore_desc">Відновити початкову висоту</string>
     <string name="pitch_display_zero">0</string>
     <string name="pitch_display_signed">%1$+d</string>
     <string name="settings_title">Налаштування</string>

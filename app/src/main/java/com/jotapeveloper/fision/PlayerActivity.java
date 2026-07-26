@@ -130,6 +130,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private boolean            nebulaEnabled         = false;
     private NebulaBackgroundView nebulaView;
 
+    // Sub-option: pulse the phone motor on each beat while nebula is on.
+    private static final String PREF_NEBULA_HAPTICS_ENABLED = "nebula_haptics_enabled";
+    private boolean            nebulaHapticsEnabled  = false;
+    // Frequency cap: never fire more than ~140 pulses per minute (≈ every 428ms)
+    // to protect the linear vibration motor on fast songs.
+    private static final long  MIN_BEAT_HAPTIC_INTERVAL_MS = 428L;
+    /** Extra latency subtracted from the source position to align beat-driven
+     *  visuals + haptics with the audio the user actually hears. Compensates
+     *  the SoundTouch WSOLA processing latency (not reported by Oboe) plus
+     *  the systematic early marking of beat_this. Calibrated by ear on the
+     *  primary test device — promote to a user-facing slider once it is
+     *  clear that a single constant does not cover every headphone / BT chain. */
+    private static final long  BEAT_SYNC_OFFSET_MS = 130L;
+    private long               mLastBeatHapticMs     = 0L;
+    private android.os.Vibrator mBeatVibrator;
+
     // Per-song preferences (drawer): 0.5x metronome variant + sound on downbeat
     private com.google.android.material.switchmaterial.SwitchMaterial sw_drawer_downbeat;
     private View drawerDownbeatSoundItem;
@@ -358,6 +374,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         downbeatSoundEnabled       = globalPrefs.getBoolean(PREF_DOWNBEAT_ENABLED, false);
         downbeatSoundType          = globalPrefs.getInt    (PREF_DOWNBEAT_TYPE, 0);
         nebulaEnabled              = globalPrefs.getBoolean(PREF_NEBULA_ENABLED, false);
+        nebulaHapticsEnabled       = globalPrefs.getBoolean(PREF_NEBULA_HAPTICS_ENABLED, false);
 
         initializeUIComponents();
         readChordsFile(SongPath);
@@ -641,7 +658,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void setupTimers(){
         UpdateProgressBar = new Timer();
-        UpdateProgressBar.scheduleAtFixedRate(new UpdateProgressBarTask(), 500,100);
+        // 30 ms period keeps the beat-crossing detection tight enough that the
+        // nebula pulse and its optional haptic feel locked to the audio (jitter
+        // within musical perception threshold ≈ 30 ms). Cost is negligible: the
+        // tick reads the engine position, compares against beatCells, and only
+        // scrolls the chords recycler when the beat index actually changes.
+        UpdateProgressBar.scheduleAtFixedRate(new UpdateProgressBarTask(), 500, 30);
     }
     private void setupRecyclerViews() {
         // Dynamic: the list reflects the stems really loaded in the engine
@@ -1139,21 +1161,87 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         SetControlsEnabled(false);
     }
 
-    /** Binds the drawer switch that toggles the nebula background. Persists the
-     *  choice as a global preference and fades the view in/out. */
+    /** Binds the drawer switch that toggles the nebula background and its
+     *  child "haptic beat" switch. Persists both choices as global prefs and
+     *  keeps the child row visible only while the parent is on. */
     private void bindNebulaSwitch() {
         com.google.android.material.switchmaterial.SwitchMaterial sw =
                 findViewById(R.id.sw_drawer_nebula);
+        View rowHaptics = findViewById(R.id.row_drawer_nebula_haptics);
+        com.google.android.material.switchmaterial.SwitchMaterial swHaptics =
+                findViewById(R.id.sw_drawer_nebula_haptics);
         if (sw == null) return;
         sw.setOnCheckedChangeListener(null);
         sw.setChecked(nebulaEnabled);
+        if (rowHaptics != null) rowHaptics.setVisibility(nebulaEnabled ? View.VISIBLE : View.GONE);
         sw.setOnCheckedChangeListener((btn, isChecked) -> {
             nebulaEnabled = isChecked;
             PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
                     .edit().putBoolean(PREF_NEBULA_ENABLED, isChecked).apply();
             if (nebulaView != null) nebulaView.setNebulaEnabled(isChecked, true);
             if (isChecked) refreshNebulaPalette();
+            if (rowHaptics != null) rowHaptics.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            // Disabling the parent implicitly disables the haptics too so the
+            // motor cannot keep firing without the visual layer running.
+            if (!isChecked && nebulaHapticsEnabled) {
+                nebulaHapticsEnabled = false;
+                PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
+                        .edit().putBoolean(PREF_NEBULA_HAPTICS_ENABLED, false).apply();
+                if (swHaptics != null) {
+                    swHaptics.setOnCheckedChangeListener(null);
+                    swHaptics.setChecked(false);
+                    bindNebulaHapticsListener(swHaptics);
+                }
+            }
         });
+        if (swHaptics != null) {
+            swHaptics.setOnCheckedChangeListener(null);
+            swHaptics.setChecked(nebulaHapticsEnabled);
+            bindNebulaHapticsListener(swHaptics);
+        }
+    }
+
+    private void bindNebulaHapticsListener(
+            com.google.android.material.switchmaterial.SwitchMaterial swHaptics) {
+        swHaptics.setOnCheckedChangeListener((btn, isChecked) -> {
+            nebulaHapticsEnabled = isChecked;
+            PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
+                    .edit().putBoolean(PREF_NEBULA_HAPTICS_ENABLED, isChecked).apply();
+        });
+    }
+
+    /** Fires one haptic pulse in sync with the ambient nebula pulse. Gated by
+     *  the drawer switch, the Activity lifecycle (no vibration when the user
+     *  left the screen) and a frequency cap so fast tempos do not exhaust the
+     *  linear motor. Intensity comes from the same soft/strong classification
+     *  used for the visual pulse. */
+    private void triggerBeatHaptic(float intensity) {
+        if (!nebulaHapticsEnabled) return;
+        if (!getLifecycle().getCurrentState()
+                .isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - mLastBeatHapticMs < MIN_BEAT_HAPTIC_INTERVAL_MS) return;
+        mLastBeatHapticMs = now;
+        if (mBeatVibrator == null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                android.os.VibratorManager vm = (android.os.VibratorManager)
+                        getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                mBeatVibrator = vm != null ? vm.getDefaultVibrator() : null;
+            } else {
+                mBeatVibrator = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            }
+        }
+        if (mBeatVibrator == null || !mBeatVibrator.hasVibrator()) return;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                int effect = intensity >= 0.6f
+                        ? android.os.VibrationEffect.EFFECT_HEAVY_CLICK
+                        : android.os.VibrationEffect.EFFECT_TICK;
+                mBeatVibrator.vibrate(android.os.VibrationEffect.createPredefined(effect));
+            } else {
+                mBeatVibrator.vibrate(intensity >= 0.6f ? 28L : 10L);
+            }
+        } catch (Throwable ignored) { /* motor busy or effect unsupported */ }
     }
 
     /** Decodes the current artcover.png in the background and extracts a vibrant
@@ -2259,7 +2347,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // the value that must drive the UI (progress bar, time display,
             // chord highlight, nebula pulse), otherwise the visuals fire
             // ahead of the audio and everything feels off-beat.
-            long latencyMs = engine.getOutputLatencyMs();
+            // BEAT_SYNC_OFFSET_MS accounts for the SoundTouch WSOLA latency
+            // that Oboe getOutputLatencyMs() does not report — beat_this may
+            // also mark the beat a few ms before the transient. Both stack on
+            // top of the buffer latency and are subtracted here so the beat
+            // detection aligns with what the ear actually hears.
+            long latencyMs = engine.getOutputLatencyMs() + BEAT_SYNC_OFFSET_MS;
             int PerceivedPos = (int) Math.max(0L, CurrentPos - latencyMs);
             int PosPercentage = songDuration > 0 ? (PerceivedPos * 100) / songDuration : 0;
             sb_progressBar.setProgress(PosPercentage);
@@ -2338,6 +2431,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                                     intensity = (pos % 2 == 0) ? 0.90f : 0.35f;
                                 }
                                 nebulaView.pulse(intensity);
+                                triggerBeatHaptic(intensity);
                             }
                             final int targetIdx = idx;
                             rvChords.smoothScrollToPosition(targetIdx);
@@ -2674,10 +2768,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         RulerPickerView rulerTempo   = metronomeBottomSheet.findViewById(R.id.ruler_tempo);
         TextView tvTempoRulerValue   = metronomeBottomSheet.findViewById(R.id.tv_tempoRulerValue);
         TextView tvTempoLocalHud     = metronomeBottomSheet.findViewById(R.id.tv_tempoLocalHud);
+        ImageButton ibTempoRestore   = metronomeBottomSheet.findViewById(R.id.ib_tempoRestore);
         TextView tv_metronome_volume = metronomeBottomSheet.findViewById(R.id.tv_metronome_volume);
         TextView tv_metronome_panning = metronomeBottomSheet.findViewById(R.id.tv_metronome_panning);
 
         configureTempoRuler(rulerTempo, tvTempoRulerValue, tvTempoLocalHud);
+        if (ibTempoRestore != null) {
+            ibTempoRestore.setOnClickListener(v -> {
+                // Return to the ruler's reference value (globalBpm in BPM mode
+                // or 100 = 1.00x in the multiplier fallback). Uses the same
+                // magnetic animation as the release snap so the transition
+                // feels consistent with the rest of the ruler.
+                int neutral = globalBpm > 0f ? Math.round(globalBpm) : 100;
+                rulerTempo.animateToValue(neutral, 420L);
+            });
+        }
 
         sw_enableMetronome.setUseMaterialThemeColors(true);
 
@@ -2920,8 +3025,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         RulerPickerView rulerPitch  = bottomSheetView.findViewById(R.id.ruler_pitch);
         TextView tvPitchRulerValue  = bottomSheetView.findViewById(R.id.tv_pitchRulerValue);
         TextView tv_pitch_semitones = bottomSheetView.findViewById(R.id.tv_pitch_semitones);
+        ImageButton ibPitchRestore  = bottomSheetView.findViewById(R.id.ib_pitchRestore);
 
         configurePitchRuler(rulerPitch, tvPitchRulerValue, tv_pitch_semitones);
+        if (ibPitchRestore != null) {
+            ibPitchRestore.setOnClickListener(v -> rulerPitch.animateToValue(0, 420L));
+        }
 
         pitchBottomSheet.show();
     }

@@ -48,7 +48,8 @@ The magic starts with the fision of your music.
 - Reprocess a song on the server with a different separation setup without
   losing its position in the library.
 - Optional animated ambient background driven by the current song's cover
-  palette, pulsing softly on every beat.
+  palette, pulsing softly on every beat. Optional beat-synced haptic
+  pulses that let you feel the tempo without looking at the screen.
 - Export the current mix or individual stems to WAV, AAC, or M4A.
 - Background playback with Bluetooth and notification controls.
 
@@ -398,10 +399,17 @@ instruments.
 The playback speed picker inside the metronome bottom sheet works in
 absolute BPM (steps of one BPM) whenever the song has a detected
 tempo, so you always see the target speed instead of an abstract
-multiplier. When the current section runs at a different local BPM
-than the song average, a small hint underneath the ruler surfaces it
-so the number you dial stays meaningful. Songs without a detected
-tempo fall back to a multiplier picker in 0.05× steps.
+multiplier. The original tempo is marked with a highlighted tick on
+the ruler so you can spot it at a glance, and a restore button next to
+the value animates the ruler back to it in one tap. When the current
+section runs at a different local BPM than the song average, a small
+hint underneath the ruler surfaces it so the number you dial stays
+meaningful. Songs without a detected tempo fall back to a multiplier
+picker in 0.05× steps.
+
+The pitch picker follows the same conventions: unison (0 semitones) is
+the highlighted reference tick and a restore button returns the ruler
+there smoothly.
 
 ## Animated background
 
@@ -419,6 +427,15 @@ faster, and picks up more of the pulse than the two ambient halos.
 
 Switching the effect on or off fades smoothly. When disabled the layer
 stops drawing entirely, so it costs nothing when not in use.
+
+An optional sub-switch under the animated background enables **haptic
+beat**, which pulses the phone's vibration motor in sync with the same
+beats that drive the visuals — soft on quiet beats, stronger on
+downbeats. Handy for practising drums silently or feeling the tempo
+with the screen dimmed. Vibration is capped to a rate the linear motor
+can sustain comfortably (up to ~140 pulses per minute; faster songs
+skip pulses) and only fires while the player is on screen, so nothing
+buzzes in your pocket.
 
 ## Audio 3D
 

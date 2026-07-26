@@ -58,6 +58,7 @@
 
     <string name="drawer_switch_playlist">Reprodueix la següent en acabar</string>
     <string name="drawer_switch_nebula">Fons animat</string>
+    <string name="drawer_switch_nebula_haptics">Vibració al ritme</string>
     <string name="b_repeat_description">Mode de repetició</string>
     <string name="drawer_switch_downbeat">So al downbeat</string>
     <string name="drawer_item_downbeat_sound">So</string>
@@ -170,6 +171,8 @@
     <string name="tempo_display_bpm">%1$d BPM</string>
     <string name="tempo_display_mult">%1$.2f×</string>
     <string name="tempo_local_hud_html">Aquesta part de la cançó va a &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">Restaurar tempo original</string>
+    <string name="pitch_restore_desc">Restaurar to original</string>
     <string name="pitch_display_zero">0</string>
     <string name="pitch_display_signed">%1$+d</string>
     <string name="title_activity_settings">Pantalla de configuració</string>
