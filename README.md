@@ -32,6 +32,8 @@ The magic starts with the fision of your music.
 - Real-time pitch shift and tempo change.
 - Chord charts synced to bars and downbeats, in American or Latin notation,
   with flats or sharps.
+- Per-song synchronized lyrics powered by server-side Whisper transcription,
+  with 27 language options plus automatic detection.
 - Dynamic metronome that follows the song's own beat grid.
 - Per-song stem panning and volume, remembered across launches.
 - Downbeat click with configurable sample.
@@ -224,6 +226,7 @@ side to side you find:
 - **Metronome button**: opens the dynamic metronome bottom sheet.
 - **Show/hide chords button**: collapses the chord section to give the
   stem list more room.
+- **Lyrics button**: opens the lyrics overlay for the current song.
 - **Audio 3D button**: switches into the 3D positioning view.
 
 ## Song folder layout
@@ -443,6 +446,35 @@ distance while the dance is running. Dragging a stem out of the orbit
 lets you place it manually, and releasing it snaps it back to the
 dance at the new radius. Recommended for headphone listening. Speaker
 playback loses most of the 3D cues.
+
+While the 3D view is active the regular volume sliders are locked and
+do not participate in the mix. Loudness comes from the distance to the
+head instead, using a fixed safe base gain so no combination of stems
+becomes uncomfortable. Muting a stem inside 3D uses an independent
+flag that does not touch the slider's saved value, so leaving the 3D
+view restores the stem exactly where it was.
+
+## Lyrics
+
+<div align="center">
+  <img src="./docs/screenshots/lyrics.png" width="300" alt="Lyrics overlay" />
+</div>
+
+The lyrics view is opt-in per song. Tapping the lyrics button opens an
+overlay that asks the Fision server to transcribe the current song
+with Whisper. Language can be left on Auto (server detects it) or
+picked from 27 options through a language picker with country flags.
+
+While the server is working, the overlay shows a shimmering skeleton;
+the process can be cancelled at any moment. When the transcript is
+ready, the lyrics are shown as scrolling lines with the currently
+playing line highlighted. Position is aligned with the perceived audio
+latency, so the highlight matches what you actually hear.
+
+The finished transcript is cached locally, so reopening the same song
+does not hit the network again. A reprocess action lets you rerun the
+transcription in a different language when needed. The overlay is
+mutually exclusive with the 3D view.
 
 ## Persistence
 
