@@ -59,6 +59,7 @@ public class SettingsActivity extends AppCompatActivity
     private static final String ID_ACCOUNT   = "account";
     private static final String ID_LANGUAGE  = "language";
     private static final String ID_GPU       = "gpu";
+    private static final String ID_VERSION   = "server_version";
     private static final String ID_TEST      = "server_test";
     private static final String ID_ABOUT     = "about";
     private static final String ID_LOGOUT    = "logout";
@@ -126,6 +127,17 @@ public class SettingsActivity extends AppCompatActivity
         items.add(SettingsItem.card(ID_GPU, R.drawable.ic_gpu,
                 getString(R.string.server_gpu_title),
                 gpuSubtitle()));
+        // Server version card. Hidden when there is no session (no server to
+        // ask) or when the server did not report a version (pre-1.1.0). The
+        // card is read-only: no chevron and no click handler in the dispatch.
+        String serverVersion = ServerInfoManager.get(this).getVersion();
+        if (auth.isLoggedIn() && serverVersion != null) {
+            SettingsItem versionCard = SettingsItem.card(ID_VERSION, R.drawable.ic_info,
+                    getString(R.string.server_version_title),
+                    getString(R.string.server_version_fmt, serverVersion));
+            versionCard.showChevron = false;
+            items.add(versionCard);
+        }
         items.add(SettingsItem.card(ID_TEST, R.drawable.ic_signal,
                 getString(R.string.server_test_title),
                 getString(R.string.server_test_summary)));

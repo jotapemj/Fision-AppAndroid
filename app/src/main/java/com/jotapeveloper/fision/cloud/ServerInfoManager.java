@@ -31,6 +31,7 @@ public class ServerInfoManager {
     private static final String KEY_NAME    = "gpu_name";
     private static final String KEY_VRAM_MB = "vram_total_mb";
     private static final String KEY_DRIVER  = "driver";
+    private static final String KEY_VERSION = "version";
 
     public interface Listener { void onServerInfoChanged(); }
 
@@ -69,6 +70,12 @@ public class ServerInfoManager {
     public String  getGpuName() { return prefs.getString(KEY_NAME, ""); }
     public int     getVramMb()  { return prefs.getInt(KEY_VRAM_MB, 0); }
     public String  getDriver()  { return prefs.getString(KEY_DRIVER, ""); }
+    /** Server version string reported by /server/info (e.g. "1.1.0"). Returns
+     *  null when the server did not report it (pre-1.1.0). */
+    public String  getVersion() {
+        String v = prefs.getString(KEY_VERSION, null);
+        return (v == null || v.isEmpty()) ? null : v;
+    }
 
     /** Wipes the cache on logout / server switch so the next session refetches. */
     public void clear() {
@@ -100,6 +107,7 @@ public class ServerInfoManager {
                             .putString(KEY_NAME, info.gpuName == null ? "" : info.gpuName)
                             .putInt(KEY_VRAM_MB, info.vramTotalMb)
                             .putString(KEY_DRIVER, info.driver == null ? "" : info.driver)
+                            .putString(KEY_VERSION, info.version == null ? "" : info.version)
                             .apply();
                     notifyChanged();
                 } else {

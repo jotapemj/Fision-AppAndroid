@@ -266,6 +266,8 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="server_test_title">Перевірити з\'єднання</string>
     <string name="server_test_summary">Ручний пінг налаштованого сервера для перевірки з\'єднання</string>
     <string name="server_gpu_title">Стан GPU</string>
+    <string name="server_version_title">Версія сервера</string>
+    <string name="server_version_fmt">v%1$s</string>
     <string name="server_gpu_unknown">Увійдіть, щоб побачити GPU</string>
     <string name="server_gpu_ok_fmt">%1$s · %2$d ГБ VRAM</string>
     <string name="server_gpu_ok_short">GPU доступний</string>

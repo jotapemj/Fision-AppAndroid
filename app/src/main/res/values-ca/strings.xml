@@ -266,6 +266,8 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="server_test_title">Provar connexió</string>
     <string name="server_test_summary">Ping manual al servidor configurat per comprovar la connexió</string>
     <string name="server_gpu_title">Estat GPU</string>
+    <string name="server_version_title">Versió del servidor</string>
+    <string name="server_version_fmt">v%1$s</string>
     <string name="server_gpu_unknown">Inicia sessió per llegir la GPU</string>
     <string name="server_gpu_ok_fmt">%1$s · %2$d GB VRAM</string>
     <string name="server_gpu_ok_short">GPU disponible</string>

@@ -179,7 +179,17 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             ivChevron.setImageTintList(
                     android.content.res.ColorStateList.valueOf(0xFF5A5A5A));
             ivChevron.setVisibility(item.showChevron ? View.VISIBLE : View.GONE);
-            root.setOnClickListener(v -> { if (l != null) l.onSettingsItemClick(item); });
+            // No chevron implies a read-only card; disable clicks so it does
+            // not show a ripple or trigger a no-op dispatch.
+            if (item.showChevron) {
+                root.setClickable(true);
+                root.setFocusable(true);
+                root.setOnClickListener(v -> { if (l != null) l.onSettingsItemClick(item); });
+            } else {
+                root.setOnClickListener(null);
+                root.setClickable(false);
+                root.setFocusable(false);
+            }
         }
     }
 }

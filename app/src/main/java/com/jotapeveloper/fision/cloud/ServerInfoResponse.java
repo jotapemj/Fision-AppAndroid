@@ -11,4 +11,7 @@ public class ServerInfoResponse {
     @SerializedName("gpu_name")       public String  gpuName;
     @SerializedName("vram_total_mb")  public int     vramTotalMb;
     @SerializedName("driver")         public String  driver;
+    // Server semver reported since FisionServer 1.1.0. Older servers omit the
+    // field and Gson leaves it null; callers must handle that case.
+    @SerializedName("version")        public String  version;
 }
