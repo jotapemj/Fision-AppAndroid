@@ -695,6 +695,23 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             if (c != null) {
                 s.cloud = c;
                 handled.add(folder);
+                // Fallback for a missing / empty metadata.txt (server ZIP
+                // shipped without it). CloudItem carries the same fields the
+                // server would have written; using it read-only here keeps the
+                // server as source of truth so a later server fix propagates
+                // without leaving stale synthesised metadata on disk.
+                if ((s.getDisplayTitle() == null || s.getDisplayTitle().isEmpty()
+                        || s.getDisplayTitle().equals(folder))
+                        && c.displayName != null && !c.displayName.isEmpty()) {
+                    s.setDisplayTitle(c.displayName);
+                    android.util.Log.w("MainActivity",
+                            "metadata.txt missing title for " + folder
+                                    + " — CloudItem fallback in use");
+                }
+                if ((s.getArtist() == null || s.getArtist().isEmpty())
+                        && c.artist != null && !c.artist.isEmpty()) {
+                    s.setArtist(c.artist);
+                }
             }
             regular.add(s);
         }

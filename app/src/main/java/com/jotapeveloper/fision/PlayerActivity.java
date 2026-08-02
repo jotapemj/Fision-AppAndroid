@@ -2519,13 +2519,35 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         String StringSongDuration = getTime((int) songDuration);
         tv_duration.setText(StringSongDuration);
 
-        // "Artist - Title" caption if metadata is available, fallback to folder name
+        // "Artist - Title" caption. Metadata.txt is the primary source; when
+        // it is missing or empty (e.g. a server-side pipeline failure omitted
+        // it from the ZIP) fall back to the CloudRepository entry — read only,
+        // no local file synthesised, so the server stays as source of truth
+        // and a later server-side fix propagates automatically.
         SongMetadata meta = playbackService != null ? playbackService.getCurrentMetadata() : null;
+        String title  = (meta != null && meta.displayTitle != null && !meta.displayTitle.isEmpty())
+                ? meta.displayTitle : null;
+        String artist = (meta != null && meta.artist != null && !meta.artist.isEmpty())
+                ? meta.artist : null;
+        if ((title == null || artist == null) && SongFolder != null) {
+            com.jotapeveloper.fision.cloud.CloudItem ci =
+                    com.jotapeveloper.fision.cloud.CloudRepository.get(this)
+                            .getByHash(SongFolder.getName());
+            if (ci != null) {
+                if (title == null && ci.displayName != null && !ci.displayName.isEmpty()) {
+                    title = ci.displayName;
+                    android.util.Log.w("PlayerActivity",
+                            "metadata.txt missing title for " + SongFolder.getName()
+                                    + " — CloudItem fallback in use");
+                }
+                if (artist == null && ci.artist != null && !ci.artist.isEmpty()) {
+                    artist = ci.artist;
+                }
+            }
+        }
         String shown;
-        if (meta != null && meta.displayTitle != null) {
-            shown = (meta.artist != null && !meta.artist.isEmpty())
-                    ? (meta.artist + " - " + meta.displayTitle)
-                    : meta.displayTitle;
+        if (title != null) {
+            shown = artist != null ? (artist + " - " + title) : title;
         } else {
             shown = SongName != null ? SongName : "";
         }
