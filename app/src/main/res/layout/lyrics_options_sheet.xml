@@ -28,6 +28,62 @@
         android:fontFamily="@font/yugothic_ui_regular" />
 
     <LinearLayout
+        android:id="@+id/row_lyricsKaraoke"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="14dp"
+            android:src="@drawable/ic_karaoke"
+            app:tint="@color/AppWhite" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lyrics_karaoke_mode"
+                android:textColor="@color/AppWhite"
+                android:textSize="15sp"
+                android:fontFamily="@font/yugothic_ui_regular" />
+
+            <TextView
+                android:id="@+id/tv_lyricsKaraokeSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/lyrics_karaoke_unavailable"
+                android:textColor="@color/lyrics_line_dim"
+                android:textSize="12sp"
+                android:fontFamily="@font/yugothic_ui_regular"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_lyricsKaraoke"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:showText="false"
+            android:textOn=""
+            android:textOff="" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/row_lyricsReprocess"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

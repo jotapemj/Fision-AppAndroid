@@ -22,10 +22,14 @@ import androidx.core.content.ContextCompat;
 public class LyricsSkeletonView extends View {
 
     private static final int   LINE_COUNT   = 6;
-    private static final long  SWEEP_PERIOD = 1400L;   // ms per full sweep
+    private static final long  SWEEP_PERIOD = 2000L;   // ms per full sweep
     private static final float CORNER_DP    = 6f;
     private static final float LINE_HEIGHT_DP = 14f;
     private static final float LINE_GAP_DP    = 14f;
+    // Extra travel outside the viewport before and after each sweep. Keeps
+    // the shimmer band offscreen long enough that the loop reset is not
+    // perceived as a snap.
+    private static final float DWELL_BAND_MULT = 2f;
 
     private final Paint basePaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint shimmerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -100,9 +104,17 @@ public class LyricsSkeletonView extends View {
         // Diagonal shimmer band.
         long now    = System.nanoTime();
         float t     = ((now - startNanos) / 1_000_000f % SWEEP_PERIOD) / (float) SWEEP_PERIOD;
+        // Ease-in-out cubic on t so entry and exit accelerate smoothly rather
+        // than snapping the band into and out of the viewport.
+        float eased = t < 0.5f
+                ? 4f * t * t * t
+                : 1f - (float) Math.pow(-2f * t + 2f, 3) / 2f;
         float band  = w * 0.55f;
-        float travel = w + band;
-        float x     = -band + travel * t;
+        // Add a dwell margin on both sides so the band stays fully offscreen
+        // between passes, hiding the loop reset behind the pause.
+        float pad    = band * DWELL_BAND_MULT;
+        float travel = w + band + pad * 2f;
+        float x      = -band - pad + travel * eased;
 
         int base = ContextCompat.getColor(getContext(), R.color.lyrics_skeleton_shimmer);
         int[] colors = new int[] { 0x00000000, base, 0x00000000 };

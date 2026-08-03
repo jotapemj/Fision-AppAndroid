@@ -381,6 +381,8 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="lyrics_no_vocals">Вокал ще не готовий</string>
     <string name="lyrics_reprocess">Обробити знову</string>
     <string name="lyrics_options_title">Опції</string>
+    <string name="lyrics_karaoke_mode">Режим караоке</string>
+    <string name="lyrics_karaoke_unavailable">Обробити знову для активації</string>
     <string name="lyrics_cancel_dialog_title">Скасувати обробку тексту?</string>
     <string name="lyrics_dialog_yes">Підтвердити</string>
     <string name="lyrics_dialog_no">Ні</string>

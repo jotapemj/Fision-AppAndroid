@@ -402,6 +402,8 @@ HTTP client and server API bindings.]]></string>
     <string name="lyrics_no_vocals">Vocals not ready yet</string>
     <string name="lyrics_reprocess">Reprocess</string>
     <string name="lyrics_options_title">Options</string>
+    <string name="lyrics_karaoke_mode">Karaoke mode</string>
+    <string name="lyrics_karaoke_unavailable">Reprocess to enable</string>
     <string name="lyrics_cancel_dialog_title">Cancel lyrics process?</string>
     <string name="lyrics_dialog_yes">Confirm</string>
     <string name="lyrics_dialog_no">No</string>

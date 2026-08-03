@@ -381,6 +381,8 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="lyrics_no_vocals">Veus encara no disponibles</string>
     <string name="lyrics_reprocess">Reprocessar</string>
     <string name="lyrics_options_title">Opcions</string>
+    <string name="lyrics_karaoke_mode">Mode karaoke</string>
+    <string name="lyrics_karaoke_unavailable">Reprocessa per habilitar</string>
     <string name="lyrics_cancel_dialog_title">Cancel·lar el procés de la lletra?</string>
     <string name="lyrics_dialog_yes">Confirmar</string>
     <string name="lyrics_dialog_no">No</string>

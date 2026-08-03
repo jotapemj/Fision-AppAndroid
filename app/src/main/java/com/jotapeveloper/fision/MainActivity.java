@@ -1658,12 +1658,37 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     rvSongList.getPaddingRight(), pad);
         }
         SongMetadata meta = playbackService.getCurrentMetadata();
-        tvMiniTitle.setText(playbackService.getDisplayTitle());
-        tvMiniArtist.setText(meta != null && meta.artist != null ? meta.artist : "");
-        tvMiniArtist.setVisibility(meta != null && meta.artist != null ? View.VISIBLE : View.GONE);
+        String title  = playbackService.getDisplayTitle();
+        String artist = meta != null ? meta.artist : null;
+        String cover  = meta != null ? meta.coverPath : null;
+        String hash   = playbackService.getCurrentSongName();
+        // Fallback to the server-side info when local metadata.txt is missing
+        // and the display fields would collapse to the folder hash / blank.
+        if (hash != null && (title == null || title.equals(hash) || artist == null
+                || cover == null || !new File(cover).exists())) {
+            com.jotapeveloper.fision.cloud.CloudItem ci =
+                    com.jotapeveloper.fision.cloud.CloudRepository.get(this).getByHash(hash);
+            if (ci != null) {
+                if ((title == null || title.equals(hash))
+                        && ci.displayName != null && !ci.displayName.isEmpty()) {
+                    title = ci.displayName;
+                }
+                if ((artist == null || artist.isEmpty())
+                        && ci.artist != null && !ci.artist.isEmpty()) {
+                    artist = ci.artist;
+                }
+                if ((cover == null || !new File(cover).exists())
+                        && ci.coverPath != null && new File(ci.coverPath).exists()) {
+                    cover = ci.coverPath;
+                }
+            }
+        }
+        tvMiniTitle.setText(title);
+        tvMiniArtist.setText(artist != null ? artist : "");
+        tvMiniArtist.setVisibility(artist != null && !artist.isEmpty() ? View.VISIBLE : View.GONE);
 
-        if (meta != null && meta.coverPath != null && new File(meta.coverPath).exists()) {
-            ivMiniIcon.setImageBitmap(android.graphics.BitmapFactory.decodeFile(meta.coverPath));
+        if (cover != null && new File(cover).exists()) {
+            ivMiniIcon.setImageBitmap(android.graphics.BitmapFactory.decodeFile(cover));
         } else {
             ivMiniIcon.setImageResource(R.raw.artcover_generic);
         }

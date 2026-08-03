@@ -66,6 +66,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private StemListAdapter stemsAdapter;
 
     private SeekBar sb_progressBar;
+    private boolean mUserSeekingProgress = false;
 
     private TextView tv_duration;
     private TextView tv_currentPos;
@@ -375,6 +376,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         downbeatSoundType          = globalPrefs.getInt    (PREF_DOWNBEAT_TYPE, 0);
         nebulaEnabled              = globalPrefs.getBoolean(PREF_NEBULA_ENABLED, false);
         nebulaHapticsEnabled       = globalPrefs.getBoolean(PREF_NEBULA_HAPTICS_ENABLED, false);
+        mLyricsKaraokeMode         = globalPrefs.getBoolean(PREF_LYRICS_KARAOKE_MODE, false);
 
         initializeUIComponents();
         readChordsFile(SongPath);
@@ -590,9 +592,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // paused=true, so the seekbar stayed at 0 until play was pressed).
         if (engine != null && songDuration > 0) {
             int curMs = (int) engine.getCurrentPositionMs();
-            int pct = (curMs * 100) / songDuration;
-            if (pct < 0) pct = 0; if (pct > 100) pct = 100;
-            sb_progressBar.setProgress(pct);
+            int permille = (int) ((curMs * 10000L) / songDuration);
+            if (permille < 0) permille = 0; if (permille > 10000) permille = 10000;
+            sb_progressBar.setProgress(permille);
             tv_currentPos.setText(getTime(curMs));
             // Seed the BPM readout with the current beat so it is not blank
             // while paused (mini-player entry) or right after re-entering the
@@ -1014,20 +1016,29 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         sb_progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-
+                // Live-refresh the time readout while the user drags so the
+                // number matches the thumb position.
+                if (b && engine != null) {
+                    int dur = (int) engine.getDurationMs();
+                    if (dur > 0) {
+                        int previewMs = (int) ((long) i * dur / 10000L);
+                        tv_currentPos.setText(getTime(previewMs));
+                    }
+                }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-
+                mUserSeekingProgress = true;
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                mUserSeekingProgress = false;
                 if (engine == null) return;
-                int newPosPercent = sb_progressBar.getProgress();
+                int newPosPermille = sb_progressBar.getProgress();
                 int songDuration = (int) engine.getDurationMs();
-                int newPosMillis = (newPosPercent * songDuration) / 100;
+                int newPosMillis = (int) ((long) newPosPermille * songDuration / 10000L);
 
                 engine.seekTo(newPosMillis);
 
@@ -2354,8 +2365,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // detection aligns with what the ear actually hears.
             long latencyMs = engine.getOutputLatencyMs() + BEAT_SYNC_OFFSET_MS;
             int PerceivedPos = (int) Math.max(0L, CurrentPos - latencyMs);
-            int PosPercentage = songDuration > 0 ? (PerceivedPos * 100) / songDuration : 0;
-            sb_progressBar.setProgress(PosPercentage);
+            // Skip progress refresh while the user is dragging the SeekBar so
+            // the manual thumb position is not overwritten by the timer tick.
+            if (!mUserSeekingProgress) {
+                int posPermille = songDuration > 0
+                        ? (int) ((PerceivedPos * 10000L) / songDuration) : 0;
+                if (posPermille < 0) posPermille = 0;
+                if (posPermille > 10000) posPermille = 10000;
+                sb_progressBar.setProgress(posPermille);
+            }
 
             // End of song: delegate to the service so repeat + playlist logic
             // stays in one place. The service returns what happened and the UI
@@ -3751,6 +3769,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private boolean isLyricsViewShown = false;
     private boolean lyricsReprocessMode = false;
     private int mLyricsActiveIdx = -1;
+    private static final String PREF_LYRICS_KARAOKE_MODE = "lyrics_karaoke_mode";
+    private boolean mLyricsKaraokeMode = false;
+    // Whisper marks the word onset at the leading consonant; visually the
+    // syllable is perceived slightly later. Delay the karaoke highlight by
+    // this amount so the coloured word matches what the singer just uttered.
+    private static final int KARAOKE_HIGHLIGHT_OFFSET_MS = 220;
 
     /** Lazy init of the 3D view references. Idempotent. */
     private void ensure3DRefs() {
@@ -4926,7 +4950,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         bLyricsOptions        = findViewById(R.id.b_lyricsOptions);
 
         rvLyrics.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        // Removing the item animator prevents the resize (24sp bold ↔ 20sp)
+        // from lagging behind the immediate scroll reposition, which looked
+        // like the incoming line was "creeping up" from below.
+        rvLyrics.setItemAnimator(null);
         mLyricsLinesAdapter = new LyricsLinesAdapter();
+        mLyricsLinesAdapter.setLineClickListener(this::seekToLyricsRow);
         rvLyrics.setAdapter(mLyricsLinesAdapter);
 
         cardLyricsLanguage.setOnClickListener(v -> openLanguagePickerDialog());
@@ -4934,7 +4963,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         bLyricsPickerCancel.setOnClickListener(v -> onLyricsPickerCancelClicked());
         bLyricsCancelJob.setOnClickListener(v -> showCancelJobDialog());
         bLyricsOptions.setOnClickListener(v -> LyricsOptionsBottomSheet.show(this,
-                this::onLyricsReprocessRequested));
+                mLyricsKaraokeMode,
+                Lyrics.hasWordTimestamps(mLoadedLyrics),
+                new LyricsOptionsBottomSheet.Callback() {
+                    @Override public void onReprocess() { onLyricsReprocessRequested(); }
+                    @Override public void onKaraokeToggled(boolean enabled) {
+                        setLyricsKaraokeMode(enabled);
+                    }
+                }));
 
         if (mLyricsMgr == null) {
             mLyricsMgr = new LyricsManager(this);
@@ -4945,7 +4981,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
             @Override public void onLyricsLoaded(Lyrics lyrics) {
                 mLoadedLyrics = lyrics;
-                mLyricsLinesAdapter.setSegments(lyrics != null ? lyrics.segments : null);
+                mLyricsLinesAdapter.setLyrics(lyrics);
+                mLyricsLinesAdapter.setKaraokeMode(mLyricsKaraokeMode);
                 mLyricsActiveIdx = -1;
                 setLyricsUiState(LyricsUiState.CONTENT);
             }
@@ -4996,7 +5033,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     runOnUiThread(() -> {
                         mLoadedLyrics = ly;
                         if (mLyricsLinesAdapter != null) {
-                            mLyricsLinesAdapter.setSegments(ly != null ? ly.segments : null);
+                            mLyricsLinesAdapter.setLyrics(ly);
+                            mLyricsLinesAdapter.setKaraokeMode(mLyricsKaraokeMode);
                         }
                         mLyricsActiveIdx = -1;
                     });
@@ -5167,7 +5205,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (lyricsReprocessMode) {
             mLyricsMgr.deleteRemote(hash);
             mLoadedLyrics = null;
-            mLyricsLinesAdapter.setSegments(null);
+            mLyricsLinesAdapter.setLyrics(null);
         }
         lyricsReprocessMode = false;
         mLyricsMgr.startJob(hash, SongFolder, lang);
@@ -5267,39 +5305,117 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  advance keyed off the previous index so the average update is O(1). */
     private void updateLyricsHighlight(int uiPosMs) {
         if (!isLyricsViewShown || mLyricsUiState != LyricsUiState.CONTENT) return;
-        if (mLoadedLyrics == null || mLoadedLyrics.segments == null) return;
-        java.util.List<Lyrics.Segment> segs = mLoadedLyrics.segments;
+        if (mLyricsLinesAdapter == null) return;
+        java.util.List<LyricsLinesAdapter.Row> rows = mLyricsLinesAdapter.getRows();
+        if (rows == null || rows.isEmpty()) return;
         double posSec = uiPosMs / 1000.0;
         int idx = mLyricsActiveIdx;
         // Rewind if seek went backwards.
-        while (idx >= 0 && idx < segs.size() && segs.get(idx).start > posSec) idx--;
-        // Advance while the next line has already started.
-        while (idx + 1 < segs.size() && segs.get(idx + 1).start <= posSec) idx++;
-        // Clamp to -1 while before the first line so nothing is highlighted.
-        if (idx < 0 || segs.get(idx).end < posSec - 2.0) {
+        while (idx >= 0 && idx < rows.size() && rows.get(idx).start > posSec) idx--;
+        // Advance while the next row has already started.
+        while (idx + 1 < rows.size() && rows.get(idx + 1).start <= posSec) idx++;
+        // Clamp to -1 while before the first row so nothing is highlighted.
+        // With word-level timestamps the segment end coincides with the last
+        // spoken word, so a strict "end < posSec" would leave the row blank
+        // during the short pause before the next line enters. Keep TEXT rows
+        // lit until the next row starts (the builder already inserts an
+        // INSTRUMENTAL placeholder when the gap exceeds the threshold, so
+        // this only affects short natural pauses between lines). The last row
+        // falls back to its own end + 2s margin so it eventually clears.
+        boolean deactivate = idx < 0;
+        if (!deactivate) {
+            LyricsLinesAdapter.Row r = rows.get(idx);
+            if (r.type == 0 /*VT_TEXT*/) {
+                double effectiveEnd = idx + 1 < rows.size()
+                        ? rows.get(idx + 1).start
+                        : r.end + 2.0;
+                if (posSec >= effectiveEnd) deactivate = true;
+            } else if (r.type == 1 /*VT_INSTRUMENTAL*/) {
+                if (posSec >= r.end) deactivate = true;
+            }
+        }
+        if (deactivate) {
             if (mLyricsActiveIdx != -1) {
                 mLyricsActiveIdx = -1;
                 mLyricsLinesAdapter.setActiveIndex(-1);
             }
             return;
         }
+        // Publish position every tick so karaoke mode can advance word by
+        // word inside the active row without waiting for a row change.
+        if (mLyricsKaraokeMode) {
+            double karaokePosSec = Math.max(0.0,
+                    posSec - KARAOKE_HIGHLIGHT_OFFSET_MS / 1000.0);
+            mLyricsLinesAdapter.setKaraokePosSec(karaokePosSec);
+        }
         if (idx == mLyricsActiveIdx) return;
         mLyricsActiveIdx = idx;
         mLyricsLinesAdapter.setActiveIndex(idx);
-        // Center the active line in the viewport.
+        // Smooth-scroll so the new active row settles at the vertical center
+        // of the recycler. The item animator is disabled, so the resize is
+        // instantaneous while the scroll travel is what gives the motion.
         androidx.recyclerview.widget.LinearLayoutManager lm =
                 (androidx.recyclerview.widget.LinearLayoutManager) rvLyrics.getLayoutManager();
         if (lm != null) {
-            int halfH = rvLyrics.getHeight() / 2 - 40;
-            lm.scrollToPositionWithOffset(idx, Math.max(0, halfH));
+            androidx.recyclerview.widget.LinearSmoothScroller scroller =
+                    new androidx.recyclerview.widget.LinearSmoothScroller(this) {
+                        @Override protected int getVerticalSnapPreference() {
+                            return SNAP_TO_START;
+                        }
+                        @Override public int calculateDyToMakeVisible(android.view.View view,
+                                                                      int snapPreference) {
+                            androidx.recyclerview.widget.RecyclerView.LayoutManager mgr = getLayoutManager();
+                            if (mgr == null) return 0;
+                            int top = mgr.getDecoratedTop(view);
+                            int bottom = mgr.getDecoratedBottom(view);
+                            int viewCenter = (top + bottom) / 2;
+                            int boxCenter = (mgr.getPaddingTop()
+                                    + (mgr.getHeight() - mgr.getPaddingBottom())) / 2;
+                            return boxCenter - viewCenter;
+                        }
+                        @Override protected float calculateSpeedPerPixel(
+                                android.util.DisplayMetrics dm) {
+                            // Much slower than the default 25f/densityDpi so
+                            // the travel reads as a gentle glide instead of
+                            // a snap. Higher numbers = slower motion.
+                            return 140f / dm.densityDpi;
+                        }
+                    };
+            scroller.setTargetPosition(idx);
+            lm.startSmoothScroll(scroller);
         }
+    }
+
+    /** Handles a tap on any lyrics row: seeks the engine to the row's start
+     *  and reapplies the metronome / chords / downbeat state accordingly.
+     *  Mirrors the SeekBar path so playback state (playing vs paused) is
+     *  preserved without duplicating the reset logic. */
+    private void seekToLyricsRow(LyricsLinesAdapter.Row row) {
+        if (row == null || engine == null) return;
+        int startMs = (int) Math.max(0.0, row.start * 1000.0);
+        engine.seekTo(startMs);
+        relocateChords(startMs, chordList);
+        applyMetronomeHalfPhase(startMs);
+        cancelPendingDownbeats();
+        if (paused) DefineNewProgress(startMs);
+    }
+
+    /** Persists the karaoke mode toggle and syncs it with the adapter so the
+     *  active line rerenders immediately. If the current lyrics do not carry
+     *  per-word timestamps the adapter silently falls back to the plain line
+     *  rendering. */
+    private void setLyricsKaraokeMode(boolean enabled) {
+        mLyricsKaraokeMode = enabled;
+        getSharedPreferences("prefs_songs", MODE_PRIVATE)
+                .edit().putBoolean(PREF_LYRICS_KARAOKE_MODE, enabled).apply();
+        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setKaraokeMode(enabled);
     }
 
     private void releaseLyrics() {
         if (mLyricsMgr != null) mLyricsMgr.release();
         mLoadedLyrics = null;
         mLyricsActiveIdx = -1;
-        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setSegments(null);
+        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setLyrics(null);
     }
 
     private void resetLyricsForNewSong() {
@@ -5315,7 +5431,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 @Override public void onLyricsLoaded(Lyrics lyrics) {
                     mLoadedLyrics = lyrics;
                     if (mLyricsLinesAdapter != null) {
-                        mLyricsLinesAdapter.setSegments(lyrics != null ? lyrics.segments : null);
+                        mLyricsLinesAdapter.setLyrics(lyrics);
+                        mLyricsLinesAdapter.setKaraokeMode(mLyricsKaraokeMode);
                     }
                     mLyricsActiveIdx = -1;
                     setLyricsUiState(LyricsUiState.CONTENT);

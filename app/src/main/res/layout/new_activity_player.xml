@@ -199,6 +199,7 @@
                 android:layout_marginEnd="15dp"
                 android:layout_height="21dp"
                 android:layout_marginTop="10dp"
+                android:max="10000"
                 android:progress="0"
                 app:layout_constraintHorizontal_bias="0.506"
                 app:layout_constraintTop_toTopOf="parent"
