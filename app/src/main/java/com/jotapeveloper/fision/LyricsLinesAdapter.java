@@ -56,7 +56,10 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     private double karaokePosSec = 0.0;
     private LineClickListener lineClickListener;
 
-    public interface LineClickListener { void onLyricsRowClicked(Row row); }
+    public interface LineClickListener {
+        void onLyricsRowClicked(Row row);
+        default void onLyricsWordClicked(double startSec) { }
+    }
 
     public void setLineClickListener(LineClickListener l) { this.lineClickListener = l; }
 
@@ -143,8 +146,12 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 && holder instanceof TextVH) {
             Row r = rows.get(position);
             if (r.type == VT_TEXT && r.segment != null) {
+                // Force SPANNABLE buffer so the per-word ClickableSpan stays
+                // active; the default NORMAL buffer would flatten to a plain
+                // String and swallow the touch handling.
                 ((TextVH) holder).text.setText(buildKaraokeText(
-                        holder.itemView.getContext(), r.segment, karaokePosSec));
+                        holder.itemView.getContext(), r.segment, karaokePosSec,
+                        lineClickListener), TextView.BufferType.SPANNABLE);
                 return;
             }
         }
@@ -156,35 +163,68 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         Row row = rows.get(position);
         boolean active = position == activeIndex;
         Context ctx = holder.itemView.getContext();
-        holder.itemView.setOnClickListener(v -> {
-            if (lineClickListener != null) lineClickListener.onLyricsRowClicked(row);
-        });
         int accent = ContextCompat.getColor(ctx, R.color.colorPrimary);
         int dim    = ContextCompat.getColor(ctx, R.color.lyrics_line_dim);
+        // The TextView is the itemView, so setting a whole-row OnClickListener
+        // fires *in addition* to any ClickableSpan the karaoke text carries —
+        // and the row callback runs later, overwriting the per-word seek.
+        // Only wire the row listener on non-karaoke rows.
+        boolean karaokeRow = karaokeMode && row.type == VT_TEXT
+                && row.segment != null && row.segment.words != null
+                && !row.segment.words.isEmpty();
+        if (karaokeRow) {
+            holder.itemView.setOnClickListener(null);
+            holder.itemView.setClickable(false);
+        } else {
+            holder.itemView.setOnClickListener(v -> {
+                if (lineClickListener != null) lineClickListener.onLyricsRowClicked(row);
+            });
+        }
 
         if (holder instanceof TextVH) {
             TextView tv = ((TextVH) holder).text;
             String raw = row.segment != null && row.segment.text != null
                     ? row.segment.text.trim() : "";
             if (active) {
-                tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f);
                 tv.setTypeface(tv.getTypeface(), Typeface.BOLD);
                 tv.setAlpha(1f);
                 boolean useKaraoke = karaokeMode && row.segment != null
                         && row.segment.words != null && !row.segment.words.isEmpty();
                 if (useKaraoke) {
                     tv.setTextColor(dim);
-                    tv.setText(buildKaraokeText(ctx, row.segment, karaokePosSec));
+                    // Movement method + highlight colour go first so the
+                    // subsequent setText stores the spannable as SPANNABLE
+                    // (otherwise TextView flattens it to String and the
+                    // per-word ClickableSpan never receives the tap).
+                    tv.setHighlightColor(android.graphics.Color.TRANSPARENT);
+                    tv.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+                    tv.setText(buildKaraokeText(ctx, row.segment, karaokePosSec,
+                            lineClickListener), TextView.BufferType.SPANNABLE);
                 } else {
                     tv.setTextColor(accent);
                     tv.setText(raw);
+                    tv.setMovementMethod(null);
                 }
             } else {
                 tv.setTextColor(dim);
-                tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f);
                 tv.setTypeface(Typeface.create(tv.getTypeface(), Typeface.NORMAL));
                 tv.setAlpha(0.85f);
-                tv.setText(raw);
+                if (karaokeRow) {
+                    // Inactive karaoke line: keep the per-word ClickableSpans
+                    // so the user can seek from any line, not only the one
+                    // being sung. Passing -1 as the position makes the
+                    // builder skip the primary-colour blend and leave the
+                    // dim base intact.
+                    tv.setHighlightColor(android.graphics.Color.TRANSPARENT);
+                    tv.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+                    tv.setText(buildKaraokeText(ctx, row.segment, -1.0,
+                            lineClickListener), TextView.BufferType.SPANNABLE);
+                } else {
+                    tv.setText(raw);
+                    tv.setMovementMethod(null);
+                }
             }
         } else if (holder instanceof InstrumentalVH) {
             ImageView iv = ((InstrumentalVH) holder).icon;
@@ -204,13 +244,14 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     private static final double KARAOKE_FADE_SEC = 0.25;
 
     private static CharSequence buildKaraokeText(Context ctx, Lyrics.Segment seg,
-                                                 double posSec) {
+                                                 double posSec,
+                                                 LineClickListener clickListener) {
         int accent = ContextCompat.getColor(ctx, R.color.colorPrimary);
         int dim    = ContextCompat.getColor(ctx, R.color.lyrics_line_dim);
         SpannableStringBuilder sb = new SpannableStringBuilder();
         List<Lyrics.Word> words = seg.words;
         for (int i = 0; i < words.size(); i++) {
-            Lyrics.Word w = words.get(i);
+            final Lyrics.Word w = words.get(i);
             String piece = w.text == null ? "" : w.text;
             if (i > 0 && !piece.startsWith(" ") && !piece.isEmpty()
                     && sb.length() > 0 && sb.charAt(sb.length() - 1) != ' ') {
@@ -231,6 +272,17 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             }
+            // Each word is clickable and seeks to its own onset. The default
+            // ClickableSpan would underline; override updateDrawState so the
+            // color is left untouched.
+            sb.setSpan(new android.text.style.ClickableSpan() {
+                @Override public void onClick(@NonNull View v) {
+                    if (clickListener != null) clickListener.onLyricsWordClicked(w.start);
+                }
+                @Override public void updateDrawState(@NonNull android.text.TextPaint ds) {
+                    ds.setUnderlineText(false);
+                }
+            }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return sb;
     }

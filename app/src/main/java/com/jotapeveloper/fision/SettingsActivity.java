@@ -100,6 +100,12 @@ public class SettingsActivity extends AppCompatActivity
         super.onResume();
         ServerInfoManager.get(this).addListener(serverInfoListener);
         AvatarManager.get(this).addListener(avatarListener);
+        // Poll the server for fresh info every time Settings opens so a
+        // version bump on the server side is reflected without needing a
+        // logout / login cycle. The listener repaints when the fetch lands.
+        if (AuthManager.get(this).isLoggedIn()) {
+            ServerInfoManager.get(this).refresh();
+        }
         rebuildItems();
     }
 

@@ -199,10 +199,46 @@ public class PlaybackService extends Service {
     public String  getCurrentSongPath()       { return currentSongPath; }
     public int     getCurrentSongId()         { return currentSongId; }
     public SongMetadata getCurrentMetadata()  { return currentMetadata; }
-    /** Display title: metadata > folder name. */
+    /** Display title: metadata > server-side displayName > folder name.
+     *  When the local metadata.txt is missing (server pipeline dropped it),
+     *  fall back to the title stored server-side in CloudRepository so the
+     *  media session / notification / lock-screen do not surface the hash. */
     public String  getDisplayTitle() {
-        return currentMetadata != null && currentMetadata.displayTitle != null
-                ? currentMetadata.displayTitle : currentSongName;
+        if (currentMetadata != null && currentMetadata.displayTitle != null
+                && !currentMetadata.displayTitle.isEmpty()) {
+            return currentMetadata.displayTitle;
+        }
+        String cloudTitle = resolveCloudTitle();
+        if (cloudTitle != null) return cloudTitle;
+        return currentSongName;
+    }
+
+    /** Server-side artist fallback for the media session / notification when
+     *  the local metadata is missing. Returns null if nothing is known. */
+    public String getResolvedArtist() {
+        if (currentMetadata != null && currentMetadata.artist != null
+                && !currentMetadata.artist.isEmpty()) {
+            return currentMetadata.artist;
+        }
+        com.jotapeveloper.fision.cloud.CloudItem ci = lookupCloudItem();
+        if (ci != null && ci.artist != null && !ci.artist.isEmpty()) return ci.artist;
+        return null;
+    }
+
+    private String resolveCloudTitle() {
+        com.jotapeveloper.fision.cloud.CloudItem ci = lookupCloudItem();
+        if (ci != null && ci.displayName != null && !ci.displayName.isEmpty()) {
+            return ci.displayName;
+        }
+        return null;
+    }
+
+    private com.jotapeveloper.fision.cloud.CloudItem lookupCloudItem() {
+        if (currentSongName == null) return null;
+        try {
+            return com.jotapeveloper.fision.cloud.CloudRepository.get(this)
+                    .getByHash(currentSongName);
+        } catch (Throwable ignored) { return null; }
     }
     public boolean isPlaying()                { return isPlaying; }
     public long    getCurrentPositionMs()     { return engine != null ? engine.getCurrentPositionMs() : 0; }
@@ -755,8 +791,9 @@ public class PlaybackService extends Service {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
                 .putLong  (MediaMetadataCompat.METADATA_KEY_DURATION, durationMs);
-        if (currentMetadata != null && currentMetadata.artist != null) {
-            b.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentMetadata.artist);
+        String artist = getResolvedArtist();
+        if (artist != null) {
+            b.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist);
         }
         // The cover in MediaSession is what the Pixel/Material You media notification renders
         // at high resolution (NOT the largeIcon, which stays as a small thumbnail).
@@ -777,6 +814,16 @@ public class PlaybackService extends Service {
         if (currentMetadata != null && currentMetadata.coverPath != null) {
             cachedCoverBitmap = android.graphics.BitmapFactory.decodeFile(currentMetadata.coverPath, opts);
             if (cachedCoverBitmap != null) return cachedCoverBitmap;
+        }
+        // Server-side cover fallback when the local artcover is missing.
+        com.jotapeveloper.fision.cloud.CloudItem ci = lookupCloudItem();
+        if (ci != null && ci.coverPath != null) {
+            java.io.File f = new java.io.File(ci.coverPath);
+            if (f.exists()) {
+                cachedCoverBitmap = android.graphics.BitmapFactory.decodeFile(
+                        ci.coverPath, opts);
+                if (cachedCoverBitmap != null) return cachedCoverBitmap;
+            }
         }
         // Generic fallback (res/raw/artcover_generic.png). Its resolution is assumed
         // to fit the modern notification; no unnecessary rescaling.
@@ -807,10 +854,10 @@ public class PlaybackService extends Service {
         // The system picks it up from the MediaMetadata for the modern (HD) notification.
         android.graphics.Bitmap largeIcon = getOrLoadCover();
 
+        String notifArtist = getResolvedArtist();
         builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(getDisplayTitle() != null ? getDisplayTitle() : "Fision")
-                .setContentText(currentMetadata != null && currentMetadata.artist != null
-                        ? currentMetadata.artist : "")
+                .setContentText(notifArtist != null ? notifArtist : "")
                 .setSmallIcon(R.drawable.ic_media)
                 .setLargeIcon(largeIcon)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

@@ -127,31 +127,16 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Bottom action row: Confirm centered by default. In reprocess mode a
-         small red Cancel button appears above it (see below). -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/b_lyricsConfirm"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="24dp"
-        android:padding="12dp"
-        android:text="@string/lyrics_confirm"
-        android:textColor="@color/AppWhite"
-        android:backgroundTint="@color/colorPrimary"
-        app:cornerRadius="20dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
+    <!-- Bottom action row: Cancel pinned to the bottom so it lines up with
+         the skeleton-state cancel button; Confirm sits above it. In reprocess
+         mode Cancel becomes visible; without reprocess only Confirm is shown. -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/b_lyricsPickerCancel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:layout_marginBottom="32dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
         android:paddingTop="6dp"
         android:paddingBottom="6dp"
         android:minWidth="0dp"
@@ -164,10 +149,27 @@
         android:visibility="gone"
         android:backgroundTint="@color/lyrics_cancel_red"
         app:cornerRadius="18dp"
-        app:layout_constraintBottom_toTopOf="@id/b_lyricsConfirm"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="visible" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_lyricsConfirm"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="12dp"
+        android:padding="12dp"
+        android:text="@string/lyrics_confirm"
+        android:textColor="@color/AppWhite"
+        android:backgroundTint="@color/colorPrimary"
+        app:cornerRadius="20dp"
+        app:layout_constraintBottom_toTopOf="@id/b_lyricsPickerCancel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_goneMarginBottom="32dp" />
 
     <!-- =============  SKELETON / PROCESSING STATE  ============= -->
     <LinearLayout

@@ -30,6 +30,12 @@ public class FadingEdgeRecyclerView extends RecyclerView {
     private LinearGradient      mBottomShader;
     private int                 mFadeTopPx;
     private int                 mFadeBottomPx;
+    // Optional fully-transparent slab at the top of the recycler (measured in
+    // px from y=0). Between 0 and this value the wipe stays at 100% (content
+    // fully cleared); between this value and mFadeTopPx it eases from
+    // transparent to opaque. Useful when an overlay covers the top band and
+    // the recycler content must never bleed through the gap between tiles.
+    private int                 mFadeTopSolidPx;
 
     public FadingEdgeRecyclerView(Context ctx) {
         super(ctx);
@@ -67,6 +73,20 @@ public class FadingEdgeRecyclerView extends RecyclerView {
         invalidate();
     }
 
+    /** Reserves a fully-transparent slab at the top. Values in [0, solidPx]
+     *  stay 100% wiped; from solidPx to the current fade top length the
+     *  wipe eases from transparent to opaque. Pass 0 to disable. */
+    public void setTopFadeSolidPx(int solidPx) {
+        if (solidPx == mFadeTopSolidPx) return;
+        mFadeTopSolidPx = solidPx;
+        buildShaders();
+        invalidate();
+    }
+
+    public int getFadeTopPx()      { return mFadeTopPx; }
+    public int getFadeBottomPx()   { return mFadeBottomPx; }
+    public int getTopFadeSolidPx() { return mFadeTopSolidPx; }
+
     private void buildShaders() {
         int w = getWidth();
         int h = getHeight();
@@ -77,11 +97,24 @@ public class FadingEdgeRecyclerView extends RecyclerView {
         int topLen = Math.min(mFadeTopPx, h / 2);
         int botLen = Math.min(mFadeBottomPx, h / 2);
         // Alpha 1 near the edge, alpha 0 towards the visible area. DST_OUT
-        // subtracts that alpha from the destination.
-        mTopShader = topLen > 0
-                ? new LinearGradient(0, 0, 0, topLen,
-                    0xFF000000, 0x00000000, Shader.TileMode.CLAMP)
-                : null;
+        // subtracts that alpha from the destination. With mFadeTopSolidPx > 0
+        // an extra stop keeps the wipe fully opaque up to that y, so the
+        // covered band never sees content through the tile gaps.
+        if (topLen > 0) {
+            int solid = Math.max(0, Math.min(mFadeTopSolidPx, topLen));
+            if (solid == 0) {
+                mTopShader = new LinearGradient(0, 0, 0, topLen,
+                        0xFF000000, 0x00000000, Shader.TileMode.CLAMP);
+            } else {
+                float p = solid / (float) topLen;
+                mTopShader = new LinearGradient(0, 0, 0, topLen,
+                        new int[] { 0xFF000000, 0xFF000000, 0x00000000 },
+                        new float[] { 0f, p, 1f },
+                        Shader.TileMode.CLAMP);
+            }
+        } else {
+            mTopShader = null;
+        }
         mBottomShader = botLen > 0
                 ? new LinearGradient(0, h - botLen, 0, h,
                     0x00000000, 0xFF000000, Shader.TileMode.CLAMP)
