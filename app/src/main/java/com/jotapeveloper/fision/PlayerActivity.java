@@ -3780,6 +3780,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private LyricsLanguage mSelectedLyricsLanguage = LyricsLanguage.LANGUAGES[0]; // Auto
     private LyricsUiState mLyricsUiState = LyricsUiState.PICKER;
     private boolean isLyricsViewShown = false;
+    // While opening the lyrics overlay, applyChordsOverlayForLyrics() is a
+    // no-op so the transition owns the chord fade. Otherwise setLyricsUiState
+    // (invoked from refreshLyricsViewForCurrentSong before transitionIntoLyrics
+    // runs) would snap-hide the chord row before the fade had a chance to run.
+    private boolean mLyricsOpeningTransition = false;
     private boolean lyricsReprocessMode = false;
     private int mLyricsActiveIdx = -1;
     private static final String PREF_LYRICS_KARAOKE_MODE = "lyrics_karaoke_mode";
@@ -5023,8 +5028,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         View chordsContainer = findViewById(R.id.chords_container);
         if (isLyricsViewShown) {
             lyricsReprocessMode = false;
+            // Snapshot chord visibility before refresh so the transition can
+            // animate from the real starting state. refreshLyricsViewForCurrentSong
+            // triggers setLyricsUiState which would otherwise apply the chord
+            // overlay synchronously; the flag blocks that so the transition
+            // owns the fade.
+            boolean chordsWereVisible = chordsContainer != null
+                    && chordsContainer.getVisibility() == View.VISIBLE;
+            mLyricsOpeningTransition = true;
             refreshLyricsViewForCurrentSong();
-            transitionIntoLyrics(chordsContainer);
+            transitionIntoLyrics(chordsContainer, chordsWereVisible);
+            mLyricsOpeningTransition = false;
         } else {
             transitionOutOfLyrics(chordsContainer);
         }
@@ -5094,7 +5108,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 : R.drawable.player_toolbar_bg);
     }
 
-    private void transitionIntoLyrics(View chordsContainer) {
+    private void transitionIntoLyrics(View chordsContainer, boolean chordsWereVisible) {
         final long OUT_DUR = 200L;
         final long IN_DUR  = 300L;
         float density = getResources().getDisplayMetrics().density;
@@ -5121,11 +5135,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                         stemsBox.setTranslationY(0f);
                     }).start();
         }
-        // Chords overlay is applied once the lyrics view state settles into
-        // CONTENT (see applyChordsOverlayForLyrics). While the user is on the
-        // picker / skeleton the chord row stays hidden — the overlay is for
-        // config, not for playing along.
-        applyChordsOverlayForLyrics();
+        // Chord row transition strategies for the opening path:
+        //  * destination CONTENT + chord already visible -> activate the
+        //    overlay in place (elevation + z-order + padding) without
+        //    refading alpha, since the user was already looking at chords.
+        //  * destination non-CONTENT + chord visible -> fade the chord out
+        //    in parallel with the lyricsRoot fade in.
+        //  * chord was hidden -> nothing to animate; the CONTENT re-open
+        //    (if any) will fade it in via animateChordsOverlayForLyrics.
+        if (chordsActive && chordsWereVisible) {
+            if (mLyricsUiState == LyricsUiState.CONTENT) {
+                activateChordOverlayInPlace(chordsContainer);
+            } else {
+                fadeOutChordForLyricsOpen(chordsContainer);
+            }
+        }
         lyricsRoot.setAlpha(0f);
         lyricsRoot.setScaleX(0.94f);
         lyricsRoot.setScaleY(0.94f);
@@ -5147,6 +5171,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         applyToolbarBgForLyrics(false);
 
+        // If chords were hidden by the lyrics config screens, restore them
+        // with a fade in parallel to the stems slide-in so they don't pop
+        // in beside the incoming controls. Snapshot the state now because
+        // isLyricsViewShown has already been flipped to false.
+        final View chordsView = findViewById(R.id.chords_container);
+        final boolean chordsHiddenForConfig = chordsActive
+                && chordsView != null
+                && chordsView.getVisibility() != View.VISIBLE;
+
         lyricsRoot.animate().cancel();
         lyricsRoot.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
                 .withLayer()
@@ -5158,8 +5191,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     // overlay has faded out. Doing it up front made the
                     // lyricsRoot briefly cover the chord row before its own
                     // fade animation started, so the chords looked to
-                    // disappear behind the lyrics for a frame.
-                    applyChordsOverlayForLyrics();
+                    // disappear behind the lyrics for a frame. Skip when
+                    // the chord fade-in is already in flight — apply would
+                    // reset alpha to 1 mid-animation.
+                    if (!chordsHiddenForConfig) {
+                        applyChordsOverlayForLyrics();
+                    }
                 }).start();
 
         View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
@@ -5175,6 +5212,68 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
         }
+
+        if (chordsHiddenForConfig) {
+            // Apply the final chord layout now (visibility, elevation, padding)
+            // and fade alpha in from 0 in sync with the stems slide-in.
+            applyChordsOverlayForLyrics();
+            chordsView.animate().cancel();
+            chordsView.setAlpha(0f);
+            chordsView.animate().alpha(1f)
+                    .withLayer()
+                    .setStartDelay(OUT_DUR - 80L)
+                    .setDuration(IN_DUR)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        }
+    }
+
+    /** Opening-only: promote the chord row into overlay position (Z + padding
+     *  + fade profile) without touching its alpha. Used when the destination
+     *  state is CONTENT and the chord row was already visible — no need to
+     *  refade in a row the user was already looking at. */
+    private void activateChordOverlayInPlace(View chordsContainer) {
+        if (chordsContainer == null || rvLyrics == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        chordsContainer.animate().cancel();
+        chordsContainer.setAlpha(1f);
+        chordsContainer.setElevation(20f * density);
+        chordsContainer.setBackground(null);
+        chordsContainer.setVisibility(View.VISIBLE);
+        android.view.ViewParent linearParent = chordsContainer.getParent();
+        android.view.ViewParent centralFrame = linearParent != null
+                ? linearParent.getParent() : null;
+        if (centralFrame instanceof android.view.ViewGroup
+                && linearParent instanceof View) {
+            ((android.view.ViewGroup) centralFrame)
+                    .bringChildToFront((View) linearParent);
+        }
+        int chordsH = (int) (70f * density);
+        int solid = chordsH + (int) (8f * density);
+        rvLyrics.setPadding(rvLyrics.getPaddingLeft(),
+                solid, rvLyrics.getPaddingRight(),
+                rvLyrics.getPaddingBottom());
+        FadingEdgeRecyclerView ferv = (FadingEdgeRecyclerView) rvLyrics;
+        ferv.setFadeLengthsPx(
+                solid + (int) (90f * density),
+                (int) (110f * density));
+        ferv.setTopFadeSolidPx(solid);
+    }
+
+    /** Opening-only: fade the chord row out in parallel with the lyricsRoot
+     *  fade in when the destination state is picker / skeleton / error.
+     *  Leaves the chord in its natural (non-overlay) state — no elevation
+     *  or z-order change, since it's going away. */
+    private void fadeOutChordForLyricsOpen(View chordsContainer) {
+        if (chordsContainer == null) return;
+        chordsContainer.animate().cancel();
+        chordsContainer.animate().alpha(0f).setDuration(240L)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    chordsContainer.setVisibility(View.GONE);
+                    chordsContainer.setAlpha(1f);
+                    chordsContainer.setElevation(0f);
+                }).start();
     }
 
     /** Applies (or reverts) the chord-row overlay used while the lyrics view
@@ -5269,6 +5368,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void applyChordsOverlayForLyrics() {
+        if (mLyricsOpeningTransition) return;
         View chordsContainer = findViewById(R.id.chords_container);
         if (chordsContainer == null) return;
         float density = getResources().getDisplayMetrics().density;

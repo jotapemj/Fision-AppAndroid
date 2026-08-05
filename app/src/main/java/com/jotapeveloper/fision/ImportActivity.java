@@ -672,6 +672,12 @@ public class ImportActivity extends AppCompatActivity {
         applyActivityBlur();
         uploadDialog.setOnDismissListener(d -> removeActivityBlur());
         uploadDialog.show();
+        // Lock window width so live subtitle updates never re-flow the dialog.
+        if (win != null) {
+            float density = getResources().getDisplayMetrics().density;
+            int widthPx = (int) (340f * density);
+            win.setLayout(widthPx, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
         bSend.setEnabled(false);
 
         bCancel.setOnClickListener(v -> {
