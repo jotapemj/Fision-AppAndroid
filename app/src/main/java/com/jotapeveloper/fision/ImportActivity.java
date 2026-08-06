@@ -109,6 +109,7 @@ public class ImportActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         // Cloud pipeline only: bail out if the user is not signed in. Prevents
         // the activity from being reached from external intents while in local mode.
         if (!com.jotapeveloper.fision.cloud.AuthManager.get(this).isLoggedIn()) {
@@ -221,6 +222,8 @@ public class ImportActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        com.jotapeveloper.fision.design.AccentColorManager.get(this)
+                .maybeRecreateForAccent(this);
         com.jotapeveloper.fision.cloud.ServerInfoManager.get(this)
                 .addListener(serverInfoListener);
         applyServerInfoState();
@@ -378,7 +381,7 @@ public class ImportActivity extends AppCompatActivity {
      *  transparent with colorPrimary stroke. Without this, the MaterialComponents
      *  default leaves them all grey and the active one is not obvious. */
     private void attachSegmentTint(MaterialButtonToggleGroup group) {
-        int primary   = androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary);
+        int primary   = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
         int white     = androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite);
         int transparent = android.graphics.Color.TRANSPARENT;
         Runnable apply = () -> {

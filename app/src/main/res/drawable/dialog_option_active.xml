@@ -4,7 +4,7 @@
     <corners android:radius="20dp" />
     <stroke
         android:width="2dp"
-        android:color="@color/colorPrimary" />
+        android:color="?attr/colorPrimary" />
     <!-- Soft primary tint to reinforce the selection -->
-    <solid android:color="#1527B397" />
+    <solid android:color="@color/accent_translucent_08" />
 </shape>

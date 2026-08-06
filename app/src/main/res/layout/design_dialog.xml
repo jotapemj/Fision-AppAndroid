@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Design dialog: pick the app-wide accent color + toggle whether the
+    player's nebula follows the accent (fixed) or the artcover palette.
+    Reuses the blur+dialog language (delete_dialogbg + 24dp padding).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/design_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:gravity="center" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/design_accent_title"
+        android:textColor="#919191"
+        android:textSize="13sp"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <FrameLayout
+            android:id="@+id/fl_accent_green"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center">
+            <View
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:background="@drawable/design_accent_green" />
+            <ImageView
+                android:id="@+id/iv_accent_green_check"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check_thin"
+                android:visibility="gone"
+                app:tint="@color/AppWhite" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/fl_accent_blue"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center">
+            <View
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:background="@drawable/design_accent_blue" />
+            <ImageView
+                android:id="@+id/iv_accent_blue_check"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check_thin"
+                android:visibility="gone"
+                app:tint="@color/AppWhite" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/fl_accent_purple"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center">
+            <View
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:background="@drawable/design_accent_purple" />
+            <ImageView
+                android:id="@+id/iv_accent_purple_check"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check_thin"
+                android:visibility="gone"
+                app:tint="@color/AppWhite" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/fl_accent_amber"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center">
+            <View
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:background="@drawable/design_accent_amber" />
+            <ImageView
+                android:id="@+id/iv_accent_amber_check"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check_thin"
+                android:visibility="gone"
+                app:tint="@color/AppWhite" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="10dp"
+        android:background="#1FFFFFFF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/design_nebula_title"
+                android:textColor="@color/AppWhite"
+                android:textSize="14sp"
+                android:fontFamily="@font/yugothic_ui_regular" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/design_nebula_summary"
+                android:textColor="#919191"
+                android:textSize="12sp"
+                android:fontFamily="@font/yugothic_ui_regular" />
+        </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_designNebulaFixed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:showText="false"
+            android:textOn=""
+            android:textOff="" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_designClose"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:text="@string/close"
+            android:textColor="@color/AppWhite"
+            app:backgroundTint="?attr/colorPrimary"
+            app:cornerRadius="20dp" />
+    </LinearLayout>
+</LinearLayout>

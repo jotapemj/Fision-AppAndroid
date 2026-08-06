@@ -17,7 +17,7 @@
         android:layout_width="match_parent"
         android:layout_height="42dp"
         android:src="@drawable/ic_info"
-        app:tint="@color/colorPrimary"
+        app:tint="?attr/colorPrimary"
         android:layout_marginBottom="10dp"
         android:contentDescription="@string/audio3d_info_title" />
 
@@ -103,7 +103,7 @@
         android:minWidth="140dp"
         android:text="@string/dialog_close"
         android:textColor="@color/AppWhite"
-        android:backgroundTint="@color/colorPrimary"
+        android:backgroundTint="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
 </LinearLayout>

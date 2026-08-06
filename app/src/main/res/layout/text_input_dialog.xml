@@ -30,8 +30,8 @@
         app:boxStrokeWidth="1dp"
         app:hintTextColor="@color/AppWhite"
         android:textColorHint="#9E9E9E"
-        app:cursorColor="@color/colorPrimary"
-        app:cursorErrorColor="@color/colorPrimary">
+        app:cursorColor="?attr/colorPrimary"
+        app:cursorErrorColor="?attr/colorPrimary">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_textInput"
@@ -58,8 +58,8 @@
             android:padding="10dp"
             android:text="@string/NO"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -70,7 +70,7 @@
             android:padding="10dp"
             android:text="@string/save"
             android:textColor="@color/AppWhite"
-            android:backgroundTint="@color/colorPrimary"
+            android:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="20dp" />
     </LinearLayout>
 

@@ -44,7 +44,7 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:src="@drawable/ic_check_thin"
-        app:tint="@color/colorPrimary"
+        app:tint="?attr/colorPrimary"
         android:visibility="gone"
         tools:visibility="visible"
         tools:ignore="ContentDescription" />

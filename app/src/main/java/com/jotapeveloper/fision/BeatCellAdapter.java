@@ -39,8 +39,6 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     // Colors
     private static final int COLOR_BASE      = Color.parseColor("#262626");
     private static final int COLOR_DOWNBEAT  = Color.parseColor("#3A3A3A");
-    private static final int COLOR_TRAIL     = Color.parseColor("#27725F"); // faint
-    private static final int COLOR_ACTIVE    = Color.parseColor("#27B397"); // primary
 
     public BeatCellAdapter(Context context, List<BeatCell> cells, int beatsPerBar) {
         this.context     = context;
@@ -102,13 +100,15 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
         // Beats of the current bar already elapsed -> trail.
         // The last beat of the previous bar stays in trail color until the next bar
         // begins (avoids switching it off too early).
+        int active = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(context);
+        int trail = androidx.core.graphics.ColorUtils.blendARGB(active, 0xFF000000, 0.55f);
         int color;
         if (position == currentBeatIndex) {
-            color = COLOR_ACTIVE;
+            color = active;
         } else if (currentBeatIndex >= 0
                 && position < currentBeatIndex
                 && currentBeatIndex - position < beatsPerBar) {
-            color = COLOR_TRAIL;
+            color = trail;
         } else if (cell.isDownbeat) {
             color = COLOR_DOWNBEAT;
         } else {

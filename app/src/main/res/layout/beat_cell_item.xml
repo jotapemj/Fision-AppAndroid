@@ -34,7 +34,7 @@
         android:layout_height="40dp"
         android:layout_gravity="center_vertical"
         android:layout_marginStart="5dp"
-        android:background="@color/colorPrimary"
+        android:background="?attr/colorPrimary"
         android:visibility="gone" />
 
 </FrameLayout>

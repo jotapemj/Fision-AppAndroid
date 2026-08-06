@@ -20,7 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:indeterminate="true"
-            android:indeterminateTint="@color/colorPrimary" />
+            android:indeterminateTint="?attr/colorPrimary" />
 
         <ImageView
             android:id="@+id/iv_pingResult"
@@ -50,7 +50,7 @@
         android:minWidth="120dp"
         android:text="@string/dialog_close"
         android:textColor="@color/AppWhite"
-        android:backgroundTint="@color/colorPrimary"
+        android:backgroundTint="?attr/colorPrimary"
         android:visibility="gone"
         app:cornerRadius="20dp" />
 

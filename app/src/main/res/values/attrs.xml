@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Secondary tint of the current accent (Design pref). Used for slider
+         thumbs, tooltip pills, small detail — pairs with ?attr/colorPrimary. -->
+    <attr name="accentSecondary" format="color" />
+</resources>

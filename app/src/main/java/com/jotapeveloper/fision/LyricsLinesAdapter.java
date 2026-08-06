@@ -163,7 +163,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         Row row = rows.get(position);
         boolean active = position == activeIndex;
         Context ctx = holder.itemView.getContext();
-        int accent = ContextCompat.getColor(ctx, R.color.colorPrimary);
+        int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx);
         int dim    = ContextCompat.getColor(ctx, R.color.lyrics_line_dim);
         // The TextView is the itemView, so setting a whole-row OnClickListener
         // fires *in addition* to any ClickableSpan the karaoke text carries —
@@ -246,7 +246,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     private static CharSequence buildKaraokeText(Context ctx, Lyrics.Segment seg,
                                                  double posSec,
                                                  LineClickListener clickListener) {
-        int accent = ContextCompat.getColor(ctx, R.color.colorPrimary);
+        int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx);
         int dim    = ContextCompat.getColor(ctx, R.color.lyrics_line_dim);
         SpannableStringBuilder sb = new SpannableStringBuilder();
         List<Lyrics.Word> words = seg.words;

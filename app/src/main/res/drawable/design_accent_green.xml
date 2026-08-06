@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Circular swatch with a diagonal gradient from primary (top-left) to
+     secondary (bottom-right) so the pair reads at a glance. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:angle="315"
+        android:startColor="@color/accent_green"
+        android:endColor="@color/accent_green_secondary" />
+    <stroke android:width="2dp" android:color="#33FFFFFF" />
+</shape>

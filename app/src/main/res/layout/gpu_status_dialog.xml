@@ -32,7 +32,7 @@
                 android:layout_height="42dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_gpu"
-                app:tint="@color/colorPrimary" />
+                app:tint="?attr/colorPrimary" />
         </FrameLayout>
 
         <FrameLayout
@@ -144,8 +144,8 @@
             android:padding="10dp"
             android:text="@string/gpu_dialog_refresh"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -156,7 +156,7 @@
             android:padding="10dp"
             android:text="@string/gpu_dialog_close"
             android:textColor="@color/AppWhite"
-            android:backgroundTint="@color/colorPrimary"
+            android:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="20dp" />
     </LinearLayout>
 

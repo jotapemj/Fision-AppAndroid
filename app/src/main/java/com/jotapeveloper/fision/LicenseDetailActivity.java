@@ -23,6 +23,7 @@ public class LicenseDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.activity_license_detail);
 
         String name   = getIntent().getStringExtra(EXTRA_NAME);

@@ -45,7 +45,7 @@
         app:boxStrokeColor="@color/AppWhite"
         android:textColorHint="#919191"
         app:hintTextColor="@color/AppWhite"
-        app:cursorColor="@color/colorPrimary">
+        app:cursorColor="?attr/colorPrimary">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_song_name"
@@ -71,7 +71,7 @@
         app:boxStrokeColor="@color/AppWhite"
         android:textColorHint="#919191"
         app:hintTextColor="@color/AppWhite"
-        app:cursorColor="@color/colorPrimary">
+        app:cursorColor="?attr/colorPrimary">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_artist_name"
@@ -143,8 +143,8 @@
             android:maxLines="2"
             android:text="@string/NO"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -156,7 +156,7 @@
             android:maxLines="2"
             android:text="@string/save"
             android:textColor="@color/AppWhite"
-            android:backgroundTint="@color/colorPrimary"
+            android:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
     </LinearLayout>

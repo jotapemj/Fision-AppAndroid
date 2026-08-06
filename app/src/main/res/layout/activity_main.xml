@@ -167,7 +167,7 @@
         android:id="@+id/b_add"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:backgroundTint="@color/colorPrimary"
+        android:backgroundTint="?attr/colorPrimary"
         android:fontFamily="@font/yugothic_ui_regular"
         android:onClick="addSong"
         android:text="@string/b_add"

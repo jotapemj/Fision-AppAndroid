@@ -7,6 +7,18 @@
     <color name="white">#FFFFFFFF</color>
     <color name="colorPrimary">#27B397</color>
 
+    <!-- Accent palette (Design preference). Each accent is a pair:
+         primary drives bars / buttons / chord highlight;
+         secondary drives slider thumbs, tick tooltips, small detail. -->
+    <color name="accent_green">#27B397</color>
+    <color name="accent_green_secondary">#02D8E7</color>
+    <color name="accent_blue">#3B82F6</color>
+    <color name="accent_blue_secondary">#60E1FF</color>
+    <color name="accent_purple">#A855F7</color>
+    <color name="accent_purple_secondary">#F0ABFC</color>
+    <color name="accent_amber">#F59E0B</color>
+    <color name="accent_amber_secondary">#FDE68A</color>
+
 
     <color name="AppDarkGrey">#919191</color>
     <color name="BottomSheetColor">#272727</color>

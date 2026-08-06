@@ -216,6 +216,13 @@
     <string name="settings_section_app">Застосунок</string>
     <string name="settings_section_about">Про застосунок</string>
     <string name="settings_language_title">Мова</string>
+    <string name="design_section_title">Оформлення</string>
+    <string name="design_title">Оформлення</string>
+    <string name="design_summary">Акцентний колір і палітра туманності</string>
+    <string name="design_accent_title">Акцентний колір</string>
+    <string name="design_nebula_title">Фіксовані кольори туманності</string>
+    <string name="design_nebula_summary">Вимк.: кольори повторюють палітру обкладинки</string>
+    <string name="close">Закрити</string>
     <string name="settings_language_dialog_title">Обрати мову</string>
     <string name="settings_logout_title">Вийти</string>
     <string name="settings_logout_subtitle">Завершити сесію</string>

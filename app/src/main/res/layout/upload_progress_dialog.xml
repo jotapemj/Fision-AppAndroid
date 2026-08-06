@@ -45,7 +45,7 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="6dp"
-        android:progressTint="@color/colorPrimary"
+        android:progressTint="?attr/colorPrimary"
         android:max="100"
         android:progress="0" />
 
@@ -64,8 +64,8 @@
             android:padding="10dp"
             android:text="@android:string/cancel"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
     </LinearLayout>
 

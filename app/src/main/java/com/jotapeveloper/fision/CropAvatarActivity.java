@@ -39,6 +39,7 @@ public class CropAvatarActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.activity_crop_avatar);
         cropView = findViewById(R.id.v_crop);
         spinner  = findViewById(R.id.pb_cropSpinner);

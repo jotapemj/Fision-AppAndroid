@@ -57,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity
 
     // Card ids used by the adapter to dispatch clicks
     private static final String ID_ACCOUNT   = "account";
+    private static final String ID_DESIGN    = "design";
     private static final String ID_LANGUAGE  = "language";
     private static final String ID_GPU       = "gpu";
     private static final String ID_VERSION   = "server_version";
@@ -77,6 +78,7 @@ public class SettingsActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.settings_activity);
 
         avatarPicker = registerForActivityResult(
@@ -151,6 +153,9 @@ public class SettingsActivity extends AppCompatActivity
         // Section: App
         items.add(SettingsItem.section("sec_app",
                 getString(R.string.settings_section_app)));
+        items.add(SettingsItem.card(ID_DESIGN, R.drawable.ic_design,
+                getString(R.string.design_title),
+                getString(R.string.design_summary)));
         items.add(SettingsItem.card(ID_LANGUAGE, R.drawable.ic_language,
                 getString(R.string.settings_language_title),
                 currentLanguageLabel()));
@@ -210,6 +215,7 @@ public class SettingsActivity extends AppCompatActivity
     public void onSettingsItemClick(SettingsItem item) {
         switch (item.id) {
             case ID_ACCOUNT:  onAccountClicked();  break;
+            case ID_DESIGN:   showDesignDialog();  break;
             case ID_LANGUAGE: onLanguageClicked(); break;
             case ID_GPU:      onGpuClicked();      break;
             case ID_TEST:     runConnectionTest(); break;
@@ -364,7 +370,7 @@ public class SettingsActivity extends AppCompatActivity
         Window w = dlg.getWindow();
         if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
 
-        int primary = ContextCompat.getColor(this, R.color.colorPrimary);
+        int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
         int white   = ContextCompat.getColor(this, R.color.AppWhite);
         float density = getResources().getDisplayMetrics().density;
         int padH  = (int) (14f * density);
@@ -551,6 +557,74 @@ public class SettingsActivity extends AppCompatActivity
         bRemove.setVisibility(View.GONE);
     }
 
+    // ---------------- design dialog ----------------
+    private void showDesignDialog() {
+        View v = getLayoutInflater().inflate(R.layout.design_dialog, null);
+        com.google.android.material.switchmaterial.SwitchMaterial swNebula =
+                v.findViewById(R.id.sw_designNebulaFixed);
+        MaterialButton bClose = v.findViewById(R.id.b_designClose);
+
+        int[] swatchIds = new int[] {
+                R.id.fl_accent_green,
+                R.id.fl_accent_blue,
+                R.id.fl_accent_purple,
+                R.id.fl_accent_amber };
+        int[] checkIds = new int[] {
+                R.id.iv_accent_green_check,
+                R.id.iv_accent_blue_check,
+                R.id.iv_accent_purple_check,
+                R.id.iv_accent_amber_check };
+
+        com.jotapeveloper.fision.design.AccentColorManager mgr =
+                com.jotapeveloper.fision.design.AccentColorManager.get(this);
+
+        AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
+                .setView(v)
+                .setCancelable(true)
+                .create();
+        Window w = dlg.getWindow();
+        if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        applyActivityBlur();
+        dlg.setOnDismissListener(d -> removeActivityBlur());
+
+        // Highlight the currently active swatch.
+        Runnable refreshChecks = () -> {
+            int active = mgr.getAccentId();
+            for (int i = 0; i < checkIds.length; i++) {
+                v.findViewById(checkIds[i]).setVisibility(
+                        i == active ? View.VISIBLE : View.GONE);
+            }
+        };
+        refreshChecks.run();
+
+        // Applying an accent recreates the Activity so ?attr/colorPrimary can
+        // resolve to the new palette. The dialog closes first so removeActivityBlur
+        // fires before recreate wipes the window.
+        for (int i = 0; i < swatchIds.length; i++) {
+            final int accentId = i;
+            v.findViewById(swatchIds[i]).setOnClickListener(x -> {
+                if (mgr.getAccentId() == accentId) return;
+                mgr.setAccentId(accentId);
+                dlg.dismiss();
+                recreate();
+            });
+        }
+
+        swNebula.setChecked(mgr.isNebulaFixedAccent());
+        swNebula.setOnCheckedChangeListener((btn, isChecked) ->
+                mgr.setNebulaFixedAccent(isChecked));
+
+        bClose.setOnClickListener(x -> dlg.dismiss());
+        dlg.show();
+        // Match the wizard/upload dialog width lock so the swatch row does not
+        // reflow when the switch toggles below.
+        if (w != null) {
+            float density = getResources().getDisplayMetrics().density;
+            w.setLayout((int) (320f * density),
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
     // ---------------- about dialog ----------------
     private void showAboutDialog() {
         View dlgView = getLayoutInflater().inflate(R.layout.about_dialog, null);
@@ -625,7 +699,7 @@ public class SettingsActivity extends AppCompatActivity
             spinner.setVisibility(View.GONE);
             ivResult.setImageResource(R.drawable.ic_check_circle);
             ivResult.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    ContextCompat.getColor(this, R.color.cloud_online)));
+                    com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this)));
             ivResult.setVisibility(View.VISIBLE);
             tvText.setText(R.string.server_test_ok);
             bClose.setVisibility(View.VISIBLE);

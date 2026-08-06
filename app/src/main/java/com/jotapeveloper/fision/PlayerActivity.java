@@ -336,8 +336,18 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        // Pick up an accent change performed while the player was in the
+        // background; recreate re-inflates layouts with the new palette.
+        com.jotapeveloper.fision.design.AccentColorManager.get(this)
+                .maybeRecreateForAccent(this);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.new_activity_player);
         // load preferences language
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
@@ -501,7 +511,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         // Pitch button tint based on the saved value
         if (selectedPitch != numberPickerData.CENTRAL_PITCH_INDEX) {
-            b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(39, 179, 151)));
+            b_pitch.setIconTint(ColorStateList.valueOf(accent()));
         } else {
             b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(255, 255, 255)));
         }
@@ -546,7 +556,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Show chords section: initial state on song load
         View chordsContainer = findViewById(R.id.chords_container);
         if(chordsActive){
-            b_chord.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
+            b_chord.setIconTint(ColorStateList.valueOf(accent()));
         }
         else{
             chordsContainer.setVisibility(View.GONE);
@@ -566,7 +576,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // Metronome section
         if(metronomeEnabled){
-            b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
+            b_metronome.setIconTint(ColorStateList.valueOf(accent()));
             if(selectedMetronome == 0){engine.setVolume(metronomeHalfTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
             if(selectedMetronome == 1){engine.setVolume(metronomeTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
             if(selectedMetronome == 2){engine.setVolume(metronomeDoubleTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
@@ -976,7 +986,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if(!metronomeEnabled) {
                     updateDB("metronome", 1);
                     metronomeEnabled = true;
-                    b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
+                    b_metronome.setIconTint(ColorStateList.valueOf(accent()));
 
                     if(selectedMetronome == 0){engine.setVolume(metronomeHalfTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
                     if(selectedMetronome == 1){engine.setVolume(metronomeTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
@@ -1261,7 +1271,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void refreshNebulaPalette() {
         if (nebulaView == null || SongFolder == null) return;
         final File cover = new File(SongFolder, "artcover.png");
-        final int primary = androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary);
+        final int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        // Design pref: when the user picks "fixed accent" for the nebula, skip
+        // the palette extraction and paint three tonal variants of the accent
+        // so the mood stays consistent across songs.
+        if (com.jotapeveloper.fision.design.AccentColorManager.get(this).isNebulaFixedAccent()) {
+            int lighter = androidx.core.graphics.ColorUtils.blendARGB(primary, 0xFFFFFFFF, 0.30f);
+            int darker  = androidx.core.graphics.ColorUtils.blendARGB(primary, 0xFF000000, 0.40f);
+            nebulaView.setPalette(new int[] { primary, lighter, darker });
+            return;
+        }
         final int[] fallback = new int[] { 0xFF2D6BB0, 0xFF3AA3B3, primary };
         if (!cover.exists()) {
             nebulaView.setPalette(fallback);
@@ -1433,7 +1452,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         title.setText(titleRes);
 
-        int primary = androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary);
+        int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
         int white   = androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite);
 
         androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(
@@ -1719,7 +1738,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Inserts a clickable chip-style row (same UX as showSingleChoiceBlurDialog). */
     private void addOptionRow(String label, boolean selected, Runnable onClick) {
-        int primary = androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary);
+        int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
         int white   = androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite);
         float density = getResources().getDisplayMetrics().density;
         int padH = (int) (14f * density);
@@ -2005,25 +2024,24 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (b_repeat == null || playbackService == null) return;
         PlaybackService.RepeatMode mode = playbackService.getRepeatMode();
         int iconRes;
-        int tintRes;
+        int tintColor;
         switch (mode) {
             case ALL:
                 iconRes = R.drawable.ic_repeat;
-                tintRes = R.color.colorPrimary;
+                tintColor = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
                 break;
             case ONE:
                 iconRes = R.drawable.ic_repeat_one;
-                tintRes = R.color.colorPrimary;
+                tintColor = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
                 break;
             case OFF:
             default:
                 iconRes = R.drawable.ic_repeat;
-                tintRes = R.color.white;
+                tintColor = ContextCompat.getColor(this, R.color.white);
                 break;
         }
         b_repeat.setIconResource(iconRes);
-        b_repeat.setIconTint(android.content.res.ColorStateList.valueOf(
-                ContextCompat.getColor(this, tintRes)));
+        b_repeat.setIconTint(android.content.res.ColorStateList.valueOf(tintColor));
     }
 
     /** Previous button: rewind to 00:00 when the current position is past a
@@ -2219,7 +2237,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Tints the A/B buttons based on which one is active (green = active). */
     private void tintHalfVariantButtons(TextView a, TextView b) {
-        int active   = Color.rgb(39, 179, 151);
+        int active   = accent();
         int inactive = Color.rgb(255, 255, 255);
         if (a != null) a.setTextColor(metronomeHalfVariant == 0 ? active : inactive);
         if (b != null) b.setTextColor(metronomeHalfVariant == 1 ? active : inactive);
@@ -2579,7 +2597,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (is3DViewShown) {
             chordsActive = !chordsActive;
             b_chord.setIconTint(ColorStateList.valueOf(chordsActive
-                    ? Color.rgb(39,179,151) : Color.rgb(255,255,255)));
+                    ? accent() : Color.rgb(255,255,255)));
             updateDB("chords", chordsActive ? 1 : 0);
             return;
         }
@@ -2591,7 +2609,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (isLyricsViewShown) {
             chordsActive = !chordsActive;
             b_chord.setIconTint(ColorStateList.valueOf(chordsActive
-                    ? Color.rgb(39,179,151) : Color.rgb(255,255,255)));
+                    ? accent() : Color.rgb(255,255,255)));
             updateDB("chords", chordsActive ? 1 : 0);
             animateChordsOverlayForLyrics(chordsActive);
             return;
@@ -2620,7 +2638,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             updateDB("chords",0);
         } else {
             chordsContainer.setVisibility(View.VISIBLE);
-            b_chord.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
+            b_chord.setIconTint(ColorStateList.valueOf(accent()));
             chordsActive = true;
             updateDB("chords",1);
         }
@@ -2743,7 +2761,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             sPan.setEnabled(true);
             ibRestorePan.setEnabled(true);
 
-            int ThumbColor = ContextCompat.getColor(getApplicationContext(), R.color.sliderThumb);
+            int ThumbColor = com.jotapeveloper.fision.design.AccentColorManager.resolveAccentSecondary(this);
             sVolume.setThumbTintList(ColorStateList.valueOf(ThumbColor));
             sPan.setThumbTintList(ColorStateList.valueOf(ThumbColor));
 
@@ -2763,7 +2781,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void selectButton(int selection,
                               com.google.android.material.card.MaterialCardView cardHalf,
                               MaterialButton metronomeDouble, MaterialButton metronome) {
-        int active = Color.parseColor("#27B397");
+        int active = accent();
         int inactive = Color.parseColor("#FFFFFF");
         cardHalf.setStrokeColor(selection == 0 ? active : inactive);
         metronome.setStrokeColor(ColorStateList.valueOf(selection == 1 ? active : inactive));
@@ -2856,7 +2874,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
                 if(isChecked){
-                    b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(39,179,151)));
+                    b_metronome.setIconTint(ColorStateList.valueOf(accent()));
                     metronomeEnabled = true;
                     enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
                     tv_metronome_volume.setTextColor(Color.parseColor("#FFFFFF"));
@@ -3225,7 +3243,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void applyPitchTint(TextView tvSubtitle, boolean active) {
-        int color = active ? Color.rgb(39, 179, 151) : Color.rgb(255, 255, 255);
+        int color = active ? accent() : Color.rgb(255, 255, 255);
         if (b_pitch != null) b_pitch.setIconTint(ColorStateList.valueOf(color));
         if (tvSubtitle != null) tvSubtitle.setTextColor(color);
     }
@@ -3578,14 +3596,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // Highlight Solo in colorPrimary if this stem is soloed (visual toggle)
         if (stem.equals(soloedStem)) {
-            tvSolo.setTextColor(androidx.core.content.ContextCompat.getColor(
-                    this, R.color.colorPrimary));
+            tvSolo.setTextColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
         }
         // Same for Mute: if the stem is muted, highlight Mute in green
         StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
         if (ss.volume == 0) {
-            tvMute.setTextColor(androidx.core.content.ContextCompat.getColor(
-                    this, R.color.colorPrimary));
+            tvMute.setTextColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
         }
 
         android.widget.PopupWindow popup = new android.widget.PopupWindow(menu,
@@ -3872,7 +3888,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void refreshB3dTint() {
         if (b3d == null) return;
         int tint = is3DEnabled
-                ? androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary)
+                ? com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this)
                 : Color.rgb(255, 255, 255);
         b3d.setIconTint(ColorStateList.valueOf(tint));
     }
@@ -4835,8 +4851,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Applies (or clears) the persistent green tint of omnipresent mode on the icon. */
     private void applyOmnipresentTint(android.widget.ImageView iv, boolean on) {
         if (on) {
-            iv.setColorFilter(androidx.core.content.ContextCompat.getColor(this,
-                    R.color.colorPrimary), android.graphics.PorterDuff.Mode.MULTIPLY);
+            iv.setColorFilter(
+                    com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this),
+                    android.graphics.PorterDuff.Mode.MULTIPLY);
         } else {
             iv.clearColorFilter();
         }
@@ -4897,7 +4914,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         com.google.android.material.button.MaterialButton bYes = dlgView.findViewById(R.id.b_yes);
 
         icon.setImageResource(R.drawable.ic_restore_pan);
-        icon.setColorFilter(androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary));
+        icon.setColorFilter(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
         text.setText(R.string.drawer_reset_dialog_body);
         bYes.setText(R.string.drawer_reset_dialog_title);
         bNo.setText(R.string.drawer_reset_dialog_cancel);
@@ -5089,10 +5106,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
+    /** Convenience: current accent color resolved against this Activity theme. */
+    private int accent() {
+        return com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+    }
+
     private void refreshBLyricsTint() {
         if (bLyrics == null) return;
         int tint = isLyricsViewShown
-                ? androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary)
+                ? com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this)
                 : androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite);
         bLyrics.setIconTint(android.content.res.ColorStateList.valueOf(tint));
     }

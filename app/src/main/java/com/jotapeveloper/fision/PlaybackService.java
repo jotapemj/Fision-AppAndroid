@@ -80,6 +80,12 @@ public class PlaybackService extends Service {
     private AudioFocusRequest focusRequest;
     // Remembers whether the pause was caused by a transient loss (to resume on focus regain)
     private boolean wasPlayingBeforeFocusLoss = false;
+    // Timestamp of the LOSS_TRANSIENT that set wasPlayingBeforeFocusLoss. A GAIN
+    // that arrives later than FOCUS_RESUME_WINDOW_MS is treated as another player
+    // yielding focus back to us for an unrelated reason (e.g. Spotify switching
+    // songs) and MUST NOT auto-resume us.
+    private long focusLossAtMs = 0L;
+    private static final long FOCUS_RESUME_WINDOW_MS = 60_000L;
     // Cached cover to avoid decoding the PNG multiple times per song
     private android.graphics.Bitmap cachedCoverBitmap = null;
 
@@ -422,6 +428,12 @@ public class PlaybackService extends Service {
         if (audioManager != null && focusRequest != null) {
             audioManager.requestAudioFocus(focusRequest);
         }
+        // Re-claim the media session: a persistent pause deactivates it so the
+        // system stops routing MEDIA_PLAY key events to us; we own playback
+        // again from here.
+        if (mediaSession != null && !mediaSession.isActive()) {
+            mediaSession.setActive(true);
+        }
         registerNoisyReceiver();
         if (engine.getCurrentPositionMs() == 0) engine.start();
         else                                    engine.resume();
@@ -435,12 +447,31 @@ public class PlaybackService extends Service {
         startEndOfSongWatcher();
     }
 
+    /** User-initiated / end-of-song pause: releases the media session so the
+     *  system stops treating us as the active player. External MEDIA_PLAY
+     *  events (Bluetooth head units after connect, car head unit scanning
+     *  active sessions) no longer wake the service on their own. */
     public void pause() {
+        pauseInternal(/*transientLoss=*/ false);
+    }
+
+    /** Focus-loss-transient pause: keeps the media session active so we can
+     *  auto-resume when the interruption ends (call, alarm). Any GAIN that
+     *  arrives past FOCUS_RESUME_WINDOW_MS is still discarded by the focus
+     *  listener even though the session stays alive. */
+    private void pauseForFocusLoss() {
+        pauseInternal(/*transientLoss=*/ true);
+    }
+
+    private void pauseInternal(boolean transientLoss) {
         if (engine == null) return;
         stopEndOfSongWatcher();
         engine.pause();
         unregisterNoisyReceiver();
         isPlaying = false;
+        if (!transientLoss && mediaSession != null && mediaSession.isActive()) {
+            mediaSession.setActive(false);
+        }
         // Stay in foreground with the paused notification. Leaving foreground
         // during pause let the system reclaim the service after a few minutes,
         // which broke tap-to-resume from the mini player.
@@ -618,17 +649,22 @@ public class PlaybackService extends Service {
                 .setOnAudioFocusChangeListener(focusChange -> {
                     switch (focusChange) {
                         case AudioManager.AUDIOFOCUS_LOSS:
-                            // Permanent loss: pause and forget "wasPlaying"
+                            // Permanent loss: pause and forget "wasPlaying".
+                            // Persistent pause releases the media session too.
                             wasPlayingBeforeFocusLoss = false;
+                            focusLossAtMs = 0L;
                             if (engine != null) engine.setDuckFactor(1f);
                             pause();
                             break;
                         case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                             // Temporary loss but NO ducking (calls, alarms).
-                            // Pause and remember to resume on focus regain.
+                            // Pause and remember to resume on focus regain. Keeps
+                            // the media session active so a same-cycle GAIN can
+                            // still resume without going through play().
                             wasPlayingBeforeFocusLoss = isPlaying;
+                            focusLossAtMs = System.currentTimeMillis();
                             if (engine != null) engine.setDuckFactor(1f);
-                            pause();
+                            pauseForFocusLoss();
                             break;
                         case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                             // Navigation / assistants: attenuate volume but do NOT pause.
@@ -638,12 +674,23 @@ public class PlaybackService extends Service {
                         case AudioManager.AUDIOFOCUS_GAIN:
                             // Focus regained: restore volume.
                             if (engine != null) engine.setDuckFactor(1f);
-                            // Coming from LOSS_TRANSIENT (no active call): resume.
-                            if (wasPlayingBeforeFocusLoss && !isPlaying && !isPhoneCallActive()) {
+                            // Coming from LOSS_TRANSIENT (no active call) AND within
+                            // FOCUS_RESUME_WINDOW_MS: resume. Anything older is very
+                            // likely another player yielding focus (Spotify switching
+                            // songs, notification sound finishing) and must not
+                            // auto-start us.
+                            long since = focusLossAtMs == 0L
+                                    ? Long.MAX_VALUE
+                                    : System.currentTimeMillis() - focusLossAtMs;
+                            if (wasPlayingBeforeFocusLoss && !isPlaying
+                                    && !isPhoneCallActive()
+                                    && since <= FOCUS_RESUME_WINDOW_MS) {
                                 wasPlayingBeforeFocusLoss = false;
+                                focusLossAtMs = 0L;
                                 play();
                             } else {
                                 wasPlayingBeforeFocusLoss = false;
+                                focusLossAtMs = 0L;
                             }
                             break;
                     }

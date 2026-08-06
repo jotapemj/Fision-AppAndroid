@@ -238,6 +238,13 @@
     <string name="settings_section_app">App</string>
     <string name="settings_section_about">About</string>
     <string name="settings_language_title">Language</string>
+    <string name="design_section_title">Design</string>
+    <string name="design_title">Design</string>
+    <string name="design_summary">Accent color and nebula palette</string>
+    <string name="design_accent_title">Accent color</string>
+    <string name="design_nebula_title">Fixed nebula colors</string>
+    <string name="design_nebula_summary">Off: colors follow the artcover palette</string>
+    <string name="close">Close</string>
     <string name="settings_language_dialog_title">Choose language</string>
     <string name="settings_logout_title">Sign out</string>
     <string name="settings_logout_subtitle">End your session</string>

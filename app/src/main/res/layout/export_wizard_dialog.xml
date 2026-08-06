@@ -80,7 +80,7 @@
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="6dp"
-            android:progressTint="@color/colorPrimary"
+            android:progressTint="?attr/colorPrimary"
             android:max="100"
             android:progress="0" />
 
@@ -100,7 +100,7 @@
             android:layout_height="wrap_content"
             android:text="@string/export_back"
             android:textColor="@color/AppWhite"
-            app:rippleColor="@color/colorPrimary" />
+            app:rippleColor="?attr/colorPrimary" />
 
         <View
             android:layout_width="0dp"
@@ -115,8 +115,8 @@
             android:padding="10dp"
             android:text="@android:string/cancel"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -128,9 +128,9 @@
             android:padding="10dp"
             android:visibility="gone"
             android:text="@string/export_save"
-            android:textColor="@color/colorPrimary"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
     </LinearLayout>

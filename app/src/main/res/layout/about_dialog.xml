@@ -64,9 +64,9 @@
         android:textColor="@color/AppWhite"
         app:icon="@drawable/ic_license"
         app:iconGravity="textStart"
-        app:iconTint="@color/colorPrimary"
-        app:strokeColor="@color/colorPrimary"
-        app:rippleColor="@color/colorPrimary"
+        app:iconTint="?attr/colorPrimary"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
     <!-- Legacy TextView kept for compatibility with existing find-by-id code
@@ -86,7 +86,7 @@
         android:padding="10dp"
         android:text="@string/dialog_close"
         android:textColor="@color/AppWhite"
-        android:backgroundTint="@color/colorPrimary"
+        android:backgroundTint="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
 </LinearLayout>

@@ -157,7 +157,7 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             ivIcon.setImageResource(item.iconRes);
             int tint = item.iconTintOverride != 0
                     ? ContextCompat.getColor(ctx, item.iconTintOverride)
-                    : ContextCompat.getColor(ctx, R.color.colorPrimary);
+                    : com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx);
             ivIcon.setImageTintList(android.content.res.ColorStateList.valueOf(tint));
             // Icon holder background matches the accent color at ~15% alpha,
             // so amber or red accents keep a consistent look.

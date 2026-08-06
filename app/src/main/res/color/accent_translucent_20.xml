@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Current accent with 20% alpha. Referenced by shape drawables that want a
+     soft accent tint (e.g. checked-state fill for stem_check_bg). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?attr/colorPrimary" android:alpha="0.20" />
+</selector>

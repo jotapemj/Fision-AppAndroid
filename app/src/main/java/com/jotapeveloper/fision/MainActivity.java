@@ -278,6 +278,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
 
         // Attach the app-wide foreground tracker: dismisses pending "song
         // ready" notifications the moment the user returns to any screen.
@@ -326,7 +327,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         b_orderBy.setOnClickListener(v -> showSortDialog());
         rvSongList =(RecyclerView) findViewById(R.id.rv_songList);
         refreshSongList = findViewById(R.id.swipeRefreshLayout);
-        refreshSongList.setColorSchemeResources(R.color.colorPrimary);
+        refreshSongList.setColorSchemeColors(
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
 
         // Mini-player. It's a BlurBehindLayout: the RV is passed as source so the
         // mini-player background is a live blur of the list sitting behind it.
@@ -513,39 +515,19 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         });
     }
     public void buttonAnimation(boolean visible, Button button){
-        Animation animation;
-        if (visible) {
-            animation = new AlphaAnimation(0.0f, 1.0f);
-        } else {
-            animation = new AlphaAnimation(1.0f, 0.0f);
-        }
-        animation.setDuration(150);
-
-        animation.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(Animation animation) {
-                // Nothing to do here
-            }
-
-            @Override
-            public void onAnimationEnd(Animation animation) {
-                // Toggle button visibility when the animation ends
-                if (!visible) {
-                    button.setVisibility(View.GONE);
-                }
-                if (visible) {
-                    button.setVisibility(View.VISIBLE);
-                }
-            }
-
-            @Override
-            public void onAnimationRepeat(Animation animation) {
-            }
-        });
-
-        button.startAnimation(animation);
-
-
+        // Cross-fade the button while the ConstraintLayout re-lays out its
+        // children so the RecyclerView slides into (or out of) the freed slot
+        // instead of jumping when the button visibility flips.
+        android.view.ViewGroup root = (android.view.ViewGroup) button.getParent();
+        androidx.transition.TransitionSet set = new androidx.transition.TransitionSet()
+                .addTransition(new androidx.transition.Fade(
+                        visible ? androidx.transition.Fade.IN
+                                : androidx.transition.Fade.OUT).setDuration(180))
+                .addTransition(new androidx.transition.ChangeBounds().setDuration(260))
+                .setOrdering(androidx.transition.TransitionSet.ORDERING_TOGETHER)
+                .setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator());
+        androidx.transition.TransitionManager.beginDelayedTransition(root, set);
+        button.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     private void showClearButton(Drawable[] drawables,boolean option) {
@@ -864,7 +846,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // idle fade-out fires. Uses ArgbEvaluator so the intermediate frames
         // sweep through the natural interpolation between both hues.
         int fromColor = ContextCompat.getColor(this, R.color.cloud_offline);
-        int toColor   = ContextCompat.getColor(this, R.color.colorPrimary);
+        int toColor   = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
         cloudTintAnimator = android.animation.ValueAnimator.ofArgb(fromColor, toColor);
         cloudTintAnimator.setDuration(CLOUD_RECONNECT_TINT_MS);
         cloudTintAnimator.addUpdateListener(anim -> {
@@ -1123,7 +1105,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         Button   cancel  = dialogView.findViewById(R.id.b_orderByCancel);
 
         // Marks the active option with the "chip" style — like the single_choice dialogs.
-        int primary  = androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary);
+        int primary  = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
         int white    = androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite);
         java.util.function.BiConsumer<TextView, Boolean> style = (tv, active) -> {
             tv.setTextColor(active ? primary : white);
@@ -1583,6 +1565,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        // Pick up an accent change performed while this Activity was in the
+        // background (recreate re-inflates layouts with the new ?attr/colorPrimary).
+        com.jotapeveloper.fision.design.AccentColorManager.get(this)
+                .maybeRecreateForAccent(this);
         // Bind to the PlaybackService when it is already running
         Intent svc = new Intent(this, PlaybackService.class);
         bindService(svc, serviceConnection, 0); // no BIND_AUTO_CREATE: only connects when it already exists

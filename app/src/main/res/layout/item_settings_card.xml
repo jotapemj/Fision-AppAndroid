@@ -27,7 +27,7 @@
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:layout_gravity="center"
-            app:tint="@color/colorPrimary"
+            app:tint="?attr/colorPrimary"
             xmlns:tools="http://schemas.android.com/tools"
             tools:src="@drawable/ic_language" />
     </FrameLayout>

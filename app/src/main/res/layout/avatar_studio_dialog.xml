@@ -36,7 +36,7 @@
             app:icon="@drawable/ic_back"
             app:iconSize="22dp"
             app:iconTint="@color/AppWhite"
-            app:rippleColor="@color/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 
         <FrameLayout
@@ -72,7 +72,7 @@
             app:icon="@drawable/ic_chevron_right"
             app:iconSize="22dp"
             app:iconTint="@color/AppWhite"
-            app:rippleColor="@color/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
     </LinearLayout>
 
@@ -103,8 +103,8 @@
             android:layout_weight="1"
             android:text="@string/avatar_studio_male"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -115,8 +115,8 @@
             android:layout_weight="1"
             android:text="@string/avatar_studio_female"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -172,10 +172,10 @@
         android:text="@string/avatar_studio_from_device"
         android:textColor="@color/AppWhite"
         app:icon="@drawable/ic_edit"
-        app:iconTint="@color/colorPrimary"
+        app:iconTint="?attr/colorPrimary"
         app:iconGravity="textStart"
-        app:strokeColor="@color/colorPrimary"
-        app:rippleColor="@color/colorPrimary"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
     <!-- Footer: Cancel + Apply -->
@@ -194,8 +194,8 @@
             android:layout_marginEnd="8dp"
             android:text="@android:string/cancel"
             android:textColor="@color/AppWhite"
-            app:strokeColor="@color/colorPrimary"
-            app:rippleColor="@color/colorPrimary"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
             app:cornerRadius="20dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -205,7 +205,7 @@
             android:layout_weight="1"
             android:text="@string/avatar_studio_apply"
             android:textColor="@color/AppWhite"
-            android:backgroundTint="@color/colorPrimary"
+            android:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="20dp" />
     </LinearLayout>
 

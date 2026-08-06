@@ -217,6 +217,13 @@
     <string name="settings_section_app">Aplicació</string>
     <string name="settings_section_about">Sobre</string>
     <string name="settings_language_title">Idioma</string>
+    <string name="design_section_title">Disseny</string>
+    <string name="design_title">Disseny</string>
+    <string name="design_summary">Color d\'accent i paleta de la nebulosa</string>
+    <string name="design_accent_title">Color d\'accent</string>
+    <string name="design_nebula_title">Colors fixos a la nebulosa</string>
+    <string name="design_nebula_summary">Off: els colors segueixen la paleta de la portada</string>
+    <string name="close">Tanca</string>
     <string name="settings_language_dialog_title">Tria idioma</string>
     <string name="settings_logout_title">Tanca sessió</string>
     <string name="settings_logout_subtitle">Finalitza la sessió</string>

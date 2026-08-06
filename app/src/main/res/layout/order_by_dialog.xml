@@ -76,8 +76,8 @@
         android:padding="10dp"
         android:text="@android:string/cancel"
         android:textColor="@color/AppWhite"
-        app:strokeColor="@color/colorPrimary"
-        app:rippleColor="@color/colorPrimary"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
 </LinearLayout>

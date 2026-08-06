@@ -66,7 +66,7 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:fontFamily="@font/yugothic_ui_regular"
-            android:textColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
             android:textSize="34sp"
             android:textStyle="bold"
             android:layout_marginTop="6dp"

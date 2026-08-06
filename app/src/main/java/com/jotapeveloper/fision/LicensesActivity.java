@@ -24,6 +24,7 @@ public class LicensesActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.activity_licenses);
 
         RecyclerView rv = findViewById(R.id.rv_licenses);

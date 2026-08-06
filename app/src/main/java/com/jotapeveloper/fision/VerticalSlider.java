@@ -42,8 +42,8 @@ public class VerticalSlider extends View {
     public VerticalSlider(Context ctx, @Nullable AttributeSet a, int d) {
         super(ctx, a, d);
         mTrackInactive.setColor(ContextCompat.getColor(ctx, R.color.BottomSheetColor));
-        mTrackActive.setColor(ContextCompat.getColor(ctx, R.color.colorPrimary));
-        mThumb.setColor(ContextCompat.getColor(ctx, R.color.sliderThumb));
+        mTrackActive.setColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx));
+        mThumb.setColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccentSecondary(ctx));
         mTouchSlop = ViewConfiguration.get(ctx).getScaledTouchSlop();
     }
 

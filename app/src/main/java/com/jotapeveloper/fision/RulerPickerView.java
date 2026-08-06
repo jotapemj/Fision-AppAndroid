@@ -120,7 +120,7 @@ public class RulerPickerView extends View {
 
         int white55 = 0x8CFFFFFF;
         int white85 = 0xD9FFFFFF;
-        int primary = ContextCompat.getColor(ctx, R.color.colorPrimary);
+        int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx);
 
         mTickMinorPaint.setColor(white55);
         mTickMinorPaint.setStrokeWidth(1f * density);

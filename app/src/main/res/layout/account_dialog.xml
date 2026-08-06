@@ -89,8 +89,8 @@
         android:padding="10dp"
         android:text="@string/account_remove_photo"
         android:textColor="@color/AppWhite"
-        app:strokeColor="@color/colorPrimary"
-        app:rippleColor="@color/colorPrimary"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
     <com.google.android.material.button.MaterialButton
@@ -100,7 +100,7 @@
         android:padding="10dp"
         android:text="@string/account_change_password"
         android:textColor="@color/AppWhite"
-        android:backgroundTint="@color/colorPrimary"
+        android:backgroundTint="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
 </LinearLayout>
