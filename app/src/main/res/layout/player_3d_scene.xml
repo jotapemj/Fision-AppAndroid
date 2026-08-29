@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Player 3D scene view. Real 3D scene alternative to player_3d_view.xml
+    (2D flat mode). Shown when the Performance pref selects "3D scene".
+
+    Same header + bottom controls + IDs as the flat variant so PlayerActivity
+    can bind either layout with the same code path. The stem container +
+    listener head are replaced by a Filament-backed SceneView.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/view3DScene_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_3d_synthwave"
+    android:visibility="gone"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- 1) Filament-backed 3D scene: head model + stem sprites live here. -->
+    <io.github.sceneview.SceneView
+        android:id="@+id/v_3d_scene"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 2) "Lights off" overlay. A flat black semi-transparent veil (no
+             gradient, so it never draws a visible band). The Filament
+             lights are also dimmed in parallel (see Audio3DSceneController
+             .animateLights) so the head and lit surfaces genuinely darken
+             — the overlay only takes care of the unlit ImageNode walls. -->
+    <View
+        android:id="@+id/v_3d_darkOverlayScene"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black"
+        android:alpha="0"
+        android:clickable="false"
+        android:focusable="false" />
+
+    <!-- 3) Header: title + info + switch. -->
+    <LinearLayout
+        android:id="@+id/ll_3d_headerScene"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="18dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp"
+        android:layout_gravity="top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yugothic_ui_regular"
+            android:text="@string/audio3d_title"
+            android:textColor="@color/AppWhite"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/b_3d_infoScene"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="8dp"
+            android:padding="2dp"
+            android:background="@null"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_info"
+            app:tint="@color/AppWhite"
+            android:contentDescription="@string/audio3d_info_title" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_3d_enabledScene"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <!-- 4) Vertical elevation slider + value tooltip (same as flat mode). -->
+    <com.jotapeveloper.fision.VerticalSlider
+        android:id="@+id/sb_3d_elevationScene"
+        android:layout_width="40dp"
+        android:layout_height="240dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="8dp" />
+
+    <TextView
+        android:id="@+id/tv_3d_elevationScene"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:background="@drawable/elevation_tooltip_bg"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:textColor="@color/AppWhite"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:text="0°"
+        android:visibility="gone" />
+
+    <!-- 5) Bottom row: dance sliders + dance/reset buttons. -->
+    <LinearLayout
+        android:id="@+id/ll_3d_bottomRowScene"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="bottom|center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_3d_danceScene"
+            style="@style/Widget.MaterialComponents.Button.IconOnly"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="10dp"
+            android:backgroundTint="?attr/colorPrimary"
+            android:contentDescription="@string/stems_dance_title"
+            app:icon="@raw/ic_play"
+            app:iconSize="22dp"
+            app:iconTint="@color/AppWhite"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_3d_resetScene"
+            style="@style/Widget.MaterialComponents.Button.IconOnly"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="10dp"
+            android:backgroundTint="?attr/colorPrimary"
+            android:contentDescription="@string/audio3d_legend_reset"
+            app:icon="@drawable/ic_restore_pan"
+            app:iconSize="22dp"
+            app:iconTint="@color/AppWhite"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+
+        <LinearLayout
+            android:id="@+id/ll_3d_danceSlidersScene"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:text="@string/stems_dance_speed"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="11sp" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sl_3d_danceSpeedScene"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:valueFrom="0.02"
+                    android:valueTo="0.4"
+                    android:value="0.15"
+                    android:stepSize="0.01"
+                    app:trackColorActive="?attr/colorPrimary"
+                    app:trackColorInactive="@color/BottomSheetColor"
+                    app:thumbColor="?attr/accentSecondary"
+                    app:haloRadius="0dp"
+                    app:tickVisible="false" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:text="@string/stems_dance_distance"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="11sp" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sl_3d_danceDistanceScene"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:valueFrom="0.3"
+                    android:valueTo="3.0"
+                    android:value="1.5"
+                    android:stepSize="0.05"
+                    app:trackColorActive="?attr/colorPrimary"
+                    app:trackColorInactive="@color/BottomSheetColor"
+                    app:thumbColor="?attr/accentSecondary"
+                    app:haloRadius="0dp"
+                    app:tickVisible="false" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Wave speed: always visible, sine icon as label. Tunes the
+             up/down oscillation of the stems marked with the wave toggle
+             in the dance dialog. -->
+        <LinearLayout
+            android:id="@+id/ll_3d_waveSpeedScene"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_sine_wave"
+                app:tint="@color/AppWhite"
+                android:contentDescription="@string/stems_dance_osc_speed" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sl_3d_danceOscScene"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:valueFrom="0.1"
+                android:valueTo="2.0"
+                android:value="0.5"
+                android:stepSize="0.05"
+                app:trackColorActive="?attr/colorPrimary"
+                app:trackColorInactive="@color/BottomSheetColor"
+                app:thumbColor="?attr/accentSecondary"
+                app:haloRadius="0dp"
+                app:tickVisible="false" />
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>

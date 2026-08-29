@@ -466,13 +466,16 @@ The interface offers:
 - **Reset** button to send every stem back to its default frontal
   semicircle.
 
-There is also a **dance** mode. When enabled, the selected stems orbit
-the head in the XY plane at slightly different speeds so they do not
-move as a block. Two inline sliders let you adjust orbit speed and
-distance while the dance is running. Dragging a stem out of the orbit
-lets you place it manually, and releasing it snaps it back to the
-dance at the new radius. Recommended for headphone listening. Speaker
-playback loses most of the 3D cues.
+There is also a **dance** mode. The setup dialog shows a scrollable list
+of cards: tap a card to include the stem, and use the sine-wave icon to
+give it a vertical up/down oscillation in phase with the orbit (one
+cycle per lap). When enabled, the selected stems orbit the head in the
+XY plane at slightly different speeds so they do not move as a block.
+Two inline sliders let you adjust orbit speed and distance while the
+dance is running. Dragging a stem out of the orbit lets you place it
+manually, and releasing it snaps it back to the dance at the new
+radius. Recommended for headphone listening. Speaker playback loses
+most of the 3D cues.
 
 While the 3D view is active the regular volume sliders are locked and
 do not participate in the mix. Loudness comes from the distance to the
@@ -480,6 +483,18 @@ head instead, using a fixed safe base gain so no combination of stems
 becomes uncomfortable. Muting a stem inside 3D uses an independent
 flag that does not touch the slider's saved value, so leaving the 3D
 view restores the stem exactly where it was.
+
+There is also a **scene mode** (Settings → Performance). Instead of the
+flat top-down view it renders a real 3D room: a gray cubicle with a
+bust on a stand in the middle and one sprite per stem floating around
+it. Drag a sprite anywhere in the room — height, distance and angle
+all map to the HRTF position. The camera orbits behind the head; drag
+to orbit, pinch to zoom. The camera never dips below chest height, and
+any wall or the ceiling you fly through hides itself (dollhouse style),
+reappearing when you come back inside. Each
+sprite casts a soft blob shadow on the floor that grows and fades as
+the stem rises, giving a real sense of height. A lights-off switch
+dims the room lamps for a darker listening atmosphere.
 
 ## Lyrics
 

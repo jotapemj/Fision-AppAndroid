@@ -104,10 +104,12 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Long press</b> · mute]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Reset</b> · initial positions]]></string>
     <string name="stems_dance_title">Stems dance</string>
-    <string name="stems_dance_hint">Select the instruments to dance</string>
+    <string name="stems_dance_hint">Tap a card to select · wave = up/down</string>
+    <string name="stems_dance_sine">Up/down oscillation</string>
     <string name="stems_dance_start">Start</string>
     <string name="stems_dance_speed">Speed</string>
     <string name="stems_dance_distance">Distance</string>
+    <string name="stems_dance_osc_speed">Wave speed</string>
     <string name="dl_notif_progress_single">Downloading %1$d%%</string>
     <string name="dl_notif_progress_multi">Downloading %1$d/%2$d · %3$d%%</string>
     <string name="dl_notif_ready">Ready to play</string>
@@ -245,6 +247,10 @@
     <string name="design_nebula_title">Fixed nebula colors</string>
     <string name="design_nebula_summary">Off: colors follow the artcover palette</string>
     <string name="close">Close</string>
+    <string name="performance_title">Performance</string>
+    <string name="performance_audio3d_title">3D Audio view</string>
+    <string name="performance_audio3d_scene">3D scene (full)</string>
+    <string name="performance_audio3d_flat">Flat view (light)</string>
     <string name="settings_language_dialog_title">Choose language</string>
     <string name="settings_logout_title">Sign out</string>
     <string name="settings_logout_subtitle">End your session</string>

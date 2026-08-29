@@ -94,10 +94,12 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Довге натискання</b> · вимкнути звук]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Скидання</b> · початкові позиції]]></string>
     <string name="stems_dance_title">Танець стемів</string>
-    <string name="stems_dance_hint">Оберіть інструменти, які танцюватимуть</string>
+    <string name="stems_dance_hint">Торкніться картки, щоб обрати · хвиля = угору-униз</string>
+    <string name="stems_dance_sine">Осциляція вгору-вниз</string>
     <string name="stems_dance_start">Почати</string>
     <string name="stems_dance_speed">Швидкість</string>
     <string name="stems_dance_distance">Відстань</string>
+    <string name="stems_dance_osc_speed">Швидкість хвилі</string>
     <string name="dl_notif_progress_single">Завантаження %1$d%%</string>
     <string name="dl_notif_progress_multi">Завантаження %1$d/%2$d · %3$d%%</string>
     <string name="dl_notif_ready">Готово до відтворення</string>
@@ -223,6 +225,10 @@
     <string name="design_nebula_title">Фіксовані кольори туманності</string>
     <string name="design_nebula_summary">Вимк.: кольори повторюють палітру обкладинки</string>
     <string name="close">Закрити</string>
+    <string name="performance_title">Продуктивність</string>
+    <string name="performance_audio3d_title">Режим 3D Audio</string>
+    <string name="performance_audio3d_scene">3D-сцена (повна)</string>
+    <string name="performance_audio3d_flat">Плоский вигляд (легкий)</string>
     <string name="settings_language_dialog_title">Обрати мову</string>
     <string name="settings_logout_title">Вийти</string>
     <string name="settings_logout_subtitle">Завершити сесію</string>

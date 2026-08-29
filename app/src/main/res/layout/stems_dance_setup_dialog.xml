@@ -32,14 +32,38 @@
         android:textSize="12sp"
         android:layout_marginBottom="14dp" />
 
-    <!-- Container where PlayerActivity adds the toggleable stem icons.
-         Horizontal LinearLayout; the code splits it into rows if it does not fit. -->
-    <LinearLayout
-        android:id="@+id/gl_dance_stems"
+    <!-- Scrollable card list; PlayerActivity binds a DanceStemCardAdapter.
+         Each card: stem selection + per-stem sine-wave toggle. The top and
+         bottom edges fade into the dialog background so the scrolling
+         content does not end in a hard cut. -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="18dp" />
+        android:layout_height="300dp"
+        android:layout_marginBottom="14dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_dance_stems"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:layout_gravity="top"
+            android:background="@drawable/dance_list_fade_top"
+            android:clickable="false"
+            android:focusable="false" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/dance_list_fade_bottom"
+            android:clickable="false"
+            android:focusable="false" />
+
+    </FrameLayout>
 
     <!-- Speed -->
     <LinearLayout

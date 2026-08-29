@@ -6,6 +6,13 @@ espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.12.0"
 constraintlayout = "2.2.1"
+kotlin = "1.9.24"
+sceneview = "2.2.1"
+# Filament version MUST match the one SceneView 2.2.1 was compiled against.
+# SceneView 2.2.1 targets Filament 1.52.0: newer runtimes broke ABI
+# (Utils.init() went from virtual to static) and crash at inflate with
+# IncompatibleClassChangeError.
+filament = "1.52.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -14,7 +21,15 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+sceneview = { group = "io.github.sceneview", name = "sceneview", version.ref = "sceneview" }
+# Filament artifacts MUST share one version: each AAR bundles its own native
+# .so and cross-reference symbols (gltfio -> utils -> core). Mismatched native
+# libs fail at dlopen with a missing-symbol UnsatisfiedLinkError.
+filament = { group = "com.google.android.filament", name = "filament-android", version.ref = "filament" }
+gltfio = { group = "com.google.android.filament", name = "gltfio-android", version.ref = "filament" }
+filamentUtils = { group = "com.google.android.filament", name = "filament-utils-android", version.ref = "filament" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 

@@ -34,6 +34,9 @@ google-services.json
 .claude/
 CLAUDE.md
 
+# Otras herramientas locales
+.pi/
+
 # Tools garbage
 /tools/compact.tar
 /tools/compact.tar.Z

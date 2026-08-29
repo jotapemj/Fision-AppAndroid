@@ -3407,6 +3407,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     protected void onDestroy() {
         DestroyPlayers();
         releaseLyrics();
+        if (audio3DScene != null) { audio3DScene.release(); audio3DScene = null; }
         danceActive = false;
         danceHandler.removeCallbacks(danceTick);
         if (serviceBound) {
@@ -3520,12 +3521,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         });
     }
 
+    /** Shared single-threaded executor for Room writes. Reused across every
+     *  call so a per-frame stream (dance, live drag) does not spawn one
+     *  thread per invocation and OOM the process. */
+    private static final java.util.concurrent.ExecutorService PERSIST_EXECUTOR =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "stem-persist");
+                t.setDaemon(true);
+                return t;
+            });
+
     /** Serializa stemSettings y persiste el JSON en Room (background). */
     private void persistStemSettings() {
         final String json = StemSettingsCodec.encode(stemSettings);
         final int songId = SongId;
         AppDatabase db = AppDatabase.getInstance(getApplicationContext());
-        Executors.newSingleThreadExecutor().execute(() ->
+        PERSIST_EXECUTOR.execute(() ->
                 db.DAO_db_SongParameters().updateStemSettings(songId, json));
     }
 
@@ -3718,6 +3729,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // ================================================================
     /** 3D overlay root (visibility toggle). */
     private View     view3DRoot;
+    /** Alternate 3D scene root (Filament / SceneView). Chosen at runtime
+     *  based on {@link com.jotapeveloper.fision.audio3d.PerformancePrefs}. */
+    private View     view3DSceneRoot;
+    /** Controller for the Filament scene when the perf pref enables it. */
+    private com.jotapeveloper.fision.audio3d.Audio3DSceneController audio3DScene;
     /** Container where the stem icons are placed absolutely. */
     private android.widget.FrameLayout fl3DStemContainer;
     /** Central head. */
@@ -3728,10 +3744,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private VerticalSlider sb3DElevation;
     /** Label showing the elevation value of the selected stem. */
     private TextView tv3DElevation;
+    /** Scene-mode vertical slider: distance of the selected stem from the head. */
+    private VerticalSlider sb3DDistanceScene;
+    /** Scene-mode tooltip showing the distance value in metres. */
+    private TextView tv3DDistanceScene;
     /** Black overlay over stems+head: "lights off" effect when 3D=off. */
     private View v3DDarkOverlay;
     /** Stems dance button (play → stop while dancing). */
     private com.google.android.material.button.MaterialButton b3DDance;
+    /** Scene-mode counterpart of b3DDance (different layout id). */
+    private com.google.android.material.button.MaterialButton b3DDanceScene;
     /** 3D reset button: hidden until any position/elev/mute/omni is modified. */
     private com.google.android.material.button.MaterialButton b3DReset;
     /** Container of the inline dance sliders (visible only while dancing). */
@@ -3742,8 +3764,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // === Dance mode (stem orbit) ===
     private boolean       danceActive = false;
     private final java.util.Set<String> danceStems = new java.util.HashSet<>();
+    private final java.util.Set<String> danceSineStems = new java.util.HashSet<>();  // per-stem up/down wave
     private float         danceSpeed    = 0.15f;  // laps/second per stem (max 0.4 for finer resolution)
-    private float         danceDistance = 1.0f;   // radius multiplier [0.4..1.2]
+    // Scene mode: metres [0.3..3.0] (same range as the vertical distance
+    // slider). Flat mode: radius multiplier [0.4..1.2]. Default 1.0 is
+    // valid in both ranges.
+    private float         danceDistance = 1.0f;
+    // Sine-wave oscillation speed per stem, in cycles per second (scene
+    // mode only). The bottom-row slider edits the currently selected stem.
+    private final java.util.HashMap<String, Float> danceOscSpeeds = new java.util.HashMap<>();
     private final java.util.Map<String, Float> danceAngle = new java.util.HashMap<>();
     private final java.util.Map<String, Float> danceRadialFactor = new java.util.HashMap<>();
     private final java.util.Map<String, Float> danceSpeedFactor  = new java.util.HashMap<>();
@@ -3810,10 +3839,50 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // this amount so the coloured word matches what the singer just uttered.
     private static final int KARAOKE_HIGHLIGHT_OFFSET_MS = 220;
 
+    /** True when the performance preference selects the Filament scene
+     *  variant of the 3D Audio view (vs the flat 2D one). Falls back
+     *  to the flat variant when the SceneView layout is not present. */
+    private boolean isAudio3DScene() {
+        return com.jotapeveloper.fision.audio3d.PerformancePrefs
+                .isAudio3DSceneEnabled(this)
+                && view3DSceneRoot != null;
+    }
+
+    /** Currently active 3D root — scene or flat — for show/hide/animate. */
+    private View active3DRoot() {
+        return isAudio3DScene() ? view3DSceneRoot : view3DRoot;
+    }
+
     /** Lazy init of the 3D view references. Idempotent. */
     private void ensure3DRefs() {
         if (view3DRoot == null) {
             view3DRoot        = findViewById(R.id.view3D_root);
+            view3DSceneRoot   = findViewById(R.id.view3DScene_root);
+            // Kick off the Filament scene once, when the pref selects it.
+            if (audio3DScene == null
+                    && com.jotapeveloper.fision.audio3d.PerformancePrefs
+                            .isAudio3DSceneEnabled(this)
+                    && view3DSceneRoot != null) {
+                io.github.sceneview.SceneView sv = findViewById(R.id.v_3d_scene);
+                if (sv != null) {
+                    audio3DScene = new com.jotapeveloper.fision.audio3d
+                            .Audio3DSceneController(this, sv);
+                    audio3DScene.setup();
+                    // If the song has 3D audio stored as OFF the scene opens
+                    // inert from the start (no orbit, no sprite drag).
+                    audio3DScene.setInteractionEnabled(is3DEnabled);
+                }
+                // Debug-only: tap the info button in the scene header to
+                // dump the current camera pose. Lets JP orbit to a nice
+                // default and read the exact az/pitch/dist to hardcode.
+                View infoScene = findViewById(R.id.b_3d_infoScene);
+                if (infoScene != null) {
+                    infoScene.setOnClickListener(v -> {
+                        if (audio3DScene != null) audio3DScene.logCameraPose();
+                        show3DInfoDialog();
+                    });
+                }
+            }
             fl3DStemContainer = findViewById(R.id.fl_3d_stemContainer);
             iv3DHead          = findViewById(R.id.iv_3d_head);
             sw3DEnabled       = findViewById(R.id.sw_3d_enabled);
@@ -3824,8 +3893,23 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (v3DDarkOverlay != null) v3DDarkOverlay.setAlpha(is3DEnabled ? 0f : 0.72f);
             if (sw3DEnabled != null) {
                 sw3DEnabled.setChecked(is3DEnabled);
-                sw3DEnabled.setOnCheckedChangeListener((btn, checked) -> apply3DEnabled(checked));
+                sw3DEnabled.setOnCheckedChangeListener((btn, checked) -> {
+                    apply3DEnabled(checked);
+                    // Keep the scene-mode twin switch in sync if present.
+                    com.google.android.material.switchmaterial.SwitchMaterial swScene =
+                            findViewById(R.id.sw_3d_enabledScene);
+                    if (swScene != null && swScene.isChecked() != checked) {
+                        swScene.setOnCheckedChangeListener(null);
+                        swScene.setChecked(checked);
+                        wireSceneEnabledSwitch(swScene);
+                    }
+                });
             }
+            // Scene layout has its own switch; wire it too so the toggle
+            // works whichever variant of the header is on screen.
+            com.google.android.material.switchmaterial.SwitchMaterial swScene =
+                    findViewById(R.id.sw_3d_enabledScene);
+            wireSceneEnabledSwitch(swScene);
             if (sb3DElevation != null) {
                 sb3DElevation.setRange(-30f, 70f);
                 sb3DElevation.setStep(1f);
@@ -3838,6 +3922,24 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     apply3DPositionForStem(selected3DStem);
                     showElevationTooltip((int) val);
                     // Elevation changed → show reset button
+                    showResetButton();
+                });
+            }
+            // Scene mode: same vertical slider slot repurposed as
+            // stem-to-listener distance (range 0.3..3.0 metres, neutral 1.5).
+            sb3DDistanceScene = findViewById(R.id.sb_3d_elevationScene);
+            tv3DDistanceScene = findViewById(R.id.tv_3d_elevationScene);
+            if (sb3DDistanceScene != null) {
+                sb3DDistanceScene.setRange(0.3f, 3.0f);
+                sb3DDistanceScene.setStep(0.05f);
+                sb3DDistanceScene.setValue(1.5f);
+                sb3DDistanceScene.setOnChangeListener((sl, val, fromUser) -> {
+                    if (!fromUser || selected3DStem == null) return;
+                    StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, selected3DStem);
+                    s.distance3D = val;
+                    persistStemSettings();
+                    if (audio3DScene != null) audio3DScene.updateStemDistance(selected3DStem, val);
+                    showDistanceTooltip(val);
                     showResetButton();
                 });
             }
@@ -3859,9 +3961,31 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // Dance button: opens setup dialog or stops the dance if active.
             b3DDance = findViewById(R.id.b_3d_dance);
             if (b3DDance != null) b3DDance.setOnClickListener(v -> {
-                if (danceActive) stopDance();
-                else showStemsDanceDialog();
+                if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
+                    audio3DScene.stopDance();
+                    if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.raw.ic_play);
+                } else if (danceActive) {
+                    stopDance();
+                } else {
+                    showStemsDanceDialog();
+                }
             });
+            // Scene layout has its own dance button (different id) — same
+            // behaviour as the flat one when scene is active.
+            b3DDanceScene = findViewById(R.id.b_3d_danceScene);
+            if (b3DDanceScene != null) b3DDanceScene.setOnClickListener(v -> {
+                if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
+                    audio3DScene.stopDance();
+                    b3DDanceScene.setIconResource(R.raw.ic_play);
+                } else {
+                    showStemsDanceDialog();
+                }
+            });
+            // Scene-mode reset button: glides every sprite back to the
+            // default frontal semicircle (accelerate/decelerate).
+            com.google.android.material.button.MaterialButton bResetScene =
+                    findViewById(R.id.b_3d_resetScene);
+            if (bResetScene != null) bResetScene.setOnClickListener(v -> reset3DPositions());
             // Inline dance sliders (speed + distance) — visible only while the dance is active
             View danceSlidersContainer = findViewById(R.id.ll_3d_danceSliders);
             com.google.android.material.slider.Slider slSpeedInline = findViewById(R.id.sl_3d_danceSpeed);
@@ -3878,9 +4002,56 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     if (fromUser) danceDistance = val;
                 });
             }
-            danceInlineSlidersContainer = danceSlidersContainer;
-            danceInlineSlSpeed = slSpeedInline;
-            danceInlineSlDistance = slDistInline;
+            // If scene mode is up, the inline sliders live in the scene
+            // layout instead of the flat one. Prefer scene refs when the
+            // flat ones are hidden.
+            View danceSlidersContainerScene = findViewById(R.id.ll_3d_danceSlidersScene);
+            com.google.android.material.slider.Slider slSpeedInlineScene =
+                    findViewById(R.id.sl_3d_danceSpeedScene);
+            com.google.android.material.slider.Slider slDistInlineScene =
+                    findViewById(R.id.sl_3d_danceDistanceScene);
+            if (slSpeedInlineScene != null) {
+                slSpeedInlineScene.setValue(danceSpeed);
+                slSpeedInlineScene.addOnChangeListener((s, val, fromUser) -> {
+                    if (!fromUser) return;
+                    danceSpeed = val;
+                    if (audio3DScene != null) audio3DScene.setDanceSpeed(val);
+                });
+            }
+            if (slDistInlineScene != null) {
+                slDistInlineScene.setValue(danceDistance);
+                slDistInlineScene.addOnChangeListener((s, val, fromUser) -> {
+                    if (!fromUser) return;
+                    danceDistance = val;
+                    if (audio3DScene != null) audio3DScene.setDanceDistance(val);
+                });
+            }
+            // Wave speed slider: per-stem sine-wave oscillation speed for
+            // the currently selected stem (stems marked with the wave icon
+            // in the dance dialog).
+            com.google.android.material.slider.Slider slOscInlineScene =
+                    findViewById(R.id.sl_3d_danceOscScene);
+            if (slOscInlineScene != null) {
+                slOscInlineScene.setValue(0.5f);
+                slOscInlineScene.addOnChangeListener((s, val, fromUser) -> {
+                    if (!fromUser) return;
+                    if (selected3DStem == null) return;
+                    danceOscSpeeds.put(selected3DStem, val);
+                    if (audio3DScene != null) audio3DScene.setStemOscSpeed(selected3DStem, val);
+                });
+            }
+            // Initial control state: greyed out when 3D audio starts off.
+            setSceneControlsEnabled(is3DEnabled);
+            refreshWaveSliderVisibility();
+            if (isAudio3DScene()) {
+                danceInlineSlidersContainer = danceSlidersContainerScene;
+                danceInlineSlSpeed          = slSpeedInlineScene;
+                danceInlineSlDistance       = slDistInlineScene;
+            } else {
+                danceInlineSlidersContainer = danceSlidersContainer;
+                danceInlineSlSpeed          = slSpeedInline;
+                danceInlineSlDistance       = slDistInline;
+            }
         }
     }
 
@@ -3914,15 +4085,26 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
         if (stemsStack != null) stemsStack.setVisibility(View.GONE);
         if (chordsContainer != null) chordsContainer.setVisibility(View.GONE);
-        view3DRoot.setAlpha(1f);
-        view3DRoot.setScaleX(1f);
-        view3DRoot.setScaleY(1f);
-        view3DRoot.setVisibility(View.VISIBLE);
-        build3DIcons();
-        // Icons appear faded after the layout pass (they start with alpha=0 in build).
-        fl3DStemContainer.postDelayed(this::animateStemIconsIn, 100L);
-        // Evaluate whether previous modifications exist → show reset button with fade in
-        fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, 400L);
+        View root = active3DRoot();
+        root.setAlpha(1f);
+        root.setScaleX(1f);
+        root.setScaleY(1f);
+        root.setVisibility(View.VISIBLE);
+        if (!isAudio3DScene()) {
+            build3DIcons();
+            // Icons appear faded after the layout pass (they start with alpha=0 in build).
+            fl3DStemContainer.postDelayed(this::animateStemIconsIn, 100L);
+            // Evaluate whether previous modifications exist → show reset button with fade in
+            fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, 400L);
+        } else {
+            build3DSceneSprites();
+            if (audio3DScene != null) {
+                audio3DScene.resume();
+                // Sync illumination with the current 3D on/off state so the
+                // scene arrives already dimmed when the effect is off.
+                audio3DScene.setLightIntensity(is3DEnabled ? 1f : 0.20f);
+            }
+        }
     }
 
     /** Symmetric to show3DViewNoAnim. Closes the ITD overlay instantly and
@@ -3933,10 +4115,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (!is3DViewShown) return;
         is3DViewShown = false;
         if (danceActive) stopDance();
-        if (view3DRoot != null) {
-            view3DRoot.animate().cancel();
-            view3DRoot.setVisibility(View.GONE);
+        View root = active3DRoot();
+        if (root != null) {
+            root.animate().cancel();
+            root.setVisibility(View.GONE);
         }
+        if (audio3DScene != null) audio3DScene.pause();
         View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
         if (stemsStack != null) {
             stemsStack.animate().cancel();
@@ -3992,8 +4176,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (is3DViewShown) hide3DViewNoAnim();
             // Sliders back to normal (previous song may have locked them).
             if (stemsAdapter != null) stemsAdapter.setEditingLocked(false);
-            // Lights-off overlay reflects the off state.
+            // Lights-off overlay reflects the off state. Flat and scene
+            // modes have different alpha caps (see animate3DLightsOverlay).
             if (v3DDarkOverlay != null) v3DDarkOverlay.setAlpha(0.72f);
+            View sceneOverlay = findViewById(R.id.v_3d_darkOverlayScene);
+            if (sceneOverlay != null) sceneOverlay.setAlpha(0.35f);
+            if (audio3DScene != null) audio3DScene.setLightIntensity(0.20f);
             refreshB3dTint();
         }
     }
@@ -4024,33 +4212,44 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
 
         // 3D mode entry: overlaps the end of the fade out to avoid a black gap.
-        view3DRoot.setAlpha(0f);
-        view3DRoot.setScaleX(0.94f);
-        view3DRoot.setScaleY(0.94f);
-        view3DRoot.setVisibility(View.VISIBLE);
-        view3DRoot.animate().cancel();
-        view3DRoot.animate().alpha(1f).scaleX(1f).scaleY(1f)
+        View root = active3DRoot();
+        root.setAlpha(0f);
+        root.setScaleX(0.94f);
+        root.setScaleY(0.94f);
+        root.setVisibility(View.VISIBLE);
+        root.animate().cancel();
+        root.animate().alpha(1f).scaleX(1f).scaleY(1f)
                 .withLayer()
                 .setStartDelay(OUT_DUR - 80L)
                 .setDuration(IN_DUR)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
 
-        // Head with bounce overshoot — builds icons once measurements are ready.
-        build3DIcons();
-        if (iv3DHead != null) {
-            iv3DHead.setScaleX(0.75f);
-            iv3DHead.setScaleY(0.75f);
-            iv3DHead.animate().cancel();
-            iv3DHead.animate().scaleX(1f).scaleY(1f)
-                    .setStartDelay(OUT_DUR).setDuration(360L)
-                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f))
-                    .start();
+        if (!isAudio3DScene()) {
+            // Head with bounce overshoot — builds icons once measurements are ready.
+            build3DIcons();
+            if (iv3DHead != null) {
+                iv3DHead.setScaleX(0.75f);
+                iv3DHead.setScaleY(0.75f);
+                iv3DHead.animate().cancel();
+                iv3DHead.animate().scaleX(1f).scaleY(1f)
+                        .setStartDelay(OUT_DUR).setDuration(360L)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f))
+                        .start();
+            }
+            // Stem icons: cascaded fade in, after the stems fade out.
+            fl3DStemContainer.postDelayed(this::animateStemIconsIn, OUT_DUR + 60L);
+            // Evaluate whether previous modifications exist → show reset button with fade in
+            fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, OUT_DUR + IN_DUR + 100L);
+        } else {
+            build3DSceneSprites();
+            if (audio3DScene != null) {
+                audio3DScene.resume();
+                // Sync illumination with the current 3D on/off state so the
+                // scene arrives already dimmed when the effect is off.
+                audio3DScene.setLightIntensity(is3DEnabled ? 1f : 0.20f);
+            }
         }
-        // Stem icons: cascaded fade in, after the stems fade out.
-        fl3DStemContainer.postDelayed(this::animateStemIconsIn, OUT_DUR + 60L);
-        // Evaluate whether previous modifications exist → show reset button with fade in
-        fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, OUT_DUR + IN_DUR + 100L);
     }
 
     /** Reversa hacia el modo stems. Respeta chordsActive: si estaba off, no muestra
@@ -4061,12 +4260,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         float density = getResources().getDisplayMetrics().density;
         float slidePx = 18f * density;
 
-        view3DRoot.animate().cancel();
-        view3DRoot.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+        View root = active3DRoot();
+        root.animate().cancel();
+        root.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
                 .withLayer()
                 .setDuration(OUT_DUR)
                 .setInterpolator(new android.view.animation.AccelerateInterpolator())
-                .withEndAction(() -> view3DRoot.setVisibility(View.GONE)).start();
+                .withEndAction(() -> {
+                    root.setVisibility(View.GONE);
+                    if (audio3DScene != null) audio3DScene.pause();
+                }).start();
 
         // Restore the stems stack as a block with fade + slide from below.
         View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
@@ -4121,6 +4324,121 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Builds (or refreshes) the stem icons in the 3D container. Each icon starts at
      *  its saved position, or on a default frontal semicircle. */
+    /** Attaches the same on-check listener to the scene-mode enable switch
+     *  as the flat one, and keeps its checked state in sync. Safe to pass
+     *  null (no-op) so callers don't have to guard. */
+    private void wireSceneEnabledSwitch(com.google.android.material.switchmaterial.SwitchMaterial sw) {
+        if (sw == null) return;
+        sw.setOnCheckedChangeListener(null);
+        sw.setChecked(is3DEnabled);
+        sw.setOnCheckedChangeListener((btn, checked) -> {
+            apply3DEnabled(checked);
+            if (sw3DEnabled != null && sw3DEnabled.isChecked() != checked) {
+                sw3DEnabled.setOnCheckedChangeListener(null);
+                sw3DEnabled.setChecked(checked);
+                sw3DEnabled.setOnCheckedChangeListener((b2, c2) -> apply3DEnabled(c2));
+            }
+        });
+    }
+
+    /** Feeds the Filament scene with the current stem set. Icons decoded
+     *  from res/raw, spherical pose taken from the persisted StemSetting
+     *  when present, otherwise the frontal semicircle default. */
+    private void build3DSceneSprites() {
+        if (audio3DScene == null || playbackService == null) return;
+        java.util.List<String> order = playbackService.getStemOrder();
+        boolean hasV2 = playbackService.hasStem("vocals2");
+        java.util.List<com.jotapeveloper.fision.audio3d.Audio3DSceneController.StemPose> list =
+                new java.util.ArrayList<>(order.size());
+        int N = order.size();
+        final float DEF_DISTANCE = 1.5f;
+        for (int i = 0; i < N; i++) {
+            String stem = order.get(i);
+            int resId = StemSpec.iconResource(stem, hasV2);
+            android.graphics.Bitmap bmp =
+                    android.graphics.BitmapFactory.decodeResource(getResources(), resId);
+            if (bmp == null) continue;
+            StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
+            float az, elev, dist;
+            if (!Float.isNaN(ss.pos3DX) && !Float.isNaN(ss.pos3DY)
+                    && (ss.pos3DX != 0f || ss.pos3DY != 0f)) {
+                // Saved 2D flat pose → spherical (elevation kept separately).
+                az = (float) Math.atan2(ss.pos3DX, -ss.pos3DY);
+                elev = (float) Math.toRadians(ss.elevationDeg);
+                dist = Float.isNaN(ss.distance3D) ? DEF_DISTANCE : ss.distance3D;
+            } else {
+                // Frontal semicircle default.
+                float t = (N > 1) ? (float) i / (N - 1) : 0.5f;
+                az = (float) (-Math.PI / 2 + Math.PI * t);
+                elev = (float) Math.toRadians(ss.elevationDeg);
+                dist = Float.isNaN(ss.distance3D) ? DEF_DISTANCE : ss.distance3D;
+            }
+            list.add(new com.jotapeveloper.fision.audio3d.Audio3DSceneController.StemPose(
+                    stem, bmp, az, heightMFromPose(dist, elev), dist));
+            // Push the saved pose to the audio engine so headphones hear the
+            // same position the sprite is drawn at. The engine works in
+            // spherical coordinates (true 3D distance for attenuation/HRTF).
+            if (engine != null) {
+                Integer trackId = playbackService.getStemTrack(stem);
+                if (trackId != null) {
+                    engine.setTrack3DPosition(trackId, az, sphericalDist(dist, elev), ss.elevationDeg);
+                    engine.setTrack3DMuted(trackId, ss.mute3D);
+                    engine.setTrack3DOmnipresent(trackId, ss.omnipresent);
+                }
+            }
+        }
+        audio3DScene.setStems(list);
+        audio3DScene.setDragListener((id, azRad, elevRad, dist, isFinal) -> {
+            StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, id);
+            // Scene camera looks at the head from behind (default pose is
+            // az=180°). A world +X sprite is on the user's LEFT from that
+            // POV, so flip the sign before handing the azimuth to the
+            // engine (which treats +π/2 as right ear).
+            float engineAz = -azRad;
+            ss.pos3DX = (float) Math.sin(engineAz);
+            ss.pos3DY = -(float) Math.cos(engineAz);
+            ss.elevationDeg = (float) Math.toDegrees(elevRad);
+            // dist is the horizontal radius (XY plane); the engine needs the
+            // true spherical distance for attenuation and HRTF.
+            ss.distance3D   = dist;
+            stem3DPositions.put(id, new float[]{ss.pos3DX, ss.pos3DY});
+            if (playbackService != null && engine != null) {
+                Integer trackId = playbackService.getStemTrack(id);
+                if (trackId != null) {
+                    engine.setTrack3DPosition(trackId, engineAz, sphericalDist(dist, elevRad), ss.elevationDeg);
+                }
+            }
+            // Only hit Room on settle events (drag release, dance stop) so
+            // 60 fps dance ticks don't flood the DB thread and blow up the
+            // process.
+            if (isFinal) persistStemSettings();
+        });
+        audio3DScene.setTapListener((id, event) -> {
+            switch (event) {
+                case TAP:
+                    selected3DStem = id;
+                    audio3DScene.setStemSelected(id);
+                    syncSceneDistanceSliderForSelected();
+                    syncSceneWaveSliderForSelected();
+                    break;
+                case LONG_PRESS:
+                    toggle3DStemMute(id);
+                    boolean muted = is3DStemMuted(id);
+                    audio3DScene.setStemMuted(id, muted);
+                    break;
+                case DOUBLE_TAP:
+                    toggle3DStemOmnipresent(id);
+                    break;
+            }
+        });
+        // Reflect the persisted mute state on first build.
+        java.util.List<String> orderNow = playbackService != null
+                ? playbackService.getStemOrder() : java.util.Collections.emptyList();
+        for (String stem : orderNow) {
+            if (is3DStemMuted(stem)) audio3DScene.setStemMuted(stem, true);
+        }
+    }
+
     private void build3DIcons() {
         if (fl3DStemContainer == null || playbackService == null) return;
         fl3DStemContainer.removeAllViews();
@@ -4247,6 +4565,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         refreshB3dTint();
         updateDB("audio3DEnabled", enabled ? 1 : 0);
         animate3DLightsOverlay(enabled);
+        // Scene mode: dim the Filament lights instead of relying on the
+        // dark overlay (which reads as a flat black band on the 3D scene).
+        if (isAudio3DScene() && audio3DScene != null) {
+            audio3DScene.animateLights(enabled, 260L);
+            // With 3D audio off the per-stem controls have no effect —
+            // grey them out (vertical slider + dance + reset).
+            setSceneControlsEnabled(enabled);
+            // And the scene itself goes inert: no orbit/zoom, no sprite
+            // dragging.
+            audio3DScene.setInteractionEnabled(enabled);
+        }
         // Normal sliders visually disabled when 3D is on (F5)
         if (stemsAdapter != null) {
             stemsAdapter.setEditingLocked(enabled);
@@ -4268,6 +4597,36 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 // On disable, re-apply the normal volume/pan (saved in Room)
                 applyStemVolumeToEngine(stem);
             }
+        }
+    }
+
+    /** Enables or greys out the scene-mode per-stem controls when the 3D
+     *  audio switch is off. */
+    private void setSceneControlsEnabled(boolean enabled) {
+        float alpha = enabled ? 1f : 0.35f;
+        if (sb3DDistanceScene != null) {
+            sb3DDistanceScene.setEnabled(enabled);
+            sb3DDistanceScene.setAlpha(alpha);
+        }
+        com.google.android.material.slider.Slider slWave =
+                findViewById(R.id.sl_3d_danceOscScene);
+        if (slWave != null) {
+            slWave.setEnabled(enabled);
+            slWave.setAlpha(alpha);
+        }
+        View waveGroup = findViewById(R.id.ll_3d_waveSpeedScene);
+        if (waveGroup != null) {
+            waveGroup.setAlpha(alpha);
+        }
+        if (b3DDanceScene != null) {
+            b3DDanceScene.setEnabled(enabled);
+            b3DDanceScene.setAlpha(alpha);
+        }
+        com.google.android.material.button.MaterialButton bResetScene =
+                findViewById(R.id.b_3d_resetScene);
+        if (bResetScene != null) {
+            bResetScene.setEnabled(enabled);
+            bResetScene.setAlpha(alpha);
         }
     }
 
@@ -4467,6 +4826,67 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         tv3DElevation.postDelayed(hideElevationTooltip, 700);
     }
 
+    private final Runnable hideDistanceTooltip = () -> {
+        if (tv3DDistanceScene != null) tv3DDistanceScene.animate().alpha(0f)
+                .setDuration(150).withEndAction(() -> tv3DDistanceScene.setVisibility(View.GONE))
+                .start();
+    };
+
+    /** Refreshes the scene distance slider with the persisted value of the
+     *  currently selected stem (or the scene default when none saved).
+     *  Silent update — the change listener does not fire because we call
+     *  setValue with fromUser=false paths (the slider only propagates
+     *  through touch). */
+    private void syncSceneDistanceSliderForSelected() {
+        if (sb3DDistanceScene == null || selected3DStem == null) return;
+        StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, selected3DStem);
+        Float cur = audio3DScene != null ? audio3DScene.getStemDistance(selected3DStem) : null;
+        float val = cur != null ? cur
+                : (Float.isNaN(ss.distance3D) ? 1.5f : ss.distance3D);
+        sb3DDistanceScene.setValue(Math.max(0.3f, Math.min(3.0f, val)));
+    }
+
+    /** Re-syncs the wave speed slider thumb to the selected stem's stored
+     *  speed whenever a stem is selected, so the control never shows a
+     *  stale position. */
+    private void syncSceneWaveSliderForSelected() {
+        com.google.android.material.slider.Slider sl = findViewById(R.id.sl_3d_danceOscScene);
+        if (sl == null || !sl.isEnabled() || selected3DStem == null) return;
+        float val = danceOscSpeeds.getOrDefault(selected3DStem, 0.5f);
+        if (Math.abs(sl.getValue() - val) > 0.001f) {
+            sl.setValue(val);
+        }
+    }
+
+    /** The wave speed slider only makes sense when at least one stem has
+     *  the sine-wave oscillation enabled in the dance dialog. */
+    private void refreshWaveSliderVisibility() {
+        View waveGroup = findViewById(R.id.ll_3d_waveSpeedScene);
+        if (waveGroup != null) {
+            waveGroup.setVisibility(danceSineStems.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    /** Scene-mode counterpart of {@link #showElevationTooltip}. Distance is
+     *  rendered as "1.20 m" so the value reads as a physical quantity. */
+    private void showDistanceTooltip(float val) {
+        if (tv3DDistanceScene == null || sb3DDistanceScene == null) return;
+        tv3DDistanceScene.setText(String.format(java.util.Locale.US, "%.2f m", val));
+        tv3DDistanceScene.removeCallbacks(hideDistanceTooltip);
+        tv3DDistanceScene.animate().cancel();
+        tv3DDistanceScene.setAlpha(1f);
+        tv3DDistanceScene.setVisibility(View.VISIBLE);
+        tv3DDistanceScene.post(() -> {
+            float sliderTop = sb3DDistanceScene.getY();
+            float sliderLeft = sb3DDistanceScene.getX();
+            float thumbY = sb3DDistanceScene.getThumbCenterY();
+            float density = getResources().getDisplayMetrics().density;
+            tv3DDistanceScene.setX(sliderLeft - tv3DDistanceScene.getWidth() - 6f * density);
+            tv3DDistanceScene.setY(sliderTop + thumbY - tv3DDistanceScene.getHeight() / 2f);
+        });
+        tv3DDistanceScene.postDelayed(hideDistanceTooltip, 700);
+    }
+
     /** True if any stem has its 3D config modified from the default
      *  (position outside the frontal semicircle, elevation != 0, mute or omnipresent). */
     private boolean has3DModifications() {
@@ -4479,6 +4899,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (s.omnipresent) return true;
             if (s.mute3D) return true;
             if (Math.abs(s.elevationDeg) > 0.5f) return true;
+            if (!Float.isNaN(s.distance3D) && Math.abs(s.distance3D - 1.5f) > 0.03f) return true;
             if (!Float.isNaN(s.pos3DX) && !Float.isNaN(s.pos3DY)) {
                 float t = (N > 1) ? (float) i / (N - 1) : 0.5f;
                 float ang = (float) (-Math.PI / 2 + Math.PI * t);
@@ -4513,6 +4934,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Animates every icon to its default position (frontal semicircle) and clears
      *  elevation + omnipresent + selection. Total duration <= 1.5s with cascade. */
     private void reset3DPositions() {
+        if (isAudio3DScene()) { reset3DPositionsScene(); return; }
         if (fl3DStemContainer == null || playbackService == null) return;
         java.util.List<String> order = playbackService.getStemOrder();
         int N = order.size();
@@ -4571,20 +4993,104 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         persistStemSettings();
     }
 
+    /** Scene-mode counterpart of {@link #reset3DPositions}. Restores the
+     *  frontal semicircle default in the Filament scene, clears elevation,
+     *  omnipresent, mute3D and distance3D for every stem, then pushes the
+     *  new poses to the controller with a cascaded animator so the sprites
+     *  glide back rather than teleport. */
+    private void reset3DPositionsScene() {
+        if (audio3DScene == null || playbackService == null) return;
+        java.util.List<String> order = playbackService.getStemOrder();
+        int N = order.size();
+        final float DEF_DISTANCE = 1.5f;
+        for (int i = 0; i < N; i++) {
+            final String stem = order.get(i);
+            float t = (N > 1) ? (float) i / (N - 1) : 0.5f;
+            // Frontal semicircle in engine coordinates (-π/2 = left ear).
+            float engineAz = (float) (-Math.PI / 2 + Math.PI * t);
+            // Scene camera looks at the head from behind → flip sign to
+            // land the sprite in front of the listener.
+            final float sceneAz = -engineAz;
+
+            StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
+            ss.pos3DX = (float) Math.sin(engineAz);
+            ss.pos3DY = -(float) Math.cos(engineAz);
+            ss.elevationDeg = 0f;
+            ss.omnipresent  = false;
+            ss.mute3D       = false;
+            ss.distance3D   = Float.NaN;
+            stem3DPositions.put(stem, new float[]{ss.pos3DX, ss.pos3DY});
+            Integer trackId = playbackService.getStemTrack(stem);
+            if (trackId != null && engine != null) {
+                engine.setTrack3DMuted(trackId, false);
+                engine.setTrack3DOmnipresent(trackId, false);
+                engine.setTrack3DPosition(trackId, engineAz, DEF_DISTANCE, 0f);
+            }
+
+            // Animate azimuth + height + distance together from the live
+            // pose so the sprite glides home instead of teleporting.
+            com.jotapeveloper.fision.audio3d.Audio3DSceneController.StemPose cur =
+                    audio3DScene.getStemPose(stem);
+            final float fromAz  = cur != null ? cur.azimuthRad : sceneAz;
+            final float fromH   = cur != null ? cur.heightM    : 0f;
+            final float fromDist = cur != null ? cur.distance  : DEF_DISTANCE;
+            android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(0f, 1f);
+            va.setDuration(700L);
+            va.setStartDelay(60L * i);
+            // Spline-style speed: ease in and out.
+            va.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+            va.addUpdateListener(a -> {
+                float f = (float) a.getAnimatedValue();
+                float az   = fromAz   + (sceneAz      - fromAz)   * f;
+                float h    = fromH    + (0f           - fromH)    * f;
+                float dist = fromDist + (DEF_DISTANCE - fromDist) * f;
+                audio3DScene.updateStemPose(stem, az, h, dist);
+            });
+            va.start();
+            audio3DScene.setStemMuted(stem, false);
+        }
+        selected3DStem = null;
+        audio3DScene.setStemSelected(null);
+        if (sb3DDistanceScene != null) sb3DDistanceScene.setValue(1.5f);
+        persistStemSettings();
+    }
+
     // ================================================================
     // === STEMS DANCE (animated orbit) ============================
     // ================================================================
     /** Setup dialog: pick stems + speed + distance. */
+    /** Linear height (m) above/below head centre for a saved pose pair
+     *  (horizontal radius, elevation in radians). */
+    private static float heightMFromPose(float rh, float elevRad) {
+        return rh * (float) Math.tan(elevRad);
+    }
+
+    /** True spherical distance from the listener for the audio engine —
+     *  attenuation and HRTF need the 3D radius, not the horizontal one. */
+    private static float sphericalDist(float rh, float elevRad) {
+        return (float) (rh / Math.max(0.05f, Math.cos(elevRad)));
+    }
+
     private void showStemsDanceDialog() {
         LayoutInflater inflater = LayoutInflater.from(this);
         View dlgView = inflater.inflate(R.layout.stems_dance_setup_dialog, null);
-        android.widget.LinearLayout gl = dlgView.findViewById(R.id.gl_dance_stems);
+        androidx.recyclerview.widget.RecyclerView rvStems = dlgView.findViewById(R.id.rv_dance_stems);
         com.google.android.material.slider.Slider slSpeed = dlgView.findViewById(R.id.sl_dance_speed);
         com.google.android.material.slider.Slider slDist  = dlgView.findViewById(R.id.sl_dance_distance);
         TextView tvSpeed = dlgView.findViewById(R.id.tv_dance_speed_value);
         TextView tvDist  = dlgView.findViewById(R.id.tv_dance_distance_value);
         com.google.android.material.button.MaterialButton bCancel = dlgView.findViewById(R.id.b_dance_cancel);
         com.google.android.material.button.MaterialButton bStart  = dlgView.findViewById(R.id.b_dance_start);
+
+        // Distance slider range depends on the mode: scene uses metres with
+        // the same range as the vertical distance slider (0.3..3.0), flat
+        // keeps the legacy radius multiplier (0.4..1.2).
+        boolean scene = isAudio3DScene();
+        if (scene) {
+            slDist.setValueFrom(0.3f);
+            slDist.setValueTo(3.0f);
+            if (danceDistance < 0.3f || danceDistance > 3.0f) danceDistance = 1.5f;
+        }
 
         slSpeed.setValue(danceSpeed);
         slDist.setValue(danceDistance);
@@ -4593,48 +5099,19 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         slSpeed.addOnChangeListener((s, v, fromUser) -> tvSpeed.setText(String.format(java.util.Locale.US, "%.2f×", v)));
         slDist.addOnChangeListener((s, v, fromUser) -> tvDist.setText(String.format(java.util.Locale.US, "%.2f", v)));
 
-        // Selection: toggleable icons. Starts with whatever is in danceStems (or all if empty)
+        // Scrollable card list. Selection starts with the previous dance set
+        // (or all stems); the sine-wave toggle is per stem and scene-only.
         java.util.List<String> order = playbackService.getStemOrder();
         boolean hasV2 = playbackService.hasStem("vocals2");
         final java.util.Set<String> selection = new java.util.HashSet<>(danceStems);
         if (selection.isEmpty()) selection.addAll(order);
-        float density = getResources().getDisplayMetrics().density;
-        int iconPx = (int) (46f * density);
-        int gap    = (int) (8f * density);
-        android.widget.LinearLayout row = null;
-        int perRow = 5;
-        for (int i = 0; i < order.size(); i++) {
-            final String stem = order.get(i);
-            if (i % perRow == 0) {
-                row = new android.widget.LinearLayout(this);
-                row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-                row.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-                android.widget.LinearLayout.LayoutParams rlp = new android.widget.LinearLayout.LayoutParams(
-                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-                if (i > 0) rlp.topMargin = gap;
-                row.setLayoutParams(rlp);
-                gl.addView(row);
-            }
-            android.widget.ImageView iv = new android.widget.ImageView(this);
-            iv.setImageResource(StemSpec.iconResource(stem, hasV2));
-            iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-            iv.setBackgroundResource(R.drawable.dance_chip_bg);
-            int padPx = (int) (6f * density);
-            iv.setPadding(padPx, padPx, padPx, padPx);
-            iv.setSelected(selection.contains(stem));
-            iv.setAlpha(iv.isSelected() ? 1f : 0.65f);
-            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(iconPx, iconPx);
-            lp.leftMargin = gap / 2; lp.rightMargin = gap / 2;
-            iv.setLayoutParams(lp);
-            iv.setOnClickListener(v -> {
-                boolean sel = !iv.isSelected();
-                iv.setSelected(sel);
-                iv.setAlpha(sel ? 1f : 0.65f);
-                if (sel) selection.add(stem); else selection.remove(stem);
-            });
-            row.addView(iv);
-        }
+        final java.util.Set<String> sineSel = new java.util.HashSet<>(danceSineStems);
+        DanceStemCardAdapter adapter = new DanceStemCardAdapter(order, selection, sineSel, hasV2, scene);
+        rvStems.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        // No item animator: the default one interpolates bounds on rebind
+        // and made cards visibly resize when toggling a selection.
+        rvStems.setItemAnimator(null);
+        rvStems.setAdapter(adapter);
 
         androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(
                 this, R.style.Theme_Fision_BlurDialog)
@@ -4646,13 +5123,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         dlg.setOnDismissListener(d -> removeActivityBlur());
         bCancel.setOnClickListener(v -> dlg.dismiss());
         bStart.setOnClickListener(v -> {
-            if (selection.isEmpty()) { dlg.dismiss(); return; }
+            if (adapter.getSelected().isEmpty()) { dlg.dismiss(); return; }
             danceStems.clear();
-            danceStems.addAll(selection);
+            danceStems.addAll(adapter.getSelected());
+            danceSineStems.clear();
+            danceSineStems.addAll(adapter.getSine());
             danceSpeed    = slSpeed.getValue();
             danceDistance = slDist.getValue();
+            refreshWaveSliderVisibility();
             dlg.dismiss();
-            startDance();
+            if (isAudio3DScene() && audio3DScene != null) {
+                audio3DScene.startDance(new java.util.ArrayList<>(danceStems),
+                        new java.util.HashSet<>(danceSineStems), danceSpeed, danceDistance);
+                if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.drawable.ic_stop);
+            } else {
+                startDance();
+            }
         });
         dlg.show();
     }
@@ -4868,18 +5354,28 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  ON  → fade to 0 (200ms decelerate).
      *  OFF → fade to 0.72 (240ms accelerate). */
     private void animate3DLightsOverlay(boolean lightsOn) {
-        if (v3DDarkOverlay == null) return;
-        v3DDarkOverlay.animate().cancel();
         float target = lightsOn ? 0f : 0.72f;
         long dur = lightsOn ? 220L : 240L;
-        v3DDarkOverlay.animate()
-                .alpha(target)
-                .setDuration(dur)
-                .setInterpolator(lightsOn
-                        ? new android.view.animation.DecelerateInterpolator()
-                        : new android.view.animation.AccelerateInterpolator())
-                .withLayer()
-                .start();
+        android.view.animation.Interpolator interp = lightsOn
+                ? new android.view.animation.DecelerateInterpolator()
+                : new android.view.animation.AccelerateInterpolator();
+        animateOverlay(v3DDarkOverlay, target, dur, interp);
+        // Scene mode uses a flat-black overlay + Filament light dim in
+        // parallel. Overlay alpha is capped much lower than in flat mode
+        // (0.45 vs 0.72) because the light dim also carries some of the
+        // effect — going higher would make the scene disappear entirely.
+        View sceneOverlay = findViewById(R.id.v_3d_darkOverlayScene);
+        if (sceneOverlay != null) {
+            float sceneTarget = lightsOn ? 0f : 0.35f;
+            animateOverlay(sceneOverlay, sceneTarget, dur, interp);
+        }
+    }
+
+    private void animateOverlay(View overlay, float target, long dur,
+                                android.view.animation.Interpolator interp) {
+        if (overlay == null) return;
+        overlay.animate().cancel();
+        overlay.animate().alpha(target).setDuration(dur).setInterpolator(interp).withLayer().start();
     }
 
     /** Toggles mute of the stem in 3D mode via the independent m3D flag. Does
@@ -4887,6 +5383,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  outside 3D). The engine's Track applies the flag inside apply3D /
      *  apply3D_Hrtf; the normal setVolume path is unused here. */
     private void toggle3DStemMute(String stem, View icon) {
+        boolean nowMuted = toggle3DStemMute(stem);
+        icon.setAlpha(nowMuted ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
+    }
+
+    /** Core toggle without the flat-mode icon. Returns the new mute state. */
+    private boolean toggle3DStemMute(String stem) {
         StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
         s.mute3D = !s.mute3D;
         persistStemSettings();
@@ -4894,8 +5396,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (trackId != null && engine != null) {
             engine.setTrack3DMuted(trackId, s.mute3D);
         }
-        icon.setAlpha(s.mute3D ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
         showResetButton();
+        return s.mute3D;
     }
 
     /** True if the stem is muted inside 3D mode. Decoupled from the slider. */

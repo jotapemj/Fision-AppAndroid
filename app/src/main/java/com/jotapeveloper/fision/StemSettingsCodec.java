@@ -30,6 +30,7 @@ public class StemSettingsCodec {
                 if (obj.has("x")) s.pos3DX = (float) obj.optDouble("x", Double.NaN);
                 if (obj.has("y")) s.pos3DY = (float) obj.optDouble("y", Double.NaN);
                 if (obj.has("e")) s.elevationDeg = (float) obj.optDouble("e", 0.0);
+                if (obj.has("d")) s.distance3D   = (float) obj.optDouble("d", Double.NaN);
                 if (obj.has("o")) s.omnipresent  = obj.optBoolean("o", false);
                 if (obj.has("m")) s.mute3D       = obj.optBoolean("m", false);
                 map.put(stem, s);
@@ -50,6 +51,7 @@ public class StemSettingsCodec {
                 if (!Float.isNaN(e.getValue().pos3DX)) obj.put("x", (double) e.getValue().pos3DX);
                 if (!Float.isNaN(e.getValue().pos3DY)) obj.put("y", (double) e.getValue().pos3DY);
                 if (Math.abs(e.getValue().elevationDeg) > 0.001f) obj.put("e", (double) e.getValue().elevationDeg);
+                if (!Float.isNaN(e.getValue().distance3D)) obj.put("d", (double) e.getValue().distance3D);
                 if (e.getValue().omnipresent) obj.put("o", true);
                 if (e.getValue().mute3D) obj.put("m", true);
                 root.put(e.getKey(), obj);

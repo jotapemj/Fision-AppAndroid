@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -10,8 +11,8 @@ android {
         applicationId "com.jotapeveloper.fision"
         minSdk 26
         targetSdk 34
-        versionCode 7
-        versionName "2.8.0"
+        versionCode 8
+        versionName "2.9.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -31,6 +32,9 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
     externalNativeBuild {
         cmake {
@@ -88,4 +92,16 @@ dependencies {
 
     // Palette extraction for the nebula background
     implementation 'androidx.palette:palette:1.0.0'
+
+    // 3D Audio scene: SceneView (on top of Filament). Loads GLB, orbital
+    // camera + touch gestures + picking out of the box.
+    implementation libs.sceneview
+
+    // Filament pinned to the exact version SceneView 2.2.1 was compiled
+    // against (1.52.0). Newer runtimes broke the Utils.init() ABI (virtual
+    // -> static) and crashed on inflate. All three Filament artifacts share
+    // one version so their bundled native .so cross-reference cleanly.
+    implementation libs.filament
+    implementation libs.gltfio
+    implementation libs.filamentUtils
 }

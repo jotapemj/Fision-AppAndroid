@@ -95,10 +95,12 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Pulsació llarga</b> · silenciar]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Reset</b> · posicions inicials]]></string>
     <string name="stems_dance_title">Ball de stems</string>
-    <string name="stems_dance_hint">Selecciona els instruments que ballaran</string>
+    <string name="stems_dance_hint">Toca una targeta per seleccionar · ona = puja i baixa</string>
+    <string name="stems_dance_sine">Oscilació amunt i avall</string>
     <string name="stems_dance_start">Iniciar</string>
     <string name="stems_dance_speed">Velocitat</string>
     <string name="stems_dance_distance">Distància</string>
+    <string name="stems_dance_osc_speed">Velocitat ona</string>
     <string name="dl_notif_progress_single">Descarregant %1$d%%</string>
     <string name="dl_notif_progress_multi">Descarregant %1$d/%2$d · %3$d%%</string>
     <string name="dl_notif_ready">Llest per reproduir</string>
@@ -224,6 +226,10 @@
     <string name="design_nebula_title">Colors fixos a la nebulosa</string>
     <string name="design_nebula_summary">Off: els colors segueixen la paleta de la portada</string>
     <string name="close">Tanca</string>
+    <string name="performance_title">Rendiment</string>
+    <string name="performance_audio3d_title">Vista Àudio 3D</string>
+    <string name="performance_audio3d_scene">Escena 3D (completa)</string>
+    <string name="performance_audio3d_flat">Vista plana (lleugera)</string>
     <string name="settings_language_dialog_title">Tria idioma</string>
     <string name="settings_logout_title">Tanca sessió</string>
     <string name="settings_logout_subtitle">Finalitza la sessió</string>

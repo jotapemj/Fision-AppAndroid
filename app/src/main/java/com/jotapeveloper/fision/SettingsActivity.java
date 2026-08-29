@@ -58,6 +58,7 @@ public class SettingsActivity extends AppCompatActivity
     // Card ids used by the adapter to dispatch clicks
     private static final String ID_ACCOUNT   = "account";
     private static final String ID_DESIGN    = "design";
+    private static final String ID_PERFORMANCE = "performance";
     private static final String ID_LANGUAGE  = "language";
     private static final String ID_GPU       = "gpu";
     private static final String ID_VERSION   = "server_version";
@@ -156,6 +157,9 @@ public class SettingsActivity extends AppCompatActivity
         items.add(SettingsItem.card(ID_DESIGN, R.drawable.ic_design,
                 getString(R.string.design_title),
                 getString(R.string.design_summary)));
+        items.add(SettingsItem.card(ID_PERFORMANCE, R.drawable.ic_speedometer,
+                getString(R.string.performance_title),
+                performanceSummary()));
         items.add(SettingsItem.card(ID_LANGUAGE, R.drawable.ic_language,
                 getString(R.string.settings_language_title),
                 currentLanguageLabel()));
@@ -214,9 +218,10 @@ public class SettingsActivity extends AppCompatActivity
     @Override
     public void onSettingsItemClick(SettingsItem item) {
         switch (item.id) {
-            case ID_ACCOUNT:  onAccountClicked();  break;
-            case ID_DESIGN:   showDesignDialog();  break;
-            case ID_LANGUAGE: onLanguageClicked(); break;
+            case ID_ACCOUNT:      onAccountClicked();     break;
+            case ID_DESIGN:       showDesignDialog();     break;
+            case ID_PERFORMANCE:  showPerformanceDialog(); break;
+            case ID_LANGUAGE:     onLanguageClicked();    break;
             case ID_GPU:      onGpuClicked();      break;
             case ID_TEST:     runConnectionTest(); break;
             case ID_ABOUT:    showAboutDialog();   break;
@@ -345,6 +350,82 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     // ---------------- language dialog ----------------
+    private CharSequence performanceSummary() {
+        boolean scene = com.jotapeveloper.fision.audio3d.PerformancePrefs
+                .isAudio3DSceneEnabled(this);
+        return getString(scene
+                ? R.string.performance_audio3d_scene
+                : R.string.performance_audio3d_flat);
+    }
+
+    private void showPerformanceDialog() {
+        String[] entries = new String[] {
+                getString(R.string.performance_audio3d_scene),
+                getString(R.string.performance_audio3d_flat)
+        };
+        boolean sceneCurrent = com.jotapeveloper.fision.audio3d.PerformancePrefs
+                .isAudio3DSceneEnabled(this);
+        int checked = sceneCurrent ? 0 : 1;
+
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.single_choice_dialog, null);
+        TextView tvTitle = dialogView.findViewById(R.id.tv_singleChoiceTitle);
+        LinearLayout opts = dialogView.findViewById(R.id.ll_singleChoiceOptions);
+        MaterialButton bCancel = dialogView.findViewById(R.id.b_singleChoiceCancel);
+        tvTitle.setText(R.string.performance_audio3d_title);
+
+        AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+        Window w = dlg.getWindow();
+        if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        int white   = ContextCompat.getColor(this, R.color.AppWhite);
+        float density = getResources().getDisplayMetrics().density;
+        int padH  = (int) (14f * density);
+        int padV  = (int) (12f * density);
+        int gapPx = (int) (8f  * density);
+
+        for (int i = 0; i < entries.length; i++) {
+            final int idx = i;
+            TextView row = new TextView(this);
+            row.setText(entries[i]);
+            row.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
+            row.setTypeface(
+                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
+                    idx == checked ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            row.setTextColor(idx == checked ? primary : white);
+            row.setBackgroundResource(idx == checked
+                    ? R.drawable.dialog_option_active
+                    : R.drawable.dialog_option_inactive);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                row.setForeground(ContextCompat.getDrawable(this, R.drawable.settings_card_ripple));
+            }
+            row.setPadding(padH, padV, padH, padV);
+            row.setClickable(true);
+            row.setFocusable(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            if (i > 0) lp.topMargin = gapPx;
+            row.setLayoutParams(lp);
+            row.setOnClickListener(v -> {
+                dlg.dismiss();
+                boolean pickScene = (idx == 0);
+                com.jotapeveloper.fision.audio3d.PerformancePrefs
+                        .setAudio3DSceneEnabled(this, pickScene);
+                rebuildItems();
+            });
+            opts.addView(row);
+        }
+
+        applyActivityBlur();
+        dlg.setOnDismissListener(d -> removeActivityBlur());
+        bCancel.setOnClickListener(v -> dlg.dismiss());
+        dlg.show();
+    }
+
     private void onLanguageClicked() {
         String[] entries = getResources().getStringArray(R.array.lang_entries);
         String[] values  = getResources().getStringArray(R.array.lang_entries_values);

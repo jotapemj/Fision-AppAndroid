@@ -105,10 +105,12 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Pulsación larga</b> · silenciar]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Reset</b> · posiciones iniciales]]></string>
     <string name="stems_dance_title">Baile de stems</string>
-    <string name="stems_dance_hint">Selecciona los instrumentos que danzarán</string>
+    <string name="stems_dance_hint">Toca una tarjeta para seleccionar · onda = sube y baja</string>
+    <string name="stems_dance_sine">Oscilación arriba y abajo</string>
     <string name="stems_dance_start">Iniciar</string>
     <string name="stems_dance_speed">Velocidad</string>
     <string name="stems_dance_distance">Distancia</string>
+    <string name="stems_dance_osc_speed">Velocidad onda</string>
     <string name="dl_notif_progress_single">Descargando %1$d%%</string>
     <string name="dl_notif_progress_multi">Descargando %1$d/%2$d · %3$d%%</string>
     <string name="dl_notif_ready">Lista para reproducir</string>
@@ -243,6 +245,10 @@
     <string name="design_nebula_title">Colores fijos en la nebulosa</string>
     <string name="design_nebula_summary">Off: los colores siguen la paleta de la portada</string>
     <string name="close">Cerrar</string>
+    <string name="performance_title">Rendimiento</string>
+    <string name="performance_audio3d_title">Vista Audio 3D</string>
+    <string name="performance_audio3d_scene">Escena 3D (completa)</string>
+    <string name="performance_audio3d_flat">Vista plana (ligera)</string>
     <string name="settings_language_dialog_title">Elegir idioma</string>
     <string name="settings_logout_title">Cerrar sesión</string>
     <string name="settings_logout_subtitle">Finalizar tu sesión</string>
