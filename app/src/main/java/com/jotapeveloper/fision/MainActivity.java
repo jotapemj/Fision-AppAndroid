@@ -788,17 +788,20 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     /** Refreshes the cloud icon reading both the auth state and the last
-     *  known server reachability. Three visible outcomes:
-     *    - no session       → grey icon, tap = open login dialog.
-     *    - session + offline → red icon, persistent.
-     *    - session + online  → hidden (with a brief green flash on reconnect). */
+     *  known server reachability. Four visible outcomes:
+     *    - no session                    → grey icon, tap = open login dialog.
+     *    - session + unknown (no ping yet) → hidden, until the first answer.
+     *    - session + offline             → red icon, persistent.
+     *    - session + online              → hidden (with a brief Fision-green
+     *                                        flash on reconnect). */
     private void refreshCloudStatusIcon() {
-        boolean reachable = lastReachable != null ? lastReachable
-                : CloudRepository.get(this).isReachable();
-        refreshCloudStatusIcon(reachable);
+        // lastReachable == null means "no health answer yet". Keep it as
+        // unknown instead of collapsing to the repo's initial false, which
+        // would paint a red cloud for a split second on cold start.
+        refreshCloudStatusIcon(lastReachable);
     }
 
-    private void refreshCloudStatusIcon(boolean reachable) {
+    private void refreshCloudStatusIcon(Boolean reachable) {
         if (ivCloudStatus == null) return;
         boolean loggedIn = AuthManager.get(this).isLoggedIn();
 
@@ -815,6 +818,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             ivCloudStatus.setVisibility(View.VISIBLE);
             // Reset reachability tracking so a later login → offline shows red immediately.
             lastReachable = null;
+            return;
+        }
+
+        // Unknown reachability: hide the icon until the first health
+        // response decides. No false red flash on cold start.
+        if (reachable == null) {
+            ivCloudStatus.removeCallbacks(cloudReconnectFadeOut);
+            ivCloudStatus.animate().cancel();
+            cancelCloudTintAnimator();
+            ivCloudStatus.setVisibility(View.GONE);
             return;
         }
 
@@ -846,7 +859,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // idle fade-out fires. Uses ArgbEvaluator so the intermediate frames
         // sweep through the natural interpolation between both hues.
         int fromColor = ContextCompat.getColor(this, R.color.cloud_offline);
-        int toColor   = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        // The connected cloud is ALWAYS Fision green, independent of the
+        // accent chosen in Settings (a direct resource reference bypasses
+        // the theme overlay that would otherwise follow the accent).
+        int toColor   = ContextCompat.getColor(this, R.color.colorPrimary);
         cloudTintAnimator = android.animation.ValueAnimator.ofArgb(fromColor, toColor);
         cloudTintAnimator.setDuration(CLOUD_RECONNECT_TINT_MS);
         cloudTintAnimator.addUpdateListener(anim -> {

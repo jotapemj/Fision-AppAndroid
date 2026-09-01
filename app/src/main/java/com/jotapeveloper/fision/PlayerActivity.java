@@ -4427,7 +4427,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     audio3DScene.setStemMuted(id, muted);
                     break;
                 case DOUBLE_TAP:
-                    toggle3DStemOmnipresent(id);
+                    toggle3DStemOmnipresentScene(id);
                     break;
             }
         });
@@ -4435,7 +4435,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         java.util.List<String> orderNow = playbackService != null
                 ? playbackService.getStemOrder() : java.util.Collections.emptyList();
         for (String stem : orderNow) {
-            if (is3DStemMuted(stem)) audio3DScene.setStemMuted(stem, true);
+            StemSetting ss0 = StemSettingsCodec.getOrDefault(stemSettings, stem);
+            if (ss0.mute3D) audio3DScene.setStemMuted(stem, true);
+            if (ss0.omnipresent) audio3DScene.setStemOmnipresent(stem, true);
         }
     }
 
@@ -5048,6 +5050,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             });
             va.start();
             audio3DScene.setStemMuted(stem, false);
+            audio3DScene.setStemOmnipresent(stem, false);
         }
         selected3DStem = null;
         audio3DScene.setStemSelected(null);
@@ -5331,6 +5334,39 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         if (stem.equals(selected3DStem)) refreshElevationSliderEnabled(s.omnipresent);
         if (is3DEnabled) apply3DPositionForStem(stem);
+        showResetButton();
+    }
+
+    /** Scene-mode omnipresent toggle. The flat path cannot be reused here:
+     *  it reads the 2D icon map (empty until a drag happens) and would push
+     *  a distance-1.0 pose to the engine. This one flips the engine flag
+     *  directly, restores the live scene pose when leaving the mode, and
+     *  marks the sprite with the accent halo. */
+    private void toggle3DStemOmnipresentScene(String stem) {
+        StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
+        s.omnipresent = !s.omnipresent;
+        persistStemSettings();
+        Integer trackId = playbackService != null ? playbackService.getStemTrack(stem) : null;
+        if (trackId != null && engine != null) {
+            engine.setTrack3DOmnipresent(trackId, s.omnipresent);
+            if (!s.omnipresent && audio3DScene != null) {
+                // Leaving the mode: hand the engine the sprite's real pose
+                // (azimuth sign-flipped to engine convention, spherical
+                // distance for attenuation/HRTF).
+                com.jotapeveloper.fision.audio3d.Audio3DSceneController.StemPose p =
+                        audio3DScene.getStemPose(stem);
+                if (p != null) {
+                    float elevRad = (float) Math.atan2(p.heightM, Math.max(0.1f, p.distance));
+                    engine.setTrack3DPosition(trackId, -p.azimuthRad,
+                            sphericalDist(p.distance, elevRad), (float) Math.toDegrees(elevRad));
+                }
+            }
+        }
+        if (audio3DScene != null) {
+            audio3DScene.setStemOmnipresent(stem, s.omnipresent);
+            android.view.View sv = findViewById(R.id.v_3d_scene);
+            if (sv != null) sv.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        }
         showResetButton();
     }
 

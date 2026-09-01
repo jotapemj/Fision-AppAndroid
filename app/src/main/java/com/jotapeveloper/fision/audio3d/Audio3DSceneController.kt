@@ -100,6 +100,9 @@ class Audio3DSceneController(
         // Selection ring: drawn as an ImageNode slightly larger than the
         // sprite, centered on the same world position (billboarded too).
         private const val RING_SIZE        = SPRITE_SIZE * 1.55f
+        // Omnipresent halo: soft accent glow behind the sprite, larger than
+        // the selection ring so the two states never read as the same mark.
+        private const val OMNI_SIZE        = SPRITE_SIZE * 2.0f
         // Ground shadow: soft dark disc under each sprite. Cheap depth cue.
         private const val SHADOW_SIZE      = SPRITE_SIZE * 1.1f
         // Height above the floor at which a sprite shadow reaches its
@@ -117,6 +120,9 @@ class Audio3DSceneController(
         // inside the cubicle, a margin above the floor and below the ceiling.
         private const val H_MIN_M = (ROOM_FLOOR_Y + 0.20f) - HEAD_CENTER_Y
         private const val H_MAX_M = (ROOM_CEIL_Y - 0.20f) - HEAD_CENTER_Y
+
+        // Sprite long-press window (mute). Matches the flat-mode value.
+        private const val LONG_PRESS_MS    = 450L
 
         // Sine-wave dance amplitude (metres) around each stem's base height.
         private const val DANCE_SINE_AMP = 0.6f
@@ -187,6 +193,7 @@ class Audio3DSceneController(
         val node: ImageNode,
         val shadow: ImageNode?,
         val ring: ImageNode?,
+        val omni: ImageNode?,
         var azimuthRad: Float,
         // Linear height offset (metres) from the head centre. The pose is
         // cylindrical: distance is the horizontal radius, height is free.
@@ -218,6 +225,7 @@ class Audio3DSceneController(
     private var headShadowBitmap: Bitmap? = null
     private var headShadowNode: ImageNode? = null
     private var ringBitmap: Bitmap? = null
+    private var omniBitmap: Bitmap? = null
 
     // --- Dance state ---
     private var danceActive: Boolean = false
@@ -277,6 +285,14 @@ class Audio3DSceneController(
     private var dragStartX: Float = 0f
     private var dragStartY: Float = 0f
     private var dragMoved: Boolean = false
+    // Long-press bookkeeping. The GD long-press cannot be used here: the
+    // sprite drag arms on the FIRST move event (by design), so any finger
+    // jitter sets dragMoved before the 500ms GD timer fires and the press
+    // is suppressed forever. A dedicated runnable cancelled only by real
+    // movement (> touch slop) keeps hold-to-mute alive.
+    private var longPressRunnable: Runnable? = null
+    private var longPressKilled = false
+    private var longPressFired  = false
     private var touchSlopPx: Int = 24
 
     private var azimuthDeg: Float = DEF_AZIMUTH_DEG
@@ -591,6 +607,30 @@ class Audio3DSceneController(
             floatArrayOf(0f, 0.30f, 0.62f, 1f)
         )
         ringBitmap       = buildRingBitmap()
+        omniBitmap       = buildOmniGlow()
+    }
+
+    /** Soft accent glow marking the omnipresent stem (double tap). Same
+     *  billboard pattern as the selection ring; radial falloff so it reads
+     *  as a halo instead of a second ring. */
+    private fun buildOmniGlow(): Bitmap {
+        val size = 128
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
+        val r = Color.red(accent); val g = Color.green(accent); val b = Color.blue(accent)
+        val grad = RadialGradient(
+            size / 2f, size / 2f, size / 2f,
+            intArrayOf(Color.argb(190, r, g, b), Color.argb(120, r, g, b),
+                        Color.argb(45, r, g, b), Color.argb(0, r, g, b)),
+            floatArrayOf(0f, 0.35f, 0.72f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        c.drawCircle(size / 2f, size / 2f, size / 2f, Paint().apply {
+            shader = grad
+            isAntiAlias = true
+        })
+        return bmp
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
@@ -909,9 +949,18 @@ class Audio3DSceneController(
                         isVisible = false
                     }.also { sceneView.addChildNode(it) }
                 }
+                val omni: ImageNode? = omniBitmap?.let { bmp ->
+                    ImageNode(
+                        materialLoader = sceneView.materialLoader,
+                        bitmap = bmp
+                    ).apply {
+                        scale = Scale(OMNI_SIZE, OMNI_SIZE, 1f)
+                        isVisible = false
+                    }.also { sceneView.addChildNode(it) }
+                }
                 val distClamp = p.distance.coerceIn(MIN_DISTANCE, MAX_DISTANCE)
                 val s = StemSprite(
-                    p.id, node, shadow, ring,
+                    p.id, node, shadow, ring, omni,
                     p.azimuthRad, p.heightM.coerceIn(H_MIN_M, H_MAX_M),
                     distClamp
                 )
@@ -971,14 +1020,19 @@ class Audio3DSceneController(
         interactionEnabled = enabled
         try {
             if (enabled) {
-                // Only restore a manipulator that was actually detached by a
-                // previous disable. A null here means nothing was saved —
-                // leave whatever is attached (SceneView builds one lazily
-                // on the first touch).
-                originalCameraManipulator?.let { sceneView.cameraManipulator = it }
+                // Always rebuild from the camera's CURRENT pose. Restoring a
+                // saved manipulator is wrong: the Manipulator keeps its own
+                // internal spherical state and never reads the camera back,
+                // so a stale instance (e.g. SceneView's constructor default,
+                // built front-close at inflation time) teleports the camera
+                // on the first orbit. The home pose is the only persistent
+                // part, and it can be read from the camera at any moment.
+                val p = try { sceneView.cameraNode.position } catch (_: Throwable) { null }
+                if (p != null) rebuildManipulator(p.x, p.y, p.z)
+                originalCameraManipulator = null
                 sceneView.setOnTouchListener(null)
             } else {
-                originalCameraManipulator = sceneView.cameraManipulator
+                originalCameraManipulator = null
                 sceneView.cameraManipulator = null
                 // Consume every touch at the View level. SceneView's
                 // onTouchEvent short-circuits when super.onTouchEvent
@@ -1022,6 +1076,7 @@ class Audio3DSceneController(
             if (sh.bitmap !== shadowBitmaps[tier]) sh.bitmap = shadowBitmaps[tier]
         }
         s.ring?.position = Position(sx, sy, sz)
+        s.omni?.position = Position(sx, sy, sz)
     }
 
     private fun clearSprites() {
@@ -1029,6 +1084,7 @@ class Audio3DSceneController(
             runCatching { sceneView.removeChildNode(it.node) }
             it.shadow?.let { sh -> runCatching { sceneView.removeChildNode(sh) } }
             it.ring?.let   { rn -> runCatching { sceneView.removeChildNode(rn) } }
+            it.omni?.let   { om -> runCatching { sceneView.removeChildNode(om) } }
         }
         sprites.clear()
         selectedId = null
@@ -1096,22 +1152,20 @@ class Audio3DSceneController(
             }
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 if (dragMoved) return false
-                gestureSprite?.let {
+                // Re-pick at the tap point: gestureSprite still holds the
+                // FIRST tap's sprite here, so trusting it would toggle the
+                // wrong stem when the second tap lands elsewhere.
+                pickSpriteAt(e.x, e.y)?.let {
                     tapListener?.onSpriteTap(it.id, SpriteTap.DOUBLE_TAP)
                     return true
                 }
                 return false
             }
-            override fun onLongPress(e: MotionEvent) {
-                // Long-press mutes the stem. Suppressed once a drag has
-                // taken over so a hold-and-drag never triggers mute.
-                if (!dragMoved && draggingSprite == null) {
-                    gestureSprite?.let {
-                        tapListener?.onSpriteTap(it.id, SpriteTap.LONG_PRESS)
-                    }
-                }
-            }
         })
+        // Long-press is handled by a dedicated runnable in the touch hook
+        // (see longPressRunnable) — the GD timer cannot coexist with the
+        // immediate drag arm.
+        gestureDetector?.setIsLongpressEnabled(false)
 
         // Route touch through sceneview's own onTouchEvent hook — it
         // executes before the camera manipulator's gesture detector and
@@ -1140,6 +1194,9 @@ class Audio3DSceneController(
                     dragMoved = false
                     dragStartX = ev.x
                     dragStartY = ev.y
+                    cancelLongPress()
+                    longPressKilled = false
+                    longPressFired  = false
                     if (hit != null) {
                         val screen = projectWorldToScreen(
                             hit.node.position.x, hit.node.position.y, hit.node.position.z
@@ -1151,11 +1208,37 @@ class Audio3DSceneController(
                             dragOffsetX = 0f
                             dragOffsetY = 0f
                         }
+                        // Hold-to-mute: fires after LONG_PRESS_MS of stillness,
+                        // killed only by real movement (> touch slop). A drag
+                        // may still start afterwards, matching flat mode.
+                        val sprite = hit
+                        longPressRunnable = Runnable {
+                            if (!longPressFired && !longPressKilled) {
+                                longPressFired = true
+                                tapListener?.onSpriteTap(sprite.id, SpriteTap.LONG_PRESS)
+                                try {
+                                    sceneView.performHapticFeedback(
+                                        android.view.HapticFeedbackConstants.LONG_PRESS
+                                    )
+                                } catch (_: Throwable) {}
+                            }
+                        }
+                        sceneView.postDelayed(longPressRunnable!!, LONG_PRESS_MS)
                         return true
                     }
                     return false
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    // Real movement kills the pending long-press; sub-slop
+                    // jitter does not (the drag still arms on this event).
+                    if (longPressRunnable != null && !longPressKilled) {
+                        val mdx = ev.x - dragStartX
+                        val mdy = ev.y - dragStartY
+                        if (mdx * mdx + mdy * mdy > touchSlopPx * touchSlopPx) {
+                            longPressKilled = true
+                            cancelLongPress()
+                        }
+                    }
                     if (draggingSprite == null) {
                         if (!readyToDrag) return false
                         val target = gestureSprite ?: return false
@@ -1209,6 +1292,7 @@ class Audio3DSceneController(
                     return true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    cancelLongPress()
                     val s = draggingSprite
                     if (s != null) {
                         try {
@@ -1228,6 +1312,14 @@ class Audio3DSceneController(
             }
             return false
         }
+    }
+
+    /** Drops the pending long-press runnable, if any. */
+    private fun cancelLongPress() {
+        longPressRunnable?.let { r ->
+            try { sceneView.removeCallbacks(r) } catch (_: Throwable) {}
+        }
+        longPressRunnable = null
     }
 
     private fun pickSpriteAt(sx: Float, sy: Float): StemSprite? {
@@ -1347,7 +1439,15 @@ class Audio3DSceneController(
             val yawDeg = Math.toDegrees(atan2(dx.toDouble(), dz.toDouble())).toFloat()
             s.node.rotation = Rotation(0f, yawDeg, 0f)
             s.ring?.rotation = Rotation(0f, yawDeg, 0f)
+            s.omni?.rotation = Rotation(0f, yawDeg, 0f)
         }
+    }
+
+    /** Persistent accent halo on the omnipresent stem (double tap).
+     *  Orthogonal to the selection ring: a stem can be selected, omni,
+     *  both, or neither. */
+    fun setStemOmnipresent(id: String, on: Boolean) {
+        sprites[id]?.omni?.isVisible = on
     }
 
     fun logCameraPose() {
