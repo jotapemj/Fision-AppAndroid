@@ -3407,7 +3407,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     protected void onDestroy() {
         DestroyPlayers();
         releaseLyrics();
-        if (audio3DScene != null) { audio3DScene.release(); audio3DScene = null; }
+        if (audio3DScene != null) {
+            // Re-assert the crash filter right before teardown: a display
+            // event can land after the renderer is disposed, and a debugger
+            // may have replaced the default uncaught handler meanwhile.
+            FisionApplication.installCrashFilter();
+            audio3DScene.release();
+            audio3DScene = null;
+        }
         danceActive = false;
         danceHandler.removeCallbacks(danceTick);
         if (serviceBound) {

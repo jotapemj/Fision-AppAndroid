@@ -4,6 +4,8 @@ import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
@@ -28,6 +30,7 @@ import io.github.sceneview.node.LightNode
 import io.github.sceneview.node.ModelNode
 import io.github.sceneview.node.Node
 import kotlin.math.abs
+import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
@@ -60,9 +63,10 @@ class Audio3DSceneController(
         private const val HEAD_ASSET = "models/head.glb"
         // Default orbital pose. Behind the head (az=180°) with a slight
         // upward tilt so the room reads as "in front of the listener".
-        private const val DEF_AZIMUTH_DEG = 180f
-        private const val DEF_PITCH_DEG   = 12f
-        private const val DEF_DISTANCE    = 3.6f
+        // Home pose captured from the live camera (scene info button log).
+        private const val DEF_AZIMUTH_DEG = 179.7f
+        private const val DEF_PITCH_DEG   = 19.7f
+        private const val DEF_DISTANCE    = 5.97f
 
         // Cubicle geometry (metres). Roomy enough that the orbit camera
         // rarely bumps a wall — a small box read as claustrophobic and
@@ -123,6 +127,10 @@ class Audio3DSceneController(
 
         // Sprite long-press window (mute). Matches the flat-mode value.
         private const val LONG_PRESS_MS    = 450L
+        // Own double-tap window (omnipresent): two clean taps within this
+        // time and radius of each other.
+        private const val DOUBLE_TAP_TIMEOUT_MS = 300L
+        private const val DOUBLE_TAP_RADIUS_DP  = 60f
 
         // Sine-wave dance amplitude (metres) around each stem's base height.
         private const val DANCE_SINE_AMP = 0.6f
@@ -194,6 +202,7 @@ class Audio3DSceneController(
         val shadow: ImageNode?,
         val ring: ImageNode?,
         val omni: ImageNode?,
+        val mutedNode: ImageNode,
         var azimuthRad: Float,
         // Linear height offset (metres) from the head centre. The pose is
         // cylindrical: distance is the horizontal radius, height is free.
@@ -226,6 +235,8 @@ class Audio3DSceneController(
     private var headShadowNode: ImageNode? = null
     private var ringBitmap: Bitmap? = null
     private var omniBitmap: Bitmap? = null
+    // Per-sprite dimmed icons (muted state) — recycled in clearSprites.
+    private val dimmedBitmaps = mutableListOf<Bitmap>()
 
     // --- Dance state ---
     private var danceActive: Boolean = false
@@ -291,9 +302,15 @@ class Audio3DSceneController(
     // is suppressed forever. A dedicated runnable cancelled only by real
     // movement (> touch slop) keeps hold-to-mute alive.
     private var longPressRunnable: Runnable? = null
-    private var longPressKilled = false
     private var longPressFired  = false
     private var touchSlopPx: Int = 24
+    // Own double-tap bookkeeping (detected in the touch hook on UP): the
+    // GD tolerance (~touch slop) is too strict for on-screen sprites and
+    // its onDoubleTap was gated by dragMoved, which finger jitter set.
+    private var lastTapUpTime: Long = 0L
+    private var lastTapUpX: Float = 0f
+    private var lastTapUpY: Float = 0f
+    private var doubleTapRadiusPx: Int = 180
 
     private var azimuthDeg: Float = DEF_AZIMUTH_DEG
     private var pitchDeg:   Float = DEF_PITCH_DEG
@@ -305,6 +322,7 @@ class Audio3DSceneController(
 
     fun setup() {
         touchSlopPx = ViewConfiguration.get(activity).scaledTouchSlop
+        doubleTapRadiusPx = (DOUBLE_TAP_RADIUS_DP * activity.resources.displayMetrics.density).toInt()
         prepareBitmaps()
         installTouchListener()
         addRoom()
@@ -347,7 +365,9 @@ class Audio3DSceneController(
             Log.w(TAG, "mainLight tweak failed", t)
         }
         try {
-            val lampY = ROOM_CEIL_Y - 0.3f
+            // Keep the lamps well clear of the ceiling: a point light this
+            // close paints a visible hotspot disc on the plane above it.
+            val lampY = ROOM_CEIL_Y - 1.0f
             val kx = ROOM_HALF_X * 0.72f
             val kz = ROOM_HALF_Z * 0.72f
             val corners = listOf(
@@ -394,12 +414,11 @@ class Audio3DSceneController(
     fun setStemMuted(id: String, muted: Boolean) {
         val s = sprites[id] ?: return
         try {
-            val k = if (muted) 0.55f else 1f
-            s.node.scale = Scale(SPRITE_SIZE * k, SPRITE_SIZE * k, 1f)
-            // Shadow follows the sprite size so the depth cue keeps its
-            // relative footprint. Kept faint on muted stems so the
-            // silhouette stays legible.
-            s.shadow?.scale = Scale(SHADOW_SIZE * k, SHADOW_SIZE * k, 1f)
+            // Mute reads as a darkened icon (flat-mode parity): swap the
+            // visible sprite for its pre-rendered dimmed twin. No scale
+            // change, so a concurrent drag bump never fights the state.
+            s.node.isVisible = !muted
+            s.mutedNode.isVisible = muted
         } catch (_: Throwable) {}
     }
 
@@ -496,13 +515,23 @@ class Audio3DSceneController(
             val height = ROOM_CEIL_Y - ROOM_FLOOR_Y
             val centerY = (ROOM_FLOOR_Y + ROOM_CEIL_Y) / 2f
 
-            // Lit matte gray, shared by every wall plane.
+            // Walls carry a subtle tint of the active theme accent over the
+            // matte gray base so each theme paints its own room.
+            val accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
+            val wallTint  = androidx.core.graphics.ColorUtils.blendARGB(accent, Color.rgb(74, 76, 82), 0.30f)
             roomMaterial = sceneView.materialLoader.createColorInstance(
-                Color.rgb(74, 76, 82), 0f, 0.9f, 0.02f
+                wallTint, 0f, 0.9f, 0.02f
             )
-            // Floor tone: slab + bottom plane.
+            // Floor tone: slab + bottom plane. Same lit path as the walls so
+            // the four ceiling lamps hit both surfaces consistently — the
+            // earlier emissive shortcut auto-lit the floor and broke the
+            // hierarchy (floor read brighter than the walls). Dark near-black
+            // with a whisper of accent so the theme still tints the ground.
+            // The gltfio ubershader defaults roughness to 0, which produced a
+            // piano-black mirror; keep it high and matte instead.
+            val floorTint = androidx.core.graphics.ColorUtils.blendARGB(Color.rgb(18, 18, 20), accent, 0.12f)
             floorMaterial = sceneView.materialLoader.createColorInstance(
-                Color.rgb(58, 60, 66), 0f, 0.95f, 0.02f
+                floorTint, 0f, 0.95f, 0.02f
             )
 
             // (size, anchor, rotation, local normal, material). XY planes
@@ -568,7 +597,7 @@ class Audio3DSceneController(
             wallNodes.add(bottom)
 
             // Floor: a thin dark slab sitting at the bottom of the room.
-            // Same lit material family so it dims with the lights.
+            // Black base + emissive tint, immune to lamp intensity.
             val floor = CubeNode(
                 engine = sceneView.engine,
                 size = Size(width - 0.05f, 0.06f, depth - 0.05f),
@@ -630,6 +659,21 @@ class Audio3DSceneController(
             shader = grad
             isAntiAlias = true
         })
+        return bmp
+    }
+
+    /** Darkened copy of a stem icon for the muted state — flat-mode
+     *  parity: the flat list dims icons to ~35% brightness. */
+    private fun buildDimmedIcon(src: Bitmap): Bitmap {
+        val bmp = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val cm = ColorMatrix(floatArrayOf(
+            0.35f, 0f,    0f,    0f, 0f,
+            0f,    0.35f, 0f,    0f, 0f,
+            0f,    0f,    0.35f, 0f, 0f,
+            0f,    0f,    0f,    1f, 0f
+        ))
+        c.drawBitmap(src, 0f, 0f, Paint().apply { colorFilter = ColorMatrixColorFilter(cm) })
         return bmp
     }
 
@@ -864,10 +908,13 @@ class Audio3DSceneController(
     private fun snapshotBaseLightIntensities() {
         try {
             val ibl = sceneView.indirectLight
-            // Only adopt a non-degenerate value: before the render pipeline
-            // is warm the IBL intensity can read 0, and caching that would
-            // keep the environment light dead for the whole session.
-            if (ibl != null && ibl.intensity > 0f) {
+            // Adopt the baseline exactly once: the first healthy read is the
+            // pipeline default. Re-reading afterwards would capture values
+            // written by setLightIntensity itself (e.g. a 0.2 dim) and lock
+            // the environment light at the dimmed level.
+            // A read of 0 means the pipeline is not warm yet — keep NaN so
+            // the next call retries.
+            if (baseIndirectIntensity.isNaN() && ibl != null && ibl.intensity > 0f) {
                 baseIndirectIntensity = ibl.intensity
             }
         } catch (_: Throwable) {}
@@ -958,9 +1005,19 @@ class Audio3DSceneController(
                         isVisible = false
                     }.also { sceneView.addChildNode(it) }
                 }
+                // Dimmed twin for the muted state (long press). Hidden
+                // until setStemMuted swaps visibility.
+                val dimmed = buildDimmedIcon(p.bitmap).also { dimmedBitmaps.add(it) }
+                val mutedNode: ImageNode = ImageNode(
+                    materialLoader = sceneView.materialLoader,
+                    bitmap = dimmed
+                ).apply {
+                    scale = Scale(SPRITE_SIZE, SPRITE_SIZE, 1f)
+                    isVisible = false
+                }.also { sceneView.addChildNode(it) }
                 val distClamp = p.distance.coerceIn(MIN_DISTANCE, MAX_DISTANCE)
                 val s = StemSprite(
-                    p.id, node, shadow, ring, omni,
+                    p.id, node, shadow, ring, omni, mutedNode,
                     p.azimuthRad, p.heightM.coerceIn(H_MIN_M, H_MAX_M),
                     distClamp
                 )
@@ -1077,16 +1134,20 @@ class Audio3DSceneController(
         }
         s.ring?.position = Position(sx, sy, sz)
         s.omni?.position = Position(sx, sy, sz)
+        s.mutedNode.position = Position(sx, sy, sz)
     }
 
     private fun clearSprites() {
         sprites.values.forEach {
             runCatching { sceneView.removeChildNode(it.node) }
+            runCatching { sceneView.removeChildNode(it.mutedNode) }
             it.shadow?.let { sh -> runCatching { sceneView.removeChildNode(sh) } }
             it.ring?.let   { rn -> runCatching { sceneView.removeChildNode(rn) } }
             it.omni?.let   { om -> runCatching { sceneView.removeChildNode(om) } }
         }
         sprites.clear()
+        dimmedBitmaps.forEach { runCatching { it.recycle() } }
+        dimmedBitmaps.clear()
         selectedId = null
     }
 
@@ -1150,21 +1211,11 @@ class Audio3DSceneController(
                 }
                 return false
             }
-            override fun onDoubleTap(e: MotionEvent): Boolean {
-                if (dragMoved) return false
-                // Re-pick at the tap point: gestureSprite still holds the
-                // FIRST tap's sprite here, so trusting it would toggle the
-                // wrong stem when the second tap lands elsewhere.
-                pickSpriteAt(e.x, e.y)?.let {
-                    tapListener?.onSpriteTap(it.id, SpriteTap.DOUBLE_TAP)
-                    return true
-                }
-                return false
-            }
         })
-        // Long-press is handled by a dedicated runnable in the touch hook
-        // (see longPressRunnable) — the GD timer cannot coexist with the
-        // immediate drag arm.
+        // Long-press and double-tap are both handled in the touch hook
+        // (longPressRunnable / lastTapUp* bookkeeping) — the GD timers
+        // cannot coexist with the immediate drag arm, and the GD double-
+        // tap tolerance (~touch slop) is too strict for on-screen sprites.
         gestureDetector?.setIsLongpressEnabled(false)
 
         // Route touch through sceneview's own onTouchEvent hook — it
@@ -1195,7 +1246,6 @@ class Audio3DSceneController(
                     dragStartX = ev.x
                     dragStartY = ev.y
                     cancelLongPress()
-                    longPressKilled = false
                     longPressFired  = false
                     if (hit != null) {
                         val screen = projectWorldToScreen(
@@ -1213,7 +1263,7 @@ class Audio3DSceneController(
                         // may still start afterwards, matching flat mode.
                         val sprite = hit
                         longPressRunnable = Runnable {
-                            if (!longPressFired && !longPressKilled) {
+                            if (!longPressFired) {
                                 longPressFired = true
                                 tapListener?.onSpriteTap(sprite.id, SpriteTap.LONG_PRESS)
                                 try {
@@ -1229,26 +1279,28 @@ class Audio3DSceneController(
                     return false
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    // Real movement kills the pending long-press; sub-slop
-                    // jitter does not (the drag still arms on this event).
-                    if (longPressRunnable != null && !longPressKilled) {
-                        val mdx = ev.x - dragStartX
-                        val mdy = ev.y - dragStartY
-                        if (mdx * mdx + mdy * mdy > touchSlopPx * touchSlopPx) {
-                            longPressKilled = true
-                            cancelLongPress()
-                        }
+                    // Real movement (> touch slop) kills the pending long-
+                    // press and flips dragMoved; sub-slop jitter does not —
+                    // a clean tap must stay "not moved" so double-tap
+                    // detection and the muted visual survive finger noise.
+                    // The drag still arms on this first event for zero-
+                    // latency response.
+                    val mdx = ev.x - dragStartX
+                    val mdy = ev.y - dragStartY
+                    if (mdx * mdx + mdy * mdy > touchSlopPx * touchSlopPx && !dragMoved) {
+                        cancelLongPress()
+                        dragMoved = true
                     }
                     if (draggingSprite == null) {
                         if (!readyToDrag) return false
                         val target = gestureSprite ?: return false
                         draggingSprite = target
-                        dragMoved = true
                         setStemSelected(target.id)
                         tapListener?.onSpriteTap(target.id, SpriteTap.TAP)
                         gestureDetector?.setIsLongpressEnabled(false)
                         try {
                             target.node.scale = Scale(SPRITE_SIZE * 1.25f, SPRITE_SIZE * 1.25f, 1f)
+                            target.mutedNode.scale = Scale(SPRITE_SIZE * 1.25f, SPRITE_SIZE * 1.25f, 1f)
                         } catch (_: Throwable) {}
                         try {
                             sceneView.performHapticFeedback(
@@ -1295,13 +1347,35 @@ class Audio3DSceneController(
                     cancelLongPress()
                     val s = draggingSprite
                     if (s != null) {
+                        // Bump is transient — restore the base scale on
+                        // both the regular and the dimmed (muted) twin.
                         try {
                             s.node.scale = Scale(SPRITE_SIZE, SPRITE_SIZE, 1f)
+                            s.mutedNode.scale = Scale(SPRITE_SIZE, SPRITE_SIZE, 1f)
                         } catch (_: Throwable) {}
                         if (dragMoved) {
                             dragListener?.onStemPoseChanged(
                                 s.id, s.azimuthRad, atan2(s.heightM, s.distance), s.distance, /*isFinal=*/ true
                             )
+                        }
+                    }
+                    // Own double-tap detection: two clean taps (no real
+                    // drag) within the time + radius windows toggle the
+                    // omnipresent state of the sprite under the second tap.
+                    val gs = gestureSprite
+                    if (ev.actionMasked == MotionEvent.ACTION_UP && !dragMoved && gs != null) {
+                        val now = ev.eventTime
+                        val dx = ev.x - lastTapUpX
+                        val dy = ev.y - lastTapUpY
+                        if (now - lastTapUpTime < DOUBLE_TAP_TIMEOUT_MS &&
+                            dx * dx + dy * dy < doubleTapRadiusPx * doubleTapRadiusPx
+                        ) {
+                            tapListener?.onSpriteTap(gs.id, SpriteTap.DOUBLE_TAP)
+                            lastTapUpTime = 0L
+                        } else {
+                            lastTapUpTime = now
+                            lastTapUpX = ev.x
+                            lastTapUpY = ev.y
                         }
                     }
                     draggingSprite = null
@@ -1440,6 +1514,7 @@ class Audio3DSceneController(
             s.node.rotation = Rotation(0f, yawDeg, 0f)
             s.ring?.rotation = Rotation(0f, yawDeg, 0f)
             s.omni?.rotation = Rotation(0f, yawDeg, 0f)
+            s.mutedNode.rotation = Rotation(0f, yawDeg, 0f)
         }
     }
 
@@ -1450,14 +1525,27 @@ class Audio3DSceneController(
         sprites[id]?.omni?.isVisible = on
     }
 
+    /** Debug: dump the LIVE camera pose in home spherical coordinates
+     *  (azimuth / pitch / distance around the head centre, same convention
+     *  as setCameraPose) so a preferred home view can be captured from
+     *  logcat. Triggered by the scene info button. The cached azimuthDeg /
+     *  pitchDeg / distance fields are NOT read — they only track explicit
+     *  setCameraPose calls, not free orbit. */
     fun logCameraPose() {
-        val cam = try { sceneView.cameraNode } catch (_: Throwable) { null }
-        val p = cam?.position
+        val cam = try { sceneView.cameraNode } catch (_: Throwable) { null } ?: return
+        val cp = cam.position
+        val dx = cp.x
+        val dy = cp.y - HEAD_CENTER_Y
+        val dz = cp.z
+        val r = sqrt(dx * dx + dy * dy + dz * dz)
+        if (r < 0.01f) return
+        val az = atan2(dx.toDouble(), dz.toDouble()).toFloat()
+        val pitch = asin((dy / r).coerceIn(-1f, 1f)).toFloat()
         Log.i(
             TAG,
-            "camera pose: az=%.1f° pitch=%.1f° dist=%.2f  world=(%.2f, %.2f, %.2f)"
-                .format(azimuthDeg, pitchDeg, distance,
-                    p?.x ?: 0f, p?.y ?: 0f, p?.z ?: 0f)
+            "CamPose az=%.1f° pitch=%.1f° dist=%.2f  world=(%.2f, %.2f, %.2f)"
+                .format(Math.toDegrees(az.toDouble()), Math.toDegrees(pitch.toDouble()), r,
+                    cp.x, cp.y, cp.z)
         )
     }
 

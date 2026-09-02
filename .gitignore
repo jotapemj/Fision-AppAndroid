@@ -30,9 +30,12 @@ google-services.json
 # Logs
 *.log
 
-# Claude Code (privado, no repo)
+# Bitácoras / conocimiento local (privado, no repo)
 .claude/
 CLAUDE.md
+AGENTS.md
+claude_bak.md
+docs/fision/
 
 # Otras herramientas locales
 .pi/

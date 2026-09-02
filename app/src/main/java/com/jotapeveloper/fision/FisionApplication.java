@@ -23,6 +23,14 @@ public class FisionApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        installCrashFilter();
+    }
+
+    /** (Re)installs the process-wide crash filter. Called from onCreate and
+     *  re-asserted at SceneView teardown: a debugger attached via Android
+     *  Studio can replace the default uncaught-exception handler, letting a
+     *  second DisplayHelper race event reach the system handler. */
+    public static void installCrashFilter() {
         Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
             if (isFilamentDisplayHelperNpe(throwable)) {
