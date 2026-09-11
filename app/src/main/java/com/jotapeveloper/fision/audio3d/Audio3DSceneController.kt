@@ -24,6 +24,7 @@ import io.github.sceneview.math.Scale
 import io.github.sceneview.math.Size
 import io.github.sceneview.math.toColor
 import io.github.sceneview.node.CubeNode
+import io.github.sceneview.node.CylinderNode
 import io.github.sceneview.node.ImageNode
 import io.github.sceneview.node.PlaneNode
 import io.github.sceneview.node.LightNode
@@ -162,6 +163,46 @@ class Audio3DSceneController(
 
         // Fallback drag sensitivity for the height component (meters per px).
         private const val DRAG_FALLBACK_M_PER_PX = 0.003f
+
+        // Studio furniture: matte acoustic panel tiles on the three
+        // interior walls and a bass-trap cylinder in each corner. Static
+        // decoration — no per-frame updates. Panels are children of their
+        // wall plane so the dollhouse toggle hides them along with it;
+        // bass traps are children of the scene root but their visibility
+        // mirrors their two adjacent walls.
+        // Grid dense enough that the panels read as a wall covering rather
+        // than a stamp in the middle of an empty plane (wall is 12x3.8 m).
+        private const val PANEL_W = 0.6f
+        private const val PANEL_H = 0.6f
+        private const val PANEL_D = 0.03f
+        private const val PANEL_COLS = 8
+        private const val PANEL_ROWS = 4
+        private const val PANEL_COL_SPACING_X = 1.35f
+        private const val PANEL_ROW_SPACING_Y = 0.80f
+        // Protrusion of the panel center from the wall face (panel is
+        // PANEL_D thick), keeping it clear of the wall plane (no z-fight).
+        private const val PANEL_OFFSET_Z = 0.025f
+        private const val TRAP_RADIUS = 0.15f
+
+        // Wall-mounted song card ("TV" screen) on the back wall in front
+        // of the bust. A rectangular bezel (matte black CubeNode) frames a
+        // 16:9 ImageNode whose bitmap is composited off-thread and refreshed
+        // only when the song metadata changes — the panel is deliberately
+        // static so it never contributes to the per-frame budget.
+        // The centre 4-cols × 2-rows block of the back wall's panel grid
+        // is skipped in addRoom to open the hole for it.
+        // Local Y sits the screen a hair below the head center so its top
+        // edge aligns with the dummy's eye line — the head is at world
+        // Y=0.15, wall centre at 0.5, so local -0.4 → world 0.10.
+        private const val SCREEN_LOCAL_Y = -0.40f
+        // 16:9 image plus a uniform 0.06 bezel margin on every side.
+        private const val SCREEN_IMG_W = 2.80f
+        private const val SCREEN_IMG_H = 1.575f  // 2.80 * 9/16
+        private const val SCREEN_BEZEL_W = 2.92f
+        private const val SCREEN_BEZEL_H = 1.70f
+        private const val SCREEN_BEZEL_D = 0.06f
+        private const val SCREEN_BITMAP_W = 1024
+        private const val SCREEN_BITMAP_H = 576
     }
 
     private var headNode: ModelNode? = null
@@ -190,6 +231,26 @@ class Audio3DSceneController(
     private var floorNode: CubeNode? = null
     private var roomMaterial: MaterialInstance? = null
     private var floorMaterial: MaterialInstance? = null
+    // Corner bass traps (children of the scene root). Each corner is
+    // shared by two adjacent walls; the trap hides when either of them
+    // does, so the trap never lingers in the air after the dollhouse
+    // culls its side.
+    private data class TrapEntry(
+        val node: CylinderNode,
+        val sx: Int, val sz: Int
+    )
+    private val trapEntries = mutableListOf<TrapEntry>()
+
+    // Song card ("TV") on the back wall. Bezel is a matte cube, image is
+    // an ImageNode whose bitmap is composited once per song. All children
+    // of the back wall so the dollhouse toggle hides them with it.
+    private var screenBezel: CubeNode? = null
+    private var screenImage: ImageNode? = null
+    private var screenBitmap: Bitmap? = null
+    private var backWallRef: PlaneNode? = null
+    private var pendingCover: Bitmap? = null
+    private var pendingTitle: String = ""
+    private var pendingArtist: String = ""
 
     // --- Lighting --------------------------------------------------------
     private var baseIndirectIntensity: Float = Float.NaN
@@ -327,6 +388,11 @@ class Audio3DSceneController(
         installTouchListener()
         addRoom()
         loadHead()
+        // Apply any song-card values that arrived before setup(): the
+        // host may push metadata as soon as the controller exists.
+        if (pendingTitle.isNotEmpty() || pendingArtist.isNotEmpty() || pendingCover != null) {
+            setSongCard(pendingCover, pendingTitle, pendingArtist)
+        }
         // Applying the camera pose runs after the head is in the scene so
         // the first frame renders with the head visible instead of the
         // SceneView default which may point at empty space.
@@ -518,7 +584,12 @@ class Audio3DSceneController(
             // Walls carry a subtle tint of the active theme accent over the
             // matte gray base so each theme paints its own room.
             val accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
-            val wallTint  = androidx.core.graphics.ColorUtils.blendARGB(accent, Color.rgb(74, 76, 82), 0.30f)
+            // Wall tint: 35% accent over 65% neutral grey. Higher accent
+            // shares (0.30 ratio → 70% accent) painted the room in
+            // saturated colour that fought the dark acoustic panels and
+            // competed with the sprites — the panels/sprites need the
+            // wall to sit back.
+            val wallTint  = androidx.core.graphics.ColorUtils.blendARGB(accent, Color.rgb(74, 76, 82), 0.65f)
             roomMaterial = sceneView.materialLoader.createColorInstance(
                 wallTint, 0f, 0.9f, 0.02f
             )
@@ -608,6 +679,109 @@ class Audio3DSceneController(
             }
             sceneView.addChildNode(floor)
             floorNode = floor
+
+            // Studio furniture. Panels read as studio foam: matte, darker
+            // than the walls, no accent so they never compete with the
+            // sprites. Each panel is a child of its wall plane — the wall's
+            // local +Z points into the room, so the same local offsets work
+            // for every wall, and the dollhouse visibility toggle (which
+            // flips the wall node) hides the panels along with it.
+            val panelMaterial = sceneView.materialLoader.createColorInstance(
+                Color.rgb(40, 42, 46), 0f, 0.95f, 0.02f
+            )
+            // Side and back walls only: the front wall is hidden by the
+            // dollhouse for most of the session, so its panels would be
+            // wasted geometry.
+            val backWall = created[1]
+            backWallRef = backWall
+            val panelWalls = listOf(backWall, created[2], created[3])
+            val startX = -(PANEL_COLS - 1) * PANEL_COL_SPACING_X * 0.5f
+            val startY = -(PANEL_ROWS - 1) * PANEL_ROW_SPACING_Y * 0.5f
+            for (w in panelWalls) {
+                val isBack = (w === backWall)
+                for (col in 0 until PANEL_COLS) {
+                    for (row in 0 until PANEL_ROWS) {
+                        // Back wall carries the song-card screen: leave a
+                        // 4-cols × 3-rows hole (cols 2..5, rows 0..2) so
+                        // the 2.92 × 1.70 bezel fits with margin below the
+                        // top row that stays as decoration.
+                        if (isBack && col in 2..5 && row in 0..2) continue
+                        val panel = CubeNode(
+                            engine = sceneView.engine,
+                            size = Size(PANEL_W, PANEL_H, PANEL_D),
+                            center = Position(0f, 0f, 0f),
+                            materialInstance = panelMaterial
+                        ).apply {
+                            position = Position(
+                                startX + col * PANEL_COL_SPACING_X,
+                                startY + row * PANEL_ROW_SPACING_Y,
+                                PANEL_OFFSET_Z
+                            )
+                        }
+                        w.addChildNode(panel)
+                    }
+                }
+            }
+            // Song-card screen: bezel + 16:9 image plane. Parented under
+            // the back wall so the dollhouse toggle hides them together.
+            // Bezel sits at the same protrusion as the acoustic panels;
+            // the image plane is nudged slightly further into the room so
+            // it never z-fights the bezel face.
+            val bezelMaterial = sceneView.materialLoader.createColorInstance(
+                Color.rgb(10, 10, 12), 0f, 0.75f, 0.05f
+            )
+            val bezel = CubeNode(
+                engine = sceneView.engine,
+                size = Size(SCREEN_BEZEL_W, SCREEN_BEZEL_H, SCREEN_BEZEL_D),
+                center = Position(0f, 0f, 0f),
+                materialInstance = bezelMaterial
+            ).apply {
+                position = Position(0f, SCREEN_LOCAL_Y, SCREEN_BEZEL_D / 2f + 0.005f)
+            }
+            backWall.addChildNode(bezel)
+            screenBezel = bezel
+
+            val placeholder = buildPlaceholderCardBitmap()
+            screenBitmap = placeholder
+            // Pass size explicitly (metres). If omitted the plane takes
+            // normalize(Size(bitmap.w, bitmap.h)) which is a sub-1m vector
+            // and any Scale multiplied on top produces a non-16:9 shape.
+            val image = ImageNode(
+                materialLoader = sceneView.materialLoader,
+                bitmap = placeholder,
+                size = Size(SCREEN_IMG_W, SCREEN_IMG_H, 0f)
+            ).apply {
+                position = Position(0f, SCREEN_LOCAL_Y, SCREEN_BEZEL_D + 0.02f)
+            }
+            backWall.addChildNode(image)
+            screenImage = image
+            // Bass traps: one vertical cylinder per corner, floor to
+            // ceiling. Inset from the walls by their radius so they sit in
+            // the corner without z-fighting either face. The (sx, sz)
+            // signs identify the corner so updateRoomVisibility can hide
+            // the trap when either adjacent wall goes.
+            val trapMaterial = sceneView.materialLoader.createColorInstance(
+                Color.rgb(30, 31, 34), 0f, 0.95f, 0.02f
+            )
+            val trapHeight = ROOM_CEIL_Y - ROOM_FLOOR_Y
+            val trapY = (ROOM_FLOOR_Y + ROOM_CEIL_Y) / 2f
+            val trapInsetX = ROOM_HALF_X - TRAP_RADIUS
+            val trapInsetZ = ROOM_HALF_Z - TRAP_RADIUS
+            for (sx in intArrayOf(-1, 1)) {
+                for (sz in intArrayOf(-1, 1)) {
+                    val trap = CylinderNode(
+                        engine = sceneView.engine,
+                        radius = TRAP_RADIUS,
+                        height = trapHeight,
+                        sideCount = 16,
+                        materialInstance = trapMaterial
+                    ).apply {
+                        position = Position(sx * trapInsetX, trapY, sz * trapInsetZ)
+                    }
+                    sceneView.addChildNode(trap)
+                    trapEntries.add(TrapEntry(trap, sx, sz))
+                }
+            }
         } catch (t: Throwable) {
             Log.w(TAG, "Room not added", t)
         }
@@ -891,6 +1065,15 @@ class Audio3DSceneController(
         setSurfaceVisible(wallMinusX, -p.x, ROOM_HALF_X)
         setSurfaceVisible(wallPlusZ, p.z, ROOM_HALF_Z)
         setSurfaceVisible(wallMinusZ, -p.z, ROOM_HALF_Z)
+        // Bass traps live at scene root; each hides when either of the
+        // two walls sharing its corner is culled (else it would float in
+        // the open air above the missing wall).
+        for (t in trapEntries) {
+            val wx = if (t.sx > 0) wallPlusX else wallMinusX
+            val wz = if (t.sz > 0) wallPlusZ else wallMinusZ
+            val target = (wx?.isVisible ?: true) && (wz?.isVisible ?: true)
+            if (t.node.isVisible != target) t.node.isVisible = target
+        }
     }
 
     private fun setSurfaceVisible(node: PlaneNode?, camCoord: Float, plane: Float) {
@@ -1549,6 +1732,134 @@ class Audio3DSceneController(
         )
     }
 
+    // --- Song card --------------------------------------------------------
+
+    /** Repaint the back-wall screen with the current song's card. Composed
+     *  once here and left static — the image node never repaints on its
+     *  own, so an idle scene costs nothing beyond the constant textured
+     *  quad. Safe to call before setup(): the values are cached and applied
+     *  when the screen node exists. */
+    fun setSongCard(cover: Bitmap?, title: String, artist: String) {
+        pendingCover = cover
+        pendingTitle = title
+        pendingArtist = artist
+        val img = screenImage ?: return
+        val bmp = buildSongCardBitmap(cover, title, artist)
+        val old = screenBitmap
+        screenBitmap = bmp
+        // ImageNode's bitmap setter calls texture.setBitmap(engine, value)
+        // in SceneView 2.2.1 — the GPU texture is re-uploaded in place.
+        try { img.bitmap = bmp } catch (t: Throwable) { Log.w(TAG, "setSongCard bitmap swap failed", t) }
+        if (old != null && old !== bmp) runCatching { old.recycle() }
+    }
+
+    private fun buildPlaceholderCardBitmap(): Bitmap {
+        return buildSongCardBitmap(null, "", "")
+    }
+
+    /** Composite a 16:9 card: blurry darkened cover backdrop + square
+     *  cover on the left + title and artist on the right. Text is
+     *  ellipsised to the available column width. */
+    private fun buildSongCardBitmap(cover: Bitmap?, title: String, artist: String): Bitmap {
+        val bw = SCREEN_BITMAP_W
+        val bh = SCREEN_BITMAP_H
+        val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        // Backdrop.
+        if (cover != null && !cover.isRecycled) {
+            val blur = buildBlurredBackdrop(cover, bw, bh)
+            c.drawBitmap(blur, null, android.graphics.Rect(0, 0, bw, bh),
+                Paint().apply { isAntiAlias = true; isFilterBitmap = true })
+            runCatching { blur.recycle() }
+            c.drawColor(Color.argb(140, 0, 0, 0))
+        } else {
+            c.drawColor(Color.rgb(22, 24, 28))
+        }
+        val pad = 40
+        val coverSize = bh - pad * 2  // 496 px
+        val coverRect = android.graphics.RectF(
+            pad.toFloat(), pad.toFloat(),
+            (pad + coverSize).toFloat(), (pad + coverSize).toFloat()
+        )
+        // Cover thumbnail with rounded corners.
+        if (cover != null && !cover.isRecycled) {
+            val path = android.graphics.Path().apply {
+                addRoundRect(coverRect, 16f, 16f, android.graphics.Path.Direction.CW)
+            }
+            c.save()
+            c.clipPath(path)
+            val src = android.graphics.Rect(0, 0, cover.width, cover.height)
+            c.drawBitmap(cover, src, coverRect,
+                Paint().apply { isAntiAlias = true; isFilterBitmap = true })
+            c.restore()
+        } else {
+            c.drawRoundRect(coverRect, 16f, 16f, Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(40, 42, 46)
+            })
+        }
+        // Text column.
+        val textX = pad + coverSize + 48f
+        val maxTextWidth = bw - textX - pad
+        val titlePaint = android.text.TextPaint().apply {
+            isAntiAlias = true
+            color = Color.WHITE
+            typeface = android.graphics.Typeface.create(
+                android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD
+            )
+            textSize = 78f
+            setShadowLayer(6f, 0f, 2f, Color.argb(180, 0, 0, 0))
+        }
+        val artistPaint = android.text.TextPaint().apply {
+            isAntiAlias = true
+            color = Color.argb(220, 255, 255, 255)
+            typeface = android.graphics.Typeface.DEFAULT
+            textSize = 48f
+            setShadowLayer(4f, 0f, 2f, Color.argb(160, 0, 0, 0))
+        }
+        val titleE = android.text.TextUtils.ellipsize(
+            title, titlePaint, maxTextWidth, android.text.TextUtils.TruncateAt.END
+        )
+        val artistE = android.text.TextUtils.ellipsize(
+            artist, artistPaint, maxTextWidth, android.text.TextUtils.TruncateAt.END
+        )
+        val titleY = (bh / 2f) - 8f
+        val artistY = titleY + 68f
+        c.drawText(titleE, 0, titleE.length, textX, titleY, titlePaint)
+        c.drawText(artistE, 0, artistE.length, textX, artistY, artistPaint)
+        return bmp
+    }
+
+    /** Cheap blur: downsample the cover to a very small size and let the
+     *  final bilinear upsample smear the pixels. Two passes give a soft,
+     *  even smear without pulling in a RenderScript / RenderEffect
+     *  dependency. Overlaid dim keeps the text legible. */
+    private fun buildBlurredBackdrop(src: Bitmap, targetW: Int, targetH: Int): Bitmap {
+        val down = 48
+        val srcRatio = src.width.toFloat() / src.height.toFloat()
+        val cropSrc = if (srcRatio > (targetW.toFloat() / targetH)) {
+            val ch = src.height
+            val cw = (ch * targetW.toFloat() / targetH).toInt().coerceAtMost(src.width)
+            val x = (src.width - cw) / 2
+            android.graphics.Rect(x, 0, x + cw, ch)
+        } else {
+            val cw = src.width
+            val ch = (cw * targetH.toFloat() / targetW).toInt().coerceAtMost(src.height)
+            val y = (src.height - ch) / 2
+            android.graphics.Rect(0, y, cw, y + ch)
+        }
+        val stepW = down
+        val stepH = (down * targetH / targetW).coerceAtLeast(1)
+        val tiny = Bitmap.createBitmap(stepW, stepH, Bitmap.Config.ARGB_8888)
+        val ct = Canvas(tiny)
+        ct.drawBitmap(src, cropSrc, android.graphics.Rect(0, 0, stepW, stepH),
+            Paint().apply { isAntiAlias = true; isFilterBitmap = true })
+        // Second pass: draw the tiny bitmap into itself scaled down / up.
+        val tiny2 = Bitmap.createScaledBitmap(tiny, stepW / 2, stepH / 2, true)
+        runCatching { tiny.recycle() }
+        return tiny2
+    }
+
     fun pause() {
         if (!frameListenerAttached) return
         try { sceneView.onFrame = null } catch (_: Throwable) {}
@@ -1564,6 +1875,10 @@ class Audio3DSceneController(
         clearSprites()
         wallNodes.forEach { runCatching { sceneView.removeChildNode(it) } }
         wallNodes.clear()
+        // Acoustic panels are children of the wall planes, so they go with
+        // the walls above. Bass traps hang off the scene root directly.
+        trapEntries.forEach { runCatching { sceneView.removeChildNode(it.node) } }
+        trapEntries.clear()
         floorNode?.let { runCatching { sceneView.removeChildNode(it) } }
         cornerLights.forEach { runCatching { sceneView.removeChildNode(it) } }
         cornerLights.clear()
@@ -1575,6 +1890,13 @@ class Audio3DSceneController(
         shadowBitmaps.forEach { it.recycle() }; shadowBitmaps = emptyList()
         headShadowBitmap?.recycle(); headShadowBitmap = null
         ringBitmap?.recycle();       ringBitmap = null
+        // Song card: bezel + image are children of the back wall (freed
+        // above); the composed bitmap is ours.
+        screenBezel = null
+        screenImage = null
+        backWallRef = null
+        screenBitmap?.let { runCatching { it.recycle() } }
+        screenBitmap = null
         // Material instances live on the shared MaterialLoader — they get
         // reused across song switches, so leave them to be freed by the
         // engine when the loader is destroyed by SceneView.

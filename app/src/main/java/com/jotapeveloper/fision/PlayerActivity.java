@@ -2589,6 +2589,26 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         FolderName = shown;
         tv_SongTitle.setText(FolderName);
+        // 3D scene song card: mirror the same title/artist on the back
+        // wall screen. Static, refreshed only when metadata changes.
+        pushSongCardToScene(title, artist);
+    }
+
+    /** Feed the 3D scene's back-wall card with the current cover +
+     *  title/artist. No-op when the scene has not been built yet — the
+     *  controller caches the values and applies them at setup(). */
+    private void pushSongCardToScene(String title, String artist) {
+        if (audio3DScene == null) return;
+        String t = title != null ? title : (SongName != null ? SongName : "");
+        String a = artist != null ? artist : "";
+        android.graphics.Bitmap cover = null;
+        try {
+            if (SongFolder != null) {
+                java.io.File cf = new java.io.File(SongFolder, "artcover.png");
+                if (cf.exists()) cover = android.graphics.BitmapFactory.decodeFile(cf.getAbsolutePath());
+            }
+        } catch (Throwable ignored) {}
+        audio3DScene.setSongCard(cover, t, a);
     }
 
     public void ShowChords(View view){
@@ -3878,6 +3898,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     // If the song has 3D audio stored as OFF the scene opens
                     // inert from the start (no orbit, no sprite drag).
                     audio3DScene.setInteractionEnabled(is3DEnabled);
+                    // Push the current song's card to the scene now that
+                    // the controller exists — a fresh scene built after
+                    // PrepareControls() already ran would otherwise show
+                    // the empty placeholder until the next metadata event.
+                    SongMetadata sm =
+                            playbackService != null ? playbackService.getCurrentMetadata() : null;
+                    pushSongCardToScene(
+                            sm != null ? sm.displayTitle : null,
+                            sm != null ? sm.artist : null);
                 }
                 // Debug-only: tap the info button in the scene header to
                 // dump the current camera pose. Lets JP orbit to a nice
@@ -4395,6 +4424,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         }
         audio3DScene.setStems(list);
+        // The stems refresh runs on every song load with 3D enabled — the
+        // wall screen must catch up here regardless of PrepareControls'
+        // timing (which may fire before audio3DScene exists).
+        SongMetadata sm3d = playbackService != null ? playbackService.getCurrentMetadata() : null;
+        pushSongCardToScene(
+                sm3d != null ? sm3d.displayTitle : null,
+                sm3d != null ? sm3d.artist : null);
         audio3DScene.setDragListener((id, azRad, elevRad, dist, isFinal) -> {
             StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, id);
             // Scene camera looks at the head from behind (default pose is
