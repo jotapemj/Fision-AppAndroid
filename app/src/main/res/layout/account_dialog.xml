@@ -65,7 +65,7 @@
         android:textColor="@color/AppWhite"
         android:textSize="18sp"
         android:textStyle="bold"
-        tools:text="username" />
+        tools:text="jotapeveloper" />
 
     <TextView
         android:id="@+id/tv_accountUrl"
