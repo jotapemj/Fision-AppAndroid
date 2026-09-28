@@ -433,8 +433,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // Get the database instance
             AppDatabase db = AppDatabase.getInstance(getApplicationContext());
 
+            // On re-entry the service binds fast and SongId may still be 0
+            // (getSongInfoFromDB is async). Resolve by name in-thread so the
+            // query never reads an empty row.
+            int id = songId;
+            if (id <= 0) {
+                id = db.DAO_db_SongParameters().getSongIdByName(SongName);
+                SongId = id;
+            }
+
             // Query the database for this song's parameters
-            List<db_SongParameters> parametersList = db.DAO_db_SongParameters().getParametersByElementId(songId);
+            List<db_SongParameters> parametersList = db.DAO_db_SongParameters().getParametersByElementId(id);
 
             if (!parametersList.isEmpty()) {
                 db_SongParameters parameters = parametersList.get(0);
@@ -632,7 +641,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // When arriving from the mini-player (NoAutoplay), NO animation — the song
         // was already playing and the slider must show its real value from the start.
         boolean noAutoplay = getIntent().getBooleanExtra("NoAutoplay", false);
-        if (noAutoplay) return;
+        if (noAutoplay) {
+            // No animation: the first bind ran before this DB load, so rebind
+            // now that stemSettings is populated with the saved values.
+            if (stemsAdapter != null) stemsAdapter.notifyDataSetChanged();
+            return;
+        }
         // animateInitial is already on since setupRecyclerViews — the bind left the
         // sliders at 0. Here only the per-delay animations are launched.
         int delay = 150;
