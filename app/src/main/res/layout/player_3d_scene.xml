@@ -23,6 +23,17 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Frozen frame of the scene shown while a dialog blurs the activity:
+         the decorView RenderEffect cannot reach the SceneView surface, but
+         it does blur this regular view on top of it. -->
+    <ImageView
+        android:id="@+id/iv_3d_sceneSnapshot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="gone"
+        android:importantForAccessibility="no" />
+
     <!-- 2) "Lights off" overlay. A flat black semi-transparent veil (no
              gradient, so it never draws a visible band). The Filament
              lights are also dimmed in parallel (see Audio3DSceneController
@@ -36,6 +47,39 @@
         android:alpha="0"
         android:clickable="false"
         android:focusable="false" />
+
+    <!-- Backdrop views: the SceneView renders into its own opaque surface, so
+         neither alpha, scale, fadingEdge nor a DST_OUT mask reach it. The
+         player backdrop (black + nebula region) is repainted on top instead.
+         Cover: full-size, faded via alpha to reveal / hide the scene during
+         transitions. Edges: permanent top / bottom fades. -->
+    <com.jotapeveloper.fision.NebulaBackdropView
+        android:id="@+id/v_3d_sceneCover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:fadeEdge="none" />
+
+    <com.jotapeveloper.fision.NebulaBackdropView
+        android:id="@+id/v_3d_sceneFadeTop"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_gravity="top"
+        app:fadeEdge="top" />
+
+    <com.jotapeveloper.fision.NebulaBackdropView
+        android:id="@+id/v_3d_sceneFadeBottom"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_gravity="bottom"
+        app:fadeEdge="bottom" />
+
+    <!-- UI chrome grouped so transitions animate it as one block without
+         touching the per-control alpha states (disabled, tooltip, etc.). -->
+    <FrameLayout
+        android:id="@+id/fl_3d_sceneChrome"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
     <!-- 3) Header: title + info + switch. -->
     <LinearLayout
@@ -249,5 +293,7 @@
                 app:tickVisible="false" />
         </LinearLayout>
     </LinearLayout>
+
+    </FrameLayout>
 
 </FrameLayout>

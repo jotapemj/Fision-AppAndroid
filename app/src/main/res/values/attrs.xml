@@ -3,4 +3,13 @@
     <!-- Secondary tint of the current accent (Design pref). Used for slider
          thumbs, tooltip pills, small detail — pairs with ?attr/colorPrimary. -->
     <attr name="accentSecondary" format="color" />
+
+    <declare-styleable name="NebulaBackdropView">
+        <!-- Edge where the backdrop is opaque; none = uniformly opaque. -->
+        <attr name="fadeEdge" format="enum">
+            <enum name="none" value="0" />
+            <enum name="top" value="1" />
+            <enum name="bottom" value="2" />
+        </attr>
+    </declare-styleable>
 </resources>

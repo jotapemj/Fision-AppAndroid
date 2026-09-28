@@ -105,8 +105,6 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Pulsación larga</b> · silenciar]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Reset</b> · posiciones iniciales]]></string>
     <string name="stems_dance_title">Baile de stems</string>
-    <string name="stems_dance_hint">Toca una tarjeta para seleccionar · onda = sube y baja</string>
-    <string name="stems_dance_sine">Oscilación arriba y abajo</string>
     <string name="stems_dance_start">Iniciar</string>
     <string name="stems_dance_speed">Velocidad</string>
     <string name="stems_dance_distance">Distancia</string>

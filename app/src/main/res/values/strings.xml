@@ -104,8 +104,6 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Long press</b> · mute]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Reset</b> · initial positions]]></string>
     <string name="stems_dance_title">Stems dance</string>
-    <string name="stems_dance_hint">Tap a card to select · wave = up/down</string>
-    <string name="stems_dance_sine">Up/down oscillation</string>
     <string name="stems_dance_start">Start</string>
     <string name="stems_dance_speed">Speed</string>
     <string name="stems_dance_distance">Distance</string>

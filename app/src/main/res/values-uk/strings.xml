@@ -94,8 +94,6 @@
     <string name="audio3d_legend_long"><![CDATA[<b>Довге натискання</b> · вимкнути звук]]></string>
     <string name="audio3d_legend_reset"><![CDATA[<b>Скидання</b> · початкові позиції]]></string>
     <string name="stems_dance_title">Танець стемів</string>
-    <string name="stems_dance_hint">Торкніться картки, щоб обрати · хвиля = угору-униз</string>
-    <string name="stems_dance_sine">Осциляція вгору-вниз</string>
     <string name="stems_dance_start">Почати</string>
     <string name="stems_dance_speed">Швидкість</string>
     <string name="stems_dance_distance">Відстань</string>

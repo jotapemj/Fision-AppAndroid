@@ -68,13 +68,64 @@ public class NebulaBackgroundView extends View {
     private boolean paletteApplied = false;
     private boolean pendingFadeIn  = false;
 
+    /** Views that repaint a region of the nebula on top of opaque content
+     *  (e.g. edge fades over a SurfaceView). Invalidated with this view. */
+    private final java.util.List<View> mirrors = new java.util.ArrayList<>();
+
     private final Choreographer.FrameCallback frameCb = new Choreographer.FrameCallback() {
         @Override public void doFrame(long frameTimeNanos) {
             if (!running) return;
-            invalidate();
+            // Decay pulse toward floor (~200ms half-life), once per frame so
+            // extra draws from mirrors do not speed it up.
+            float dt = 1f / 60f;
+            pulse = PULSE_FLOOR + (pulse - PULSE_FLOOR) * (float) Math.exp(-dt * 3.5f);
+            if (pulse < 0.005f) pulse = 0f;
+            invalidateWithMirrors();
             Choreographer.getInstance().postFrameCallback(this);
         }
     };
+
+    /** Registers a view that draws part of the nebula via {@link #drawNebula(Canvas)}. */
+    public void addMirror(View v) {
+        if (v != null && !mirrors.contains(v)) mirrors.add(v);
+    }
+
+    public void removeMirror(View v) {
+        mirrors.remove(v);
+    }
+
+    private void invalidateWithMirrors() {
+        invalidate();
+        for (int i = 0; i < mirrors.size(); i++) mirrors.get(i).invalidate();
+    }
+
+    /** Opacity factor of the orbiting blobs (the static anchor is not
+     *  affected). Faded to 0 behind opaque views such as the 3D scene. */
+    private float orbitAlpha = 1f;
+    private android.animation.ValueAnimator orbitAnim;
+
+    /** Fades the orbiting blobs in / out; the bottom anchor glow stays. */
+    public void setOrbitBlobsVisible(boolean visible, boolean animate) {
+        float target = visible ? 1f : 0f;
+        if (orbitAnim != null) orbitAnim.cancel();
+        if (!animate || orbitAlpha == target) {
+            orbitAlpha = target;
+            invalidateWithMirrors();
+            return;
+        }
+        orbitAnim = android.animation.ValueAnimator.ofFloat(orbitAlpha, target);
+        orbitAnim.setDuration(500L);
+        orbitAnim.addUpdateListener(an -> {
+            orbitAlpha = (float) an.getAnimatedValue();
+            invalidateWithMirrors();
+        });
+        orbitAnim.start();
+    }
+
+    /** Effective opacity of the nebula on screen (0 when hidden). */
+    public float getEffectiveAlpha() {
+        return getVisibility() == VISIBLE ? getAlpha() : 0f;
+    }
 
     public NebulaBackgroundView(Context ctx) { super(ctx); init(); }
     public NebulaBackgroundView(Context ctx, AttributeSet a) { super(ctx, a); init(); }
@@ -119,7 +170,7 @@ public class NebulaBackgroundView extends View {
             animate().cancel();
             animate().alpha(1f).setDuration(500).start();
         }
-        invalidate();
+        invalidateWithMirrors();
     }
 
     /** Resets the palette handshake so the next {@link #setPalette(int[])}
@@ -131,7 +182,7 @@ public class NebulaBackgroundView extends View {
         pendingFadeIn = true;
         animate().cancel();
         setAlpha(0f);
-        invalidate();
+        invalidateWithMirrors();
     }
 
     /** Injects a beat pulse. Intensity 0..1 (soft on 1/3, strong on 2/4). */
@@ -165,11 +216,13 @@ public class NebulaBackgroundView extends View {
                 animate().alpha(0f).setDuration(400).withEndAction(() -> {
                     setVisibility(GONE);
                     stop();
+                    invalidateWithMirrors();
                 }).start();
             } else {
                 setAlpha(0f);
                 setVisibility(GONE);
                 stop();
+                invalidateWithMirrors();
             }
         }
     }
@@ -193,10 +246,17 @@ public class NebulaBackgroundView extends View {
 
     @Override protected void onDetachedFromWindow() {
         stop();
+        if (orbitAnim != null) orbitAnim.cancel();
         super.onDetachedFromWindow();
     }
 
     @Override protected void onDraw(Canvas canvas) {
+        drawNebula(canvas);
+    }
+
+    /** Paints the nebula in this view's coordinate space. Stateless per call,
+     *  so mirrors can reuse it on their own canvas (translated accordingly). */
+    public void drawNebula(Canvas canvas) {
         int w = getWidth();
         int h = getHeight();
         if (w <= 0 || h <= 0) return;
@@ -205,11 +265,6 @@ public class NebulaBackgroundView extends View {
         if (!paletteApplied) return;
 
         float t = (System.nanoTime() - startNanos) / 1_000_000_000f;
-
-        // Decay pulse toward floor (~200ms half-life)
-        float dt = 1f / 60f;
-        pulse = PULSE_FLOOR + (pulse - PULSE_FLOOR) * (float) Math.exp(-dt * 3.5f);
-        if (pulse < 0.005f) pulse = 0f;
 
         // Draw into a transparent offscreen layer so ADD blends between blobs
         // work without the black backdrop swallowing them
@@ -222,7 +277,7 @@ public class NebulaBackgroundView extends View {
         float ox = w * 0.5f;
         float oy = h * 0.5f;
 
-        for (int i = 0; i < BLOB_COUNT; i++) {
+        for (int i = 0; i < BLOB_COUNT && orbitAlpha > 0f; i++) {
             float angle = (float) (2 * Math.PI * angFreq[i] * t + phaseA[i]);
             float rx = w * rxScale[i];
             float ry = h * ryScale[i];
@@ -241,6 +296,7 @@ public class NebulaBackgroundView extends View {
                 alpha = (int) (135 + pulse * 60);
             }
             if (alpha > 230) alpha = 230;
+            alpha = Math.round(alpha * orbitAlpha);
 
             int col  = palette[i];
             int core = (col & 0x00FFFFFF) | (alpha << 24);

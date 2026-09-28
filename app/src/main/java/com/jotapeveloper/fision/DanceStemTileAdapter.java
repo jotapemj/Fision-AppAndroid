@@ -12,26 +12,26 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 
 /**
- * Card list for the stems dance dialog. Each row shows the stem icon and
- * name; tapping the card toggles its participation in the dance, and the
- * sine-wave icon (scene mode only) toggles the vertical up/down oscillation
- * for that stem.
+ * Tile grid for the stems dance dialog. Each tile shows the stem icon;
+ * tapping it toggles the stem's participation in the dance, and the
+ * "swing" toggle below (scene mode only) enables the vertical up/down
+ * oscillation for that stem.
  */
-public class DanceStemCardAdapter extends RecyclerView.Adapter<DanceStemCardAdapter.VH> {
+public class DanceStemTileAdapter extends RecyclerView.Adapter<DanceStemTileAdapter.VH> {
 
     public static class VH extends RecyclerView.ViewHolder {
         final MaterialCardView card;
         final ImageView icon;
-        final TextView name;
-        final ImageView sine;
+        final View divider;
+        final TextView swing;
         final View ring;
         VH(@NonNull View itemView) {
             super(itemView);
-            card  = itemView.findViewById(R.id.card_dance_stem);
-            icon  = itemView.findViewById(R.id.iv_dance_stem_icon);
-            name  = itemView.findViewById(R.id.tv_dance_stem_name);
-            sine  = itemView.findViewById(R.id.iv_dance_stem_sine);
-            ring  = itemView.findViewById(R.id.v_dance_stem_ring);
+            card    = itemView.findViewById(R.id.card_dance_stem);
+            icon    = itemView.findViewById(R.id.iv_dance_stem_icon);
+            divider = itemView.findViewById(R.id.v_dance_stem_divider);
+            swing   = itemView.findViewById(R.id.tv_dance_stem_swing);
+            ring    = itemView.findViewById(R.id.v_dance_stem_ring);
         }
     }
 
@@ -39,36 +39,29 @@ public class DanceStemCardAdapter extends RecyclerView.Adapter<DanceStemCardAdap
     private final java.util.Set<String> selected;
     private final java.util.Set<String> sine;
     private final boolean hasVocals2;
-    private final boolean showSine;
-    private static final int SINE_DIM_COLOR = 0x55FFFFFF;
+    private final boolean showSwing;
+    private final Runnable onSelectionChanged;
+    private static final int SWING_DIM_COLOR = 0x66FFFFFF;
 
-    public DanceStemCardAdapter(java.util.List<String> stems,
+    public DanceStemTileAdapter(java.util.List<String> stems,
                                 java.util.Set<String> selected,
                                 java.util.Set<String> sine,
                                 boolean hasVocals2,
-                                boolean showSine) {
+                                boolean showSwing,
+                                Runnable onSelectionChanged) {
         this.stems = stems;
         this.selected = selected;
         this.sine = sine;
         this.hasVocals2 = hasVocals2;
-        this.showSine = showSine;
+        this.showSwing = showSwing;
+        this.onSelectionChanged = onSelectionChanged;
     }
 
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.dance_stem_card_item, parent, false);
-        // Explicit pixel width for a constant card size across the list —
-        // match_parent let individual cards re-measure to their content
-        // width after a selection change. The XML margins are kept (only
-        // the width is forced).
-        RecyclerView.LayoutParams lp =
-                (RecyclerView.LayoutParams) v.getLayoutParams();
-        lp.width = parent.getWidth() > 0
-                ? parent.getWidth()
-                : RecyclerView.LayoutParams.MATCH_PARENT;
-        v.setLayoutParams(lp);
+                .inflate(R.layout.dance_stem_tile_item, parent, false);
         return new VH(v);
     }
 
@@ -78,16 +71,13 @@ public class DanceStemCardAdapter extends RecyclerView.Adapter<DanceStemCardAdap
         int iconRes = StemSpec.iconResource(stem, hasVocals2);
         if (iconRes != 0) h.icon.setImageResource(iconRes);
         int titleRes = StemSpec.titleResource(stem, hasVocals2);
-        h.name.setText(titleRes != 0
+        h.icon.setContentDescription(titleRes != 0
                 ? h.itemView.getContext().getString(titleRes)
                 : StemSpec.displayLabel(stem));
 
         boolean sel = selected.contains(stem);
         int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(
                 h.itemView.getContext());
-        // Selection is signalled by an overlay ring whose alpha is toggled
-        // (no card stroke change — that triggered a re-measure and the
-        // card collapsed to the text width).
         android.graphics.drawable.GradientDrawable ring =
                 new android.graphics.drawable.GradientDrawable();
         ring.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
@@ -96,19 +86,22 @@ public class DanceStemCardAdapter extends RecyclerView.Adapter<DanceStemCardAdap
         ring.setStroke(Math.round(1.5f * density), accent);
         h.ring.setBackground(ring);
         h.ring.setAlpha(sel ? 1f : 0f);
-        h.card.setAlpha(sel ? 1f : 0.55f);
+        h.card.setAlpha(sel ? 1f : 0.45f);
 
-        // Sine-wave toggle: scene mode only; tinted with the accent when on.
-        h.sine.setVisibility(showSine ? View.VISIBLE : View.INVISIBLE);
-        h.sine.setColorFilter(sine.contains(stem) ? accent : SINE_DIM_COLOR);
+        // Swing toggle: scene mode only; accent when on.
+        int swingVis = showSwing ? View.VISIBLE : View.GONE;
+        h.divider.setVisibility(swingVis);
+        h.swing.setVisibility(swingVis);
+        h.swing.setTextColor(sine.contains(stem) ? accent : SWING_DIM_COLOR);
 
         h.card.setOnClickListener(v -> {
             if (selected.contains(stem)) selected.remove(stem);
             else selected.add(stem);
             int pos = h.getAdapterPosition();
             if (pos != RecyclerView.NO_POSITION) notifyItemChanged(pos);
+            if (onSelectionChanged != null) onSelectionChanged.run();
         });
-        h.sine.setOnClickListener(v -> {
+        h.swing.setOnClickListener(v -> {
             if (sine.contains(stem)) sine.remove(stem);
             else sine.add(stem);
             int pos = h.getAdapterPosition();
@@ -122,6 +115,6 @@ public class DanceStemCardAdapter extends RecyclerView.Adapter<DanceStemCardAdap
     /** Stems included in the dance. */
     public java.util.Set<String> getSelected() { return selected; }
 
-    /** Stems with the vertical sine-wave oscillation enabled. */
+    /** Stems with the vertical swing oscillation enabled. */
     public java.util.Set<String> getSine() { return sine; }
 }

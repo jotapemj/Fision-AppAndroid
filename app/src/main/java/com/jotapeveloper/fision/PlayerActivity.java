@@ -1190,6 +1190,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             nebulaView.resetPaletteFade();
             nebulaView.setNebulaEnabled(nebulaEnabled, false);
         }
+        // 3D scene backdrop views repaint the nebula over the opaque SceneView surface.
+        for (int id : new int[] { R.id.v_3d_sceneCover, R.id.v_3d_sceneFadeTop, R.id.v_3d_sceneFadeBottom }) {
+            NebulaBackdropView backdrop = findViewById(id);
+            if (backdrop != null) backdrop.setSource(nebulaView);
+        }
         bindNebulaSwitch();
         refreshNebulaPalette();
 
@@ -1528,12 +1533,55 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             getWindow().getDecorView().setRenderEffect(
                     android.graphics.RenderEffect.createBlurEffect(
                             40f, 40f, android.graphics.Shader.TileMode.CLAMP));
+            freezeSceneForBlur();
         }
     }
 
     private void removeActivityBlur() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getWindow().getDecorView().setRenderEffect(null);
+            unfreezeSceneAfterBlur();
+        }
+    }
+
+    /** True while a scene snapshot is wanted (blur active). Guards the async
+     *  PixelCopy result against a blur removed before it lands. */
+    private boolean sceneSnapshotWanted = false;
+
+    /** The SceneView renders into its own surface, out of reach of the
+     *  decorView blur. Copies the current frame (half resolution — it is
+     *  blurred anyway) into a regular ImageView over the surface. */
+    private void freezeSceneForBlur() {
+        if (!is3DViewShown || !isAudio3DScene()) return;
+        android.view.SurfaceView sv = findViewById(R.id.v_3d_scene);
+        android.widget.ImageView snap = findViewById(R.id.iv_3d_sceneSnapshot);
+        if (sv == null || snap == null) return;
+        int w = sv.getWidth() / 2;
+        int h = sv.getHeight() / 2;
+        if (w <= 0 || h <= 0 || !sv.getHolder().getSurface().isValid()) return;
+        sceneSnapshotWanted = true;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(
+                w, h, android.graphics.Bitmap.Config.ARGB_8888);
+        android.view.PixelCopy.request(sv, bmp, result -> {
+            if (result == android.view.PixelCopy.SUCCESS && sceneSnapshotWanted) {
+                snap.setImageBitmap(bmp);
+                snap.setVisibility(View.VISIBLE);
+            } else {
+                bmp.recycle();
+            }
+        }, new Handler(android.os.Looper.getMainLooper()));
+    }
+
+    private void unfreezeSceneAfterBlur() {
+        sceneSnapshotWanted = false;
+        android.widget.ImageView snap = findViewById(R.id.iv_3d_sceneSnapshot);
+        if (snap == null || snap.getVisibility() != View.VISIBLE) return;
+        android.graphics.drawable.Drawable d = snap.getDrawable();
+        snap.setVisibility(View.GONE);
+        snap.setImageDrawable(null);
+        if (d instanceof android.graphics.drawable.BitmapDrawable) {
+            android.graphics.Bitmap b = ((android.graphics.drawable.BitmapDrawable) d).getBitmap();
+            if (b != null) b.recycle();
         }
     }
 
@@ -2619,7 +2667,18 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         try {
             if (SongFolder != null) {
                 java.io.File cf = new java.io.File(SongFolder, "artcover.png");
-                if (cf.exists()) cover = android.graphics.BitmapFactory.decodeFile(cf.getAbsolutePath());
+                if (cf.exists()) {
+                    // The card is 1024 px square: subsample HD covers down
+                    // to at least that size instead of decoding them whole.
+                    android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+                    o.inJustDecodeBounds = true;
+                    android.graphics.BitmapFactory.decodeFile(cf.getAbsolutePath(), o);
+                    int sample = 1;
+                    while (Math.min(o.outWidth, o.outHeight) / (sample * 2) >= 1024) sample *= 2;
+                    o.inJustDecodeBounds = false;
+                    o.inSampleSize = sample;
+                    cover = android.graphics.BitmapFactory.decodeFile(cf.getAbsolutePath(), o);
+                }
             }
         } catch (Throwable ignored) {}
         audio3DScene.setSongCard(cover, t, a);
@@ -3775,6 +3834,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private View     view3DSceneRoot;
     /** Controller for the Filament scene when the perf pref enables it. */
     private com.jotapeveloper.fision.audio3d.Audio3DSceneController audio3DScene;
+    /** True when the scene sprites no longer match the loaded song. Re-entering
+     *  the scene for the same song reuses the existing nodes (no texture
+     *  re-upload on the UI thread). */
+    private boolean sceneSpritesStale = true;
     /** Container where the stem icons are placed absolutely. */
     private android.widget.FrameLayout fl3DStemContainer;
     /** Central head. */
@@ -3806,6 +3869,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private boolean       danceActive = false;
     private final java.util.Set<String> danceStems = new java.util.HashSet<>();
     private final java.util.Set<String> danceSineStems = new java.util.HashSet<>();  // per-stem up/down wave
+    /** Swinging stems start at a random point of their wave (scene mode). */
+    private boolean danceRandomSwing = false;
     private float         danceSpeed    = 0.15f;  // laps/second per stem (max 0.4 for finer resolution)
     // Scene mode: metres [0.3..3.0] (same range as the vertical distance
     // slider). Flat mode: radius multiplier [0.4..1.2]. Default 1.0 is
@@ -4014,6 +4079,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
                     audio3DScene.stopDance();
                     if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.raw.ic_play);
+                    setSceneDanceSlidersVisible(false);
                 } else if (danceActive) {
                     stopDance();
                 } else {
@@ -4027,6 +4093,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
                     audio3DScene.stopDance();
                     b3DDanceScene.setIconResource(R.raw.ic_play);
+                    setSceneDanceSlidersVisible(false);
                 } else {
                     showStemsDanceDialog();
                 }
@@ -4140,6 +4207,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         root.setScaleX(1f);
         root.setScaleY(1f);
         root.setVisibility(View.VISIBLE);
+        if (nebulaView != null) nebulaView.setOrbitBlobsVisible(false, false);
         if (!isAudio3DScene()) {
             build3DIcons();
             // Icons appear faded after the layout pass (they start with alpha=0 in build).
@@ -4147,13 +4215,31 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // Evaluate whether previous modifications exist → show reset button with fade in
             fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, 400L);
         } else {
-            build3DSceneSprites();
-            if (audio3DScene != null) {
-                audio3DScene.resume();
-                // Sync illumination with the current 3D on/off state so the
-                // scene arrives already dimmed when the effect is off.
-                audio3DScene.setLightIntensity(is3DEnabled ? 1f : 0.20f);
-            }
+            // Song opened with the 3D view stored as active: everything is
+            // still loading, so the scene stays covered until it is warm and
+            // then fades in (no pop of a half-initialised scene).
+            resetSceneTransitionViews();
+            showSceneCovered();
+            scheduleSceneReveal(SCENE_REVEAL_ON_OPEN_MS);
+        }
+    }
+
+    /** Resting state of the scene transition helpers: cover hidden, chrome
+     *  fully visible, no pending entry/reveal. */
+    private void resetSceneTransitionViews() {
+        cancelPendingSceneEntry();
+        View cover  = findViewById(R.id.v_3d_sceneCover);
+        View chrome = findViewById(R.id.fl_3d_sceneChrome);
+        if (cover != null) {
+            cover.animate().cancel();
+            cover.setAlpha(0f);
+            cover.setVisibility(View.GONE);
+        }
+        if (chrome != null) {
+            chrome.animate().cancel();
+            chrome.setAlpha(1f);
+            chrome.setScaleX(1f);
+            chrome.setScaleY(1f);
         }
     }
 
@@ -4170,6 +4256,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             root.animate().cancel();
             root.setVisibility(View.GONE);
         }
+        if (isAudio3DScene()) resetSceneTransitionViews();
+        if (nebulaView != null) nebulaView.setOrbitBlobsVisible(true, false);
         if (audio3DScene != null) audio3DScene.pause();
         View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
         if (stemsStack != null) {
@@ -4198,6 +4286,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void refresh3DForCurrentSong() {
         ensure3DRefs();
         boolean want = is3DEnabled;
+        // New song → new stem catalog and poses; scene sprites must be rebuilt.
+        sceneSpritesStale = true;
 
         // Silent sync of the switch to avoid re-triggering apply3DEnabled below.
         if (sw3DEnabled != null && sw3DEnabled.isChecked() != want) {
@@ -4213,6 +4303,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 // new stem catalog and re-evaluate reset button visibility.
                 if (danceActive) stopDance();
                 selected3DStem = null;
+                if (isAudio3DScene()) ensureSceneSprites();
                 build3DIcons();
                 fl3DStemContainer.postDelayed(this::animateStemIconsIn, 100L);
                 fl3DStemContainer.postDelayed(() -> {
@@ -4261,6 +4352,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     }).start();
         }
 
+        if (nebulaView != null) nebulaView.setOrbitBlobsVisible(false, true);
+        if (isAudio3DScene()) {
+            transitionIntoScene(OUT_DUR, IN_DUR);
+            return;
+        }
+
         // 3D mode entry: overlaps the end of the fade out to avoid a black gap.
         View root = active3DRoot();
         root.setAlpha(0f);
@@ -4275,31 +4372,153 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
 
-        if (!isAudio3DScene()) {
-            // Head with bounce overshoot — builds icons once measurements are ready.
-            build3DIcons();
-            if (iv3DHead != null) {
-                iv3DHead.setScaleX(0.75f);
-                iv3DHead.setScaleY(0.75f);
-                iv3DHead.animate().cancel();
-                iv3DHead.animate().scaleX(1f).scaleY(1f)
-                        .setStartDelay(OUT_DUR).setDuration(360L)
-                        .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f))
-                        .start();
-            }
-            // Stem icons: cascaded fade in, after the stems fade out.
-            fl3DStemContainer.postDelayed(this::animateStemIconsIn, OUT_DUR + 60L);
-            // Evaluate whether previous modifications exist → show reset button with fade in
-            fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, OUT_DUR + IN_DUR + 100L);
-        } else {
-            build3DSceneSprites();
-            if (audio3DScene != null) {
-                audio3DScene.resume();
-                // Sync illumination with the current 3D on/off state so the
-                // scene arrives already dimmed when the effect is off.
-                audio3DScene.setLightIntensity(is3DEnabled ? 1f : 0.20f);
-            }
+        // Head with bounce overshoot — builds icons once measurements are ready.
+        build3DIcons();
+        if (iv3DHead != null) {
+            iv3DHead.setScaleX(0.75f);
+            iv3DHead.setScaleY(0.75f);
+            iv3DHead.animate().cancel();
+            iv3DHead.animate().scaleX(1f).scaleY(1f)
+                    .setStartDelay(OUT_DUR).setDuration(360L)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f))
+                    .start();
         }
+        // Stem icons: cascaded fade in, after the stems fade out.
+        fl3DStemContainer.postDelayed(this::animateStemIconsIn, OUT_DUR + 60L);
+        // Evaluate whether previous modifications exist → show reset button with fade in
+        fl3DStemContainer.postDelayed(() -> { if (has3DModifications()) showResetButton(); }, OUT_DUR + IN_DUR + 100L);
+    }
+
+    /** Reveal fade when the song opens straight into the scene. */
+    private static final long SCENE_REVEAL_ON_OPEN_MS = 450L;
+    /** Upper bound on the wait for a warm scene (render stall safety net). */
+    private static final long SCENE_REVEAL_FALLBACK_MS = 2000L;
+
+    /** Pending "show covered" step, posted at the end of the stems fade out. */
+    private Runnable sceneEnterRunnable;
+    /** Reveal armed and not yet run. The token invalidates stale callbacks
+     *  (warm callback + fallback both target the same reveal). */
+    private boolean sceneRevealPending = false;
+    private int sceneRevealToken = 0;
+
+    /** Scene entry. The SceneView surface ignores alpha/scale of its parents,
+     *  so the reveal is sequential: once the stems stack has faded out, the
+     *  root appears under an opaque backdrop cover (identical to what is on
+     *  screen at that moment); when the scene is warm the cover fades out
+     *  while the chrome zooms in. Surface creation and sprite build happen
+     *  behind the cover. */
+    private void transitionIntoScene(long outDur, long inDur) {
+        View root = view3DSceneRoot;
+        if (root == null) return;
+        cancelPendingSceneEntry();
+        sceneEnterRunnable = () -> {
+            sceneEnterRunnable = null;
+            showSceneCovered();
+            scheduleSceneReveal(inDur);
+        };
+        root.postDelayed(sceneEnterRunnable, outDur);
+    }
+
+    /** Makes the scene root visible under the opaque cover, chrome hidden,
+     *  and brings the scene up to date (sprites, frame loop, lights). */
+    private void showSceneCovered() {
+        View root   = view3DSceneRoot;
+        View cover  = findViewById(R.id.v_3d_sceneCover);
+        View chrome = findViewById(R.id.fl_3d_sceneChrome);
+        if (root == null || cover == null || chrome == null) return;
+        root.animate().cancel();
+        root.setAlpha(1f);
+        root.setScaleX(1f);
+        root.setScaleY(1f);
+        cover.animate().cancel();
+        cover.setAlpha(1f);
+        cover.setVisibility(View.VISIBLE);
+        chrome.animate().cancel();
+        chrome.setAlpha(0f);
+        chrome.setScaleX(0.94f);
+        chrome.setScaleY(0.94f);
+        root.setVisibility(View.VISIBLE);
+        ensureSceneSprites();
+        if (audio3DScene != null) {
+            audio3DScene.resume();
+            // Sync illumination with the current 3D on/off state so the
+            // scene arrives already dimmed when the effect is off.
+            audio3DScene.setLightIntensity(is3DEnabled ? 1f : 0.20f);
+        }
+    }
+
+    /** Fades the cover out and the chrome in once the scene is warm (or
+     *  after the fallback delay, whichever comes first). */
+    private void scheduleSceneReveal(long dur) {
+        View root = view3DSceneRoot;
+        if (root == null) return;
+        final int token = ++sceneRevealToken;
+        sceneRevealPending = true;
+        Runnable reveal = () -> {
+            if (!sceneRevealPending || token != sceneRevealToken) return;
+            sceneRevealPending = false;
+            View cover  = findViewById(R.id.v_3d_sceneCover);
+            View chrome = findViewById(R.id.fl_3d_sceneChrome);
+            if (cover == null || chrome == null) return;
+            cover.animate().alpha(0f)
+                    .setDuration(dur)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withEndAction(() -> cover.setVisibility(View.GONE))
+                    .start();
+            chrome.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                    .withLayer()
+                    .setDuration(dur)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        };
+        if (audio3DScene != null) audio3DScene.runWhenWarm(reveal);
+        root.postDelayed(reveal, audio3DScene != null ? SCENE_REVEAL_FALLBACK_MS : 0L);
+    }
+
+    /** Drops any queued entry step or armed reveal. */
+    private void cancelPendingSceneEntry() {
+        if (sceneEnterRunnable != null && view3DSceneRoot != null) {
+            view3DSceneRoot.removeCallbacks(sceneEnterRunnable);
+        }
+        sceneEnterRunnable = null;
+        sceneRevealPending = false;
+        sceneRevealToken++;
+        if (audio3DScene != null) audio3DScene.cancelWarmWaiters();
+    }
+
+    /** Scene exit: the backdrop cover fades in over the surface while the
+     *  chrome zooms out; the root is hidden once fully covered. */
+    private void transitionOutOfScene(long outDur) {
+        View root   = view3DSceneRoot;
+        View cover  = findViewById(R.id.v_3d_sceneCover);
+        View chrome = findViewById(R.id.fl_3d_sceneChrome);
+        if (root == null || cover == null || chrome == null) return;
+        if (sceneEnterRunnable != null || sceneRevealPending) {
+            // Exit before the reveal ran: the scene was never uncovered.
+            root.setVisibility(View.GONE);
+            resetSceneTransitionViews();
+            if (audio3DScene != null) audio3DScene.pause();
+            return;
+        }
+        cover.animate().cancel();
+        if (cover.getVisibility() != View.VISIBLE) {
+            cover.setAlpha(0f);
+            cover.setVisibility(View.VISIBLE);
+        }
+        cover.animate().alpha(1f)
+                .setDuration(outDur)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    root.setVisibility(View.GONE);
+                    resetSceneTransitionViews();
+                    if (audio3DScene != null) audio3DScene.pause();
+                }).start();
+        chrome.animate().cancel();
+        chrome.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+                .withLayer()
+                .setDuration(outDur)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .start();
     }
 
     /** Reversa hacia el modo stems. Respeta chordsActive: si estaba off, no muestra
@@ -4310,16 +4529,24 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         float density = getResources().getDisplayMetrics().density;
         float slidePx = 18f * density;
 
-        View root = active3DRoot();
-        root.animate().cancel();
-        root.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
-                .withLayer()
-                .setDuration(OUT_DUR)
-                .setInterpolator(new android.view.animation.AccelerateInterpolator())
-                .withEndAction(() -> {
-                    root.setVisibility(View.GONE);
-                    if (audio3DScene != null) audio3DScene.pause();
-                }).start();
+        if (nebulaView != null) nebulaView.setOrbitBlobsVisible(true, true);
+        // Scene: the opaque surface hides the stems stack until the root is
+        // gone, so the stems enter after the cover completes (no overlap).
+        final boolean scene = isAudio3DScene();
+        if (scene) {
+            transitionOutOfScene(OUT_DUR);
+        } else {
+            View root = active3DRoot();
+            root.animate().cancel();
+            root.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+                    .withLayer()
+                    .setDuration(OUT_DUR)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        root.setVisibility(View.GONE);
+                        if (audio3DScene != null) audio3DScene.pause();
+                    }).start();
+        }
 
         // Restore the stems stack as a block with fade + slide from below.
         View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
@@ -4330,7 +4557,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             stemsStack.animate().cancel();
             stemsStack.animate().alpha(1f).translationY(0f)
                     .withLayer()
-                    .setStartDelay(OUT_DUR - 80L)
+                    .setStartDelay(scene ? OUT_DUR : OUT_DUR - 80L)
                     .setDuration(IN_DUR)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
@@ -4391,47 +4618,74 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         });
     }
 
+    /** Engine azimuth (+π/2 = right ear) of a stem in scene mode: the saved
+     *  pose (pos3DX/Y, engine convention) or the frontal semicircle slot
+     *  {@code i} of {@code n} when nothing is saved. */
+    private static float sceneEngineAzimuth(StemSetting ss, int i, int n) {
+        if (!Float.isNaN(ss.pos3DX) && !Float.isNaN(ss.pos3DY)
+                && (ss.pos3DX != 0f || ss.pos3DY != 0f)) {
+            return (float) Math.atan2(ss.pos3DX, -ss.pos3DY);
+        }
+        float t = (n > 1) ? (float) i / (n - 1) : 0.5f;
+        return (float) (-Math.PI / 2 + Math.PI * t);
+    }
+
+    /** Saved horizontal radius of a stem in scene mode (1.5 m default). */
+    private static float sceneHorizontalDistance(StemSetting ss) {
+        return Float.isNaN(ss.distance3D) ? 1.5f : ss.distance3D;
+    }
+
+    /** Sends the saved scene pose of a stem to the engine. The StemSetting is
+     *  the source of truth (drag, distance slider and dance keep it current);
+     *  the engine takes spherical coordinates (true 3D distance). */
+    private void pushScenePoseToEngine(int trackId, StemSetting ss, int i, int n) {
+        if (engine == null) return;
+        float elev = (float) Math.toRadians(ss.elevationDeg);
+        engine.setTrack3DPosition(trackId, sceneEngineAzimuth(ss, i, n),
+                sphericalDist(sceneHorizontalDistance(ss), elev), ss.elevationDeg);
+    }
+
+    /** Builds the scene sprites only when the song changed since the last build. */
+    private void ensureSceneSprites() {
+        if (sceneSpritesStale) build3DSceneSprites();
+    }
+
     /** Feeds the Filament scene with the current stem set. Icons decoded
      *  from res/raw, spherical pose taken from the persisted StemSetting
      *  when present, otherwise the frontal semicircle default. */
     private void build3DSceneSprites() {
         if (audio3DScene == null || playbackService == null) return;
+        sceneSpritesStale = false;
+        // Half-resolution decode (500px source → 250px): sharp at on-screen
+        // sprite size with a quarter of the texture upload cost.
+        android.graphics.BitmapFactory.Options iconOpts = new android.graphics.BitmapFactory.Options();
+        iconOpts.inSampleSize = 2;
         java.util.List<String> order = playbackService.getStemOrder();
         boolean hasV2 = playbackService.hasStem("vocals2");
         java.util.List<com.jotapeveloper.fision.audio3d.Audio3DSceneController.StemPose> list =
                 new java.util.ArrayList<>(order.size());
         int N = order.size();
-        final float DEF_DISTANCE = 1.5f;
         for (int i = 0; i < N; i++) {
             String stem = order.get(i);
             int resId = StemSpec.iconResource(stem, hasV2);
             android.graphics.Bitmap bmp =
-                    android.graphics.BitmapFactory.decodeResource(getResources(), resId);
+                    android.graphics.BitmapFactory.decodeResource(getResources(), resId, iconOpts);
             if (bmp == null) continue;
             StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
-            float az, elev, dist;
-            if (!Float.isNaN(ss.pos3DX) && !Float.isNaN(ss.pos3DY)
-                    && (ss.pos3DX != 0f || ss.pos3DY != 0f)) {
-                // Saved 2D flat pose → spherical (elevation kept separately).
-                az = (float) Math.atan2(ss.pos3DX, -ss.pos3DY);
-                elev = (float) Math.toRadians(ss.elevationDeg);
-                dist = Float.isNaN(ss.distance3D) ? DEF_DISTANCE : ss.distance3D;
-            } else {
-                // Frontal semicircle default.
-                float t = (N > 1) ? (float) i / (N - 1) : 0.5f;
-                az = (float) (-Math.PI / 2 + Math.PI * t);
-                elev = (float) Math.toRadians(ss.elevationDeg);
-                dist = Float.isNaN(ss.distance3D) ? DEF_DISTANCE : ss.distance3D;
-            }
+            // The scene camera looks at the head from behind, so the sprite
+            // azimuth is the sign-flipped engine azimuth (same mapping as the
+            // drag listener and the reset).
+            float sceneAz = -sceneEngineAzimuth(ss, i, N);
+            float elev = (float) Math.toRadians(ss.elevationDeg);
+            float dist = sceneHorizontalDistance(ss);
             list.add(new com.jotapeveloper.fision.audio3d.Audio3DSceneController.StemPose(
-                    stem, bmp, az, heightMFromPose(dist, elev), dist));
+                    stem, bmp, sceneAz, heightMFromPose(dist, elev), dist));
             // Push the saved pose to the audio engine so headphones hear the
-            // same position the sprite is drawn at. The engine works in
-            // spherical coordinates (true 3D distance for attenuation/HRTF).
+            // same position the sprite is drawn at.
             if (engine != null) {
                 Integer trackId = playbackService.getStemTrack(stem);
                 if (trackId != null) {
-                    engine.setTrack3DPosition(trackId, az, sphericalDist(dist, elev), ss.elevationDeg);
+                    pushScenePoseToEngine(trackId, ss, i, N);
                     engine.setTrack3DMuted(trackId, ss.mute3D);
                     engine.setTrack3DOmnipresent(trackId, ss.omnipresent);
                 }
@@ -4641,16 +4895,28 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             stemsAdapter.notifyDataSetChanged();
         }
         if (playbackService == null || engine == null) return;
-        for (String stem : playbackService.getStemOrder()) {
+        java.util.List<String> order = playbackService.getStemOrder();
+        final boolean scene = isAudio3DScene();
+        for (int i = 0; i < order.size(); i++) {
+            String stem = order.get(i);
             Integer trackId = playbackService.getStemTrack(stem);
             if (trackId == null) continue;
+            StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
+            if (enabled) {
+                // Pose first, then enable: the stem starts rendering 3D
+                // already at the position its sprite/icon is drawn at.
+                if (scene) {
+                    pushScenePoseToEngine(trackId, s, i, order.size());
+                } else {
+                    float[] pos = stem3DPositions.get(stem);
+                    if (pos != null) apply3DPositionToEngine(stem, pos[0], pos[1]);
+                }
+                engine.setTrack3DOmnipresent(trackId, s.omnipresent);
+            }
             engine.setTrack3DEnabled(trackId, enabled);
             if (enabled) {
-                float[] pos = stem3DPositions.get(stem);
-                if (pos != null) apply3DPositionToEngine(stem, pos[0], pos[1]);
                 // Push the saved 3D mute flag so muted stems stay silent as soon
                 // as the pipeline turns on (before the user interacts).
-                StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
                 engine.setTrack3DMuted(trackId, s.mute3D);
             } else {
                 // On disable, re-apply the normal volume/pan (saved in Room)
@@ -5131,47 +5397,61 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return (float) (rh / Math.max(0.05f, Math.cos(elevRad)));
     }
 
+    /** Scene mode: inline speed + distance sliders in the bottom row, shown
+     *  only while the dance runs (the setup dialog carries no sliders). */
+    private void setSceneDanceSlidersVisible(boolean visible) {
+        View group = findViewById(R.id.ll_3d_danceSlidersScene);
+        if (group == null) return;
+        if (visible) {
+            com.google.android.material.slider.Slider sp = findViewById(R.id.sl_3d_danceSpeedScene);
+            com.google.android.material.slider.Slider di = findViewById(R.id.sl_3d_danceDistanceScene);
+            if (sp != null) sp.setValue(danceSpeed);
+            if (di != null) di.setValue(danceDistance);
+        }
+        group.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
     private void showStemsDanceDialog() {
         LayoutInflater inflater = LayoutInflater.from(this);
         View dlgView = inflater.inflate(R.layout.stems_dance_setup_dialog, null);
         androidx.recyclerview.widget.RecyclerView rvStems = dlgView.findViewById(R.id.rv_dance_stems);
-        com.google.android.material.slider.Slider slSpeed = dlgView.findViewById(R.id.sl_dance_speed);
-        com.google.android.material.slider.Slider slDist  = dlgView.findViewById(R.id.sl_dance_distance);
-        TextView tvSpeed = dlgView.findViewById(R.id.tv_dance_speed_value);
-        TextView tvDist  = dlgView.findViewById(R.id.tv_dance_distance_value);
+        com.google.android.material.checkbox.MaterialCheckBox cbRandomSwing =
+                dlgView.findViewById(R.id.cb_dance_random_swing);
         com.google.android.material.button.MaterialButton bCancel = dlgView.findViewById(R.id.b_dance_cancel);
         com.google.android.material.button.MaterialButton bStart  = dlgView.findViewById(R.id.b_dance_start);
 
-        // Distance slider range depends on the mode: scene uses metres with
-        // the same range as the vertical distance slider (0.3..3.0), flat
-        // keeps the legacy radius multiplier (0.4..1.2).
+        // Speed and distance are tuned from the inline sliders of the 3D
+        // view. The distance unit depends on the mode: scene uses metres
+        // (0.3..3.0, same as the vertical slider), flat the legacy radius
+        // multiplier (0.4..1.2) — bring a value from the other mode back in.
         boolean scene = isAudio3DScene();
         if (scene) {
-            slDist.setValueFrom(0.3f);
-            slDist.setValueTo(3.0f);
             if (danceDistance < 0.3f || danceDistance > 3.0f) danceDistance = 1.5f;
+        } else if (danceDistance < 0.4f || danceDistance > 1.2f) {
+            danceDistance = 1.0f;
         }
+        // Swing only exists in scene mode.
+        cbRandomSwing.setVisibility(scene ? View.VISIBLE : View.GONE);
+        cbRandomSwing.setChecked(danceRandomSwing);
 
-        slSpeed.setValue(danceSpeed);
-        slDist.setValue(danceDistance);
-        tvSpeed.setText(String.format(java.util.Locale.US, "%.2f×", danceSpeed));
-        tvDist.setText(String.format(java.util.Locale.US, "%.2f", danceDistance));
-        slSpeed.addOnChangeListener((s, v, fromUser) -> tvSpeed.setText(String.format(java.util.Locale.US, "%.2f×", v)));
-        slDist.addOnChangeListener((s, v, fromUser) -> tvDist.setText(String.format(java.util.Locale.US, "%.2f", v)));
-
-        // Scrollable card list. Selection starts with the previous dance set
-        // (or all stems); the sine-wave toggle is per stem and scene-only.
+        // Tile grid. Selection starts with the previous dance set (or all
+        // stems); the swing toggle is per stem and scene-only. Four stems
+        // lay out as 2x2, anything else in rows of three.
         java.util.List<String> order = playbackService.getStemOrder();
         boolean hasV2 = playbackService.hasStem("vocals2");
         final java.util.Set<String> selection = new java.util.HashSet<>(danceStems);
         if (selection.isEmpty()) selection.addAll(order);
         final java.util.Set<String> sineSel = new java.util.HashSet<>(danceSineStems);
-        DanceStemCardAdapter adapter = new DanceStemCardAdapter(order, selection, sineSel, hasV2, scene);
-        rvStems.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        DanceStemTileAdapter adapter = new DanceStemTileAdapter(order, selection, sineSel, hasV2, scene,
+                () -> bStart.setEnabled(!selection.isEmpty()));
+        int n = order.size();
+        int span = (n == 4 || n <= 2) ? 2 : 3;
+        rvStems.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, span));
         // No item animator: the default one interpolates bounds on rebind
-        // and made cards visibly resize when toggling a selection.
+        // and made tiles visibly resize when toggling a selection.
         rvStems.setItemAnimator(null);
         rvStems.setAdapter(adapter);
+        bStart.setEnabled(!selection.isEmpty());
 
         androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(
                 this, R.style.Theme_Fision_BlurDialog)
@@ -5188,14 +5468,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             danceStems.addAll(adapter.getSelected());
             danceSineStems.clear();
             danceSineStems.addAll(adapter.getSine());
-            danceSpeed    = slSpeed.getValue();
-            danceDistance = slDist.getValue();
+            danceRandomSwing = cbRandomSwing.isChecked();
             refreshWaveSliderVisibility();
             dlg.dismiss();
             if (isAudio3DScene() && audio3DScene != null) {
                 audio3DScene.startDance(new java.util.ArrayList<>(danceStems),
-                        new java.util.HashSet<>(danceSineStems), danceSpeed, danceDistance);
+                        new java.util.HashSet<>(danceSineStems), danceSpeed, danceDistance,
+                        danceRandomSwing);
                 if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.drawable.ic_stop);
+                setSceneDanceSlidersVisible(true);
             } else {
                 startDance();
             }

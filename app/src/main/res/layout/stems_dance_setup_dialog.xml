@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Stems dance setup dialog. Lets the user pick which ones dance
-  and tune the initial speed and distance.
+  and tune the initial speed and distance. The outer ScrollView only
+  engages as a safety net when a large stem catalog outgrows the screen.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:overScrollMode="never"
+    android:scrollbars="none">
+
+<LinearLayout
     android:orientation="vertical"
     android:layout_width="330dp"
     android:layout_height="wrap_content"
@@ -20,127 +28,35 @@
         android:textColor="@color/AppWhite"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:fontFamily="@font/yugothic_ui_regular"
-        android:text="@string/stems_dance_hint"
-        android:textColor="#B3FFFFFF"
-        android:textSize="12sp"
         android:layout_marginBottom="14dp" />
 
-    <!-- Scrollable card list; PlayerActivity binds a DanceStemCardAdapter.
-         Each card: stem selection + per-stem sine-wave toggle. The top and
-         bottom edges fade into the dialog background so the scrolling
-         content does not end in a hard cut. -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:layout_marginBottom="14dp">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_dance_stems"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="24dp"
-            android:layout_gravity="top"
-            android:background="@drawable/dance_list_fade_top"
-            android:clickable="false"
-            android:focusable="false" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="24dp"
-            android:layout_gravity="bottom"
-            android:background="@drawable/dance_list_fade_bottom"
-            android:clickable="false"
-            android:focusable="false" />
-
-    </FrameLayout>
-
-    <!-- Speed -->
-    <LinearLayout
+    <!-- Tile grid (all stems visible, no inner scroll); PlayerActivity binds
+         a DanceStemTileAdapter. Each tile: stem selection + swing toggle.
+         Negative margins compensate the tiles' own 5dp margins so the grid
+         edges align with the rest of the dialog content. -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_dance_stems"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:fontFamily="@font/yugothic_ui_regular"
-            android:text="@string/stems_dance_speed"
-            android:textColor="@color/AppWhite"
-            android:textSize="13sp" />
-        <TextView
-            android:id="@+id/tv_dance_speed_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
-            android:text="0.50×"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="13sp" />
-    </LinearLayout>
-    <com.google.android.material.slider.Slider
-        android:id="@+id/sl_dance_speed"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:valueFrom="0.02"
-        android:valueTo="0.4"
-        android:value="0.15"
-        android:stepSize="0.01"
-        app:trackColorActive="?attr/colorPrimary"
-        app:trackColorInactive="@color/BottomSheetColor"
-        app:thumbColor="?attr/accentSecondary"
-        app:haloRadius="0dp"
-        app:tickVisible="false" />
+        android:layout_marginStart="-5dp"
+        android:layout_marginEnd="-5dp"
+        android:layout_marginBottom="14dp"
+        android:nestedScrollingEnabled="false"
+        android:overScrollMode="never" />
 
-    <!-- Distance -->
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Random swing start (scene mode only). Speed and distance live in
+         the inline sliders of the 3D view. Label is not translatable. -->
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cb_dance_random_swing"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="4dp">
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:fontFamily="@font/yugothic_ui_regular"
-            android:text="@string/stems_dance_distance"
-            android:textColor="@color/AppWhite"
-            android:textSize="13sp" />
-        <TextView
-            android:id="@+id/tv_dance_distance_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
-            android:text="1.00"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="13sp" />
-    </LinearLayout>
-    <com.google.android.material.slider.Slider
-        android:id="@+id/sl_dance_distance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:valueFrom="0.4"
-        android:valueTo="1.2"
-        android:value="1.0"
-        android:stepSize="0.05"
-        app:trackColorActive="?attr/colorPrimary"
-        app:trackColorInactive="@color/BottomSheetColor"
-        app:thumbColor="?attr/accentSecondary"
-        app:haloRadius="0dp"
-        app:tickVisible="false" />
+        android:layout_gravity="center_horizontal"
+        android:fontFamily="@font/yugothic_ui_regular"
+        android:text="Randomize swing"
+        android:textColor="@color/AppWhite"
+        android:textSize="14sp"
+        app:buttonTint="?attr/colorPrimary"
+        tools:ignore="HardcodedText" />
 
     <!-- Buttons -->
     <LinearLayout
@@ -176,3 +92,5 @@
     </LinearLayout>
 
 </LinearLayout>
+
+</ScrollView>
