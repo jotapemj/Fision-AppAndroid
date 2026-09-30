@@ -20,10 +20,40 @@ public class FisionApplication extends Application {
 
     private static final String TAG = "FisionApplication";
 
+    /** Notified when the app enters (any activity started) or leaves (none
+     *  started) the foreground. */
+    public interface ForegroundListener { void onAppForegroundChanged(boolean foreground); }
+
+    private static int startedActivities = 0;
+    private static ForegroundListener foregroundListener;
+
+    /** True while at least one activity of the app is started (visible). */
+    public static boolean isInForeground() { return startedActivities > 0; }
+
+    public static void setForegroundListener(ForegroundListener l) { foregroundListener = l; }
+
     @Override
     public void onCreate() {
         super.onCreate();
         installCrashFilter();
+        registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+            @Override public void onActivityStarted(android.app.Activity a) {
+                if (++startedActivities == 1 && foregroundListener != null) {
+                    foregroundListener.onAppForegroundChanged(true);
+                }
+            }
+            @Override public void onActivityStopped(android.app.Activity a) {
+                startedActivities = Math.max(0, startedActivities - 1);
+                if (startedActivities == 0 && foregroundListener != null) {
+                    foregroundListener.onAppForegroundChanged(false);
+                }
+            }
+            @Override public void onActivityCreated(android.app.Activity a, android.os.Bundle b) {}
+            @Override public void onActivityResumed(android.app.Activity a) {}
+            @Override public void onActivityPaused(android.app.Activity a) {}
+            @Override public void onActivitySaveInstanceState(android.app.Activity a, android.os.Bundle b) {}
+            @Override public void onActivityDestroyed(android.app.Activity a) {}
+        });
     }
 
     /** (Re)installs the process-wide crash filter. Called from onCreate and

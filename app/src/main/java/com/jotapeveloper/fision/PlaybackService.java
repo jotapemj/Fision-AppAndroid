@@ -86,6 +86,15 @@ public class PlaybackService extends Service {
     // songs) and MUST NOT auto-resume us.
     private long focusLossAtMs = 0L;
     private static final long FOCUS_RESUME_WINDOW_MS = 60_000L;
+    // Paused with no app UI on screen for this long → the song is released and
+    // the service stops, so a car head unit connecting hours later cannot
+    // wake Fision with a MEDIA_PLAY key.
+    private static final long IDLE_STOP_MS = 10 * 60_000L;
+    private final Runnable idleStop = () -> {
+        if (!isIdle()) return;
+        Log.i(TAG, "Idle in pause with no UI → releasing song and stopping");
+        releaseSongAndStop();
+    };
     // Cached cover to avoid decoding the PNG multiple times per song
     private android.graphics.Bitmap cachedCoverBitmap = null;
 
@@ -158,6 +167,20 @@ public class PlaybackService extends Service {
         setupMediaSession();
         setupAudioFocus();
         loadRepeatPrefs();
+        FisionApplication.setForegroundListener(fg -> mainHandler.post(this::reevaluateIdleStop));
+    }
+
+    /** Song loaded, not playing (and not waiting to resume after a call),
+     *  with no app activity on screen. */
+    private boolean isIdle() {
+        return currentSongPath != null && !isPlaying && !wasPlayingBeforeFocusLoss
+                && !FisionApplication.isInForeground();
+    }
+
+    /** Arms the idle stop timer while idle; disarms it otherwise. */
+    private void reevaluateIdleStop() {
+        mainHandler.removeCallbacks(idleStop);
+        if (isIdle()) mainHandler.postDelayed(idleStop, IDLE_STOP_MS);
     }
 
     @Nullable
@@ -179,6 +202,8 @@ public class PlaybackService extends Service {
 
     @Override
     public void onDestroy() {
+        FisionApplication.setForegroundListener(null);
+        mainHandler.removeCallbacks(idleStop);
         unregisterNoisyReceiver();
         releaseInternal();
         if (mediaSession != null) { mediaSession.release(); mediaSession = null; }
@@ -419,6 +444,7 @@ public class PlaybackService extends Service {
 
         updateMediaMetadata(getDisplayTitle(), songDurationMs);
         notifyListeners();
+        reevaluateIdleStop();
         return true;
     }
 
@@ -445,6 +471,7 @@ public class PlaybackService extends Service {
         // Activity is alive (previously the detection lived in PlayerActivity.timer
         // and the mini-player got stuck with the pause icon when PlayerActivity died first).
         startEndOfSongWatcher();
+        reevaluateIdleStop();
     }
 
     /** User-initiated / end-of-song pause: releases the media session so the
@@ -478,6 +505,7 @@ public class PlaybackService extends Service {
         startForegroundWithNotif(PlaybackStateCompat.STATE_PAUSED);
         updatePlaybackState(PlaybackStateCompat.STATE_PAUSED);
         notifyListeners();
+        reevaluateIdleStop();
     }
 
     public void seekTo(long ms) {
@@ -633,7 +661,11 @@ public class PlaybackService extends Service {
                         | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                         | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
         mediaSession.setPlaybackState(stateBuilder.build());
-        mediaSession.setActive(true);
+        // Born inactive: loading a song does not make Fision the system's
+        // active player; play() claims the session. No media button receiver
+        // either, so the system cannot restart the app with a MEDIA_PLAY key
+        // once the service is gone (media button resumption).
+        mediaSession.setMediaButtonReceiver(null);
     }
 
     private void setupAudioFocus() {
@@ -691,6 +723,7 @@ public class PlaybackService extends Service {
                             } else {
                                 wasPlayingBeforeFocusLoss = false;
                                 focusLossAtMs = 0L;
+                                reevaluateIdleStop();
                             }
                             break;
                     }
