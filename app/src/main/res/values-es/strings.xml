@@ -238,10 +238,10 @@
     <string name="settings_language_title">Idioma</string>
     <string name="design_section_title">Diseño</string>
     <string name="design_title">Diseño</string>
-    <string name="design_summary">Color de acento y paleta de la nebulosa</string>
+    <string name="design_summary">Color de acento y colores de la canción</string>
     <string name="design_accent_title">Color de acento</string>
-    <string name="design_nebula_title">Colores fijos en la nebulosa</string>
-    <string name="design_nebula_summary">Off: los colores siguen la paleta de la portada</string>
+    <string name="design_song_colors_title">Adoptar colores de la canción</string>
+    <string name="design_song_colors_summary">El reproductor toma sus colores de la portada</string>
     <string name="close">Cerrar</string>
     <string name="performance_title">Rendimiento</string>
     <string name="performance_audio3d_title">Vista Audio 3D</string>

@@ -103,7 +103,7 @@
         android:minWidth="140dp"
         android:text="@string/dialog_close"
         android:textColor="@color/AppWhite"
-        android:backgroundTint="?attr/colorPrimary"
+        app:backgroundTint="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
 </LinearLayout>

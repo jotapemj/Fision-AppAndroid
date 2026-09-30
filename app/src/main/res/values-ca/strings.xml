@@ -219,10 +219,10 @@
     <string name="settings_language_title">Idioma</string>
     <string name="design_section_title">Disseny</string>
     <string name="design_title">Disseny</string>
-    <string name="design_summary">Color d\'accent i paleta de la nebulosa</string>
+    <string name="design_summary">Color d\'accent i colors de la cançó</string>
     <string name="design_accent_title">Color d\'accent</string>
-    <string name="design_nebula_title">Colors fixos a la nebulosa</string>
-    <string name="design_nebula_summary">Off: els colors segueixen la paleta de la portada</string>
+    <string name="design_song_colors_title">Adoptar els colors de la cançó</string>
+    <string name="design_song_colors_summary">El reproductor pren els colors de la portada</string>
     <string name="close">Tanca</string>
     <string name="performance_title">Rendiment</string>
     <string name="performance_audio3d_title">Vista Àudio 3D</string>

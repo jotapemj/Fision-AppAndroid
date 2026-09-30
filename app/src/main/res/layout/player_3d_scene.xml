@@ -60,10 +60,22 @@
         android:visibility="gone"
         app:fadeEdge="none" />
 
+    <!-- Black veil over the scene while a song change swaps sprites, room
+         colors and the wall card (fade to black, swap, fade back in). -->
+    <View
+        android:id="@+id/v_3d_sceneBlack"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black"
+        android:alpha="0"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false" />
+
     <com.jotapeveloper.fision.NebulaBackdropView
         android:id="@+id/v_3d_sceneFadeTop"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="12dp"
         android:layout_gravity="top"
         app:fadeEdge="top" />
 
@@ -168,7 +180,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginEnd="10dp"
-            android:backgroundTint="?attr/colorPrimary"
+            app:backgroundTint="?attr/colorPrimary"
             android:contentDescription="@string/stems_dance_title"
             app:icon="@raw/ic_play"
             app:iconSize="22dp"
@@ -181,7 +193,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginEnd="10dp"
-            android:backgroundTint="?attr/colorPrimary"
+            app:backgroundTint="?attr/colorPrimary"
             android:contentDescription="@string/audio3d_legend_reset"
             app:icon="@drawable/ic_restore_pan"
             app:iconSize="22dp"

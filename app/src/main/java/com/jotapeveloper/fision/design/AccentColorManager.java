@@ -12,9 +12,14 @@ import com.jotapeveloper.fision.R;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Singleton store for the app-wide accent color pick + nebula source pref.
- *  Persists across processes in SharedPreferences and notifies listeners so
- *  live views (nebula, dialog previews) can react without a full recreate. */
+/** Singleton store for the app-wide accent color pick + the "adopt song
+ *  colors" pref. Persists across processes in SharedPreferences and notifies
+ *  listeners so live views can react without a full recreate.
+ *
+ *  A context may also carry a runtime accent (the player adopting the
+ *  artwork colors): {@link #resolveAccent(Context)} and
+ *  {@link #resolveAccentSecondary(Context)} return it instead of the theme
+ *  attribute for that context and any wrapper around it. */
 public class AccentColorManager {
 
     public static final int ACCENT_GREEN  = 0;
@@ -24,9 +29,14 @@ public class AccentColorManager {
 
     private static final String PREFS = "prefs_design";
     private static final String KEY_ACCENT = "accent_id";
-    private static final String KEY_NEBULA_FIXED = "nebula_fixed_accent";
+    private static final String KEY_SONG_COLORS = "song_colors_enabled";
 
     private static AccentColorManager sInstance;
+
+    /** Runtime accent per context: {primary, secondary}. Weak keys so a
+     *  destroyed activity never leaks. UI thread only. */
+    private static final java.util.WeakHashMap<Context, int[]> sRuntimeAccent =
+            new java.util.WeakHashMap<>();
 
     public static synchronized AccentColorManager get(Context ctx) {
         if (sInstance == null) sInstance = new AccentColorManager(ctx.getApplicationContext());
@@ -54,13 +64,39 @@ public class AccentColorManager {
         notifyListeners();
     }
 
-    public boolean isNebulaFixedAccent() {
-        return prefs.getBoolean(KEY_NEBULA_FIXED, false);
+    /** Player adopts the artwork colors (controls, nebula, 3D room). Off:
+     *  everything uses the picked accent. */
+    public boolean isSongColorsEnabled() {
+        return prefs.getBoolean(KEY_SONG_COLORS, false);
     }
 
-    public void setNebulaFixedAccent(boolean fixed) {
-        prefs.edit().putBoolean(KEY_NEBULA_FIXED, fixed).apply();
+    public void setSongColorsEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_SONG_COLORS, enabled).apply();
         notifyListeners();
+    }
+
+    /** Overrides the accent resolved for [ctx] (and wrappers around it). */
+    public static void setRuntimeAccent(Context ctx, @ColorInt int primary, @ColorInt int secondary) {
+        sRuntimeAccent.put(ctx, new int[] { primary, secondary });
+    }
+
+    public static void clearRuntimeAccent(Context ctx) {
+        sRuntimeAccent.remove(ctx);
+    }
+
+    /** Runtime accent pair for [ctx] or one of its base contexts, else null. */
+    private static int[] findRuntimeAccent(Context ctx) {
+        if (sRuntimeAccent.isEmpty()) return null;
+        Context c = ctx;
+        while (c != null) {
+            int[] o = sRuntimeAccent.get(c);
+            if (o != null) return o;
+            if (!(c instanceof android.content.ContextWrapper)) break;
+            Context base = ((android.content.ContextWrapper) c).getBaseContext();
+            if (base == c) break;
+            c = base;
+        }
+        return null;
     }
 
     @StyleRes
@@ -125,6 +161,8 @@ public class AccentColorManager {
      *  color must follow the active accent. */
     @ColorInt
     public static int resolveAccent(Context ctx) {
+        int[] runtime = findRuntimeAccent(ctx);
+        if (runtime != null) return runtime[0];
         TypedValue tv = new TypedValue();
         ctx.getTheme().resolveAttribute(
                 com.google.android.material.R.attr.colorPrimary, tv, true);
@@ -134,6 +172,8 @@ public class AccentColorManager {
     /** Resolves ?attr/accentSecondary against the given context's theme. */
     @ColorInt
     public static int resolveAccentSecondary(Context ctx) {
+        int[] runtime = findRuntimeAccent(ctx);
+        if (runtime != null) return runtime[1];
         TypedValue tv = new TypedValue();
         ctx.getTheme().resolveAttribute(R.attr.accentSecondary, tv, true);
         return tv.data;

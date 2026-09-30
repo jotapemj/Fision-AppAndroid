@@ -87,7 +87,7 @@
             android:padding="10dp"
             android:text="@string/stems_dance_start"
             android:textColor="@color/AppWhite"
-            android:backgroundTint="?attr/colorPrimary"
+            app:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="20dp" />
     </LinearLayout>
 

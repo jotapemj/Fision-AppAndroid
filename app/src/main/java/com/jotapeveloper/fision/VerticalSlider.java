@@ -47,6 +47,15 @@ public class VerticalSlider extends View {
         mTouchSlop = ViewConfiguration.get(ctx).getScaledTouchSlop();
     }
 
+    /** Active track + thumb colors (runtime accent changes). */
+    public void setColors(int trackActive, int thumb) {
+        mTrackActive.setColor(trackActive);
+        mThumb.setColor(thumb);
+        invalidate();
+    }
+
+    public int getTrackActiveColor() { return mTrackActive.getColor(); }
+
     public void setRange(float from, float to) {
         mValueFrom = from; mValueTo = to;
         mValue = Math.max(from, Math.min(to, mValue));

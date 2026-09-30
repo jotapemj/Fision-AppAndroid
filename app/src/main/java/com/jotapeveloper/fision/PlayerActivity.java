@@ -222,6 +222,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         public void onPlaybackChanged() {
             // Sync the UI with the service state (MainActivity mini-bar handles its own)
             if (playbackService == null) return;
+            // Song released by the service's idle stop while the app was in
+            // the background: nothing to show, so the player closes.
+            if (!playbackService.isSongLoaded() && !FisionApplication.isInForeground()) {
+                finish();
+                return;
+            }
             boolean playing = playbackService.isPlaying();
             paused = !playing;
             applyPlayIcon(playing, true);
@@ -1196,7 +1202,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (backdrop != null) backdrop.setSource(nebulaView);
         }
         bindNebulaSwitch();
-        refreshNebulaPalette();
+        refreshSongPalette();
 
         SetControlsEnabled(false);
     }
@@ -1219,7 +1225,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
                     .edit().putBoolean(PREF_NEBULA_ENABLED, isChecked).apply();
             if (nebulaView != null) nebulaView.setNebulaEnabled(isChecked, true);
-            if (isChecked) refreshNebulaPalette();
+            if (isChecked) refreshSongPalette();
             if (rowHaptics != null) rowHaptics.setVisibility(isChecked ? View.VISIBLE : View.GONE);
             // Disabling the parent implicitly disables the haptics too so the
             // motor cannot keep firing without the visual layer running.
@@ -1284,28 +1290,45 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         } catch (Throwable ignored) { /* motor busy or effect unsupported */ }
     }
 
-    /** Decodes the current artcover.png in the background and extracts a vibrant
-     *  palette for the nebula. Falls back to a neutral blue/teal palette when
-     *  the cover is missing or unreadable. */
-    private void refreshNebulaPalette() {
-        if (nebulaView == null || SongFolder == null) return;
+    // ================================================================
+    // Song colors: accent, nebula and 3D room from the artwork
+    // ================================================================
+    /** Accent pair currently painted on the player (runtime accent). */
+    private int uiAccent, uiAccentSecondary;
+    private boolean uiAccentApplied = false;
+    private android.animation.ValueAnimator uiAccentAnim;
+    private static final long UI_ACCENT_FADE_MS = 600L;
+
+    /** Resolves the player colors for the current song and applies them.
+     *  "Adopt song colors" off, or artwork without usable color: the picked
+     *  accent drives everything (nebula in tonal variants of it). On: the
+     *  palette is extracted from artcover.png off the UI thread. */
+    private void refreshSongPalette() {
+        if (SongFolder == null) return;
+        com.jotapeveloper.fision.design.AccentColorManager mgr =
+                com.jotapeveloper.fision.design.AccentColorManager.get(this);
+        final com.jotapeveloper.fision.design.SongPalette fallback =
+                com.jotapeveloper.fision.design.SongPalette.fromAccent(
+                        mgr.getAccentColor(this), mgr.getAccentSecondaryColor(this));
         final File cover = new File(SongFolder, "artcover.png");
-        final int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
-        // Design pref: when the user picks "fixed accent" for the nebula, skip
-        // the palette extraction and paint three tonal variants of the accent
-        // so the mood stays consistent across songs.
-        if (com.jotapeveloper.fision.design.AccentColorManager.get(this).isNebulaFixedAccent()) {
-            int lighter = androidx.core.graphics.ColorUtils.blendARGB(primary, 0xFFFFFFFF, 0.30f);
-            int darker  = androidx.core.graphics.ColorUtils.blendARGB(primary, 0xFF000000, 0.40f);
-            nebulaView.setPalette(new int[] { primary, lighter, darker });
+        if (!mgr.isSongColorsEnabled() || !cover.exists()) {
+            applySongPalette(fallback);
             return;
         }
-        final int[] fallback = new int[] { 0xFF2D6BB0, 0xFF3AA3B3, primary };
-        if (!cover.exists()) {
-            nebulaView.setPalette(fallback);
+        final File folder = SongFolder;
+        final String cacheKey = folder.getName();
+        final String signature = cover.lastModified() + ":" + cover.length();
+        // Cached palette: applied synchronously, so the player never shows
+        // the picked accent before the artwork colors on re-entry.
+        com.jotapeveloper.fision.design.SongPalette.Cached cached =
+                com.jotapeveloper.fision.design.SongPalette.loadCached(this, cacheKey, signature);
+        if (cached.hit) {
+            applySongPalette(cached.palette != null ? cached.palette : fallback);
             return;
         }
+        final android.content.Context appCtx = getApplicationContext();
         new Thread(() -> {
+            com.jotapeveloper.fision.design.SongPalette sp = null;
             try {
                 android.graphics.BitmapFactory.Options probe =
                         new android.graphics.BitmapFactory.Options();
@@ -1318,21 +1341,73 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 opts.inSampleSize = sample;
                 android.graphics.Bitmap bm =
                         android.graphics.BitmapFactory.decodeFile(cover.getAbsolutePath(), opts);
-                if (bm == null) {
-                    runOnUiThread(() -> nebulaView.setPalette(fallback));
-                    return;
+                if (bm != null) {
+                    sp = com.jotapeveloper.fision.design.SongPalette.fromBitmap(bm);
+                    com.jotapeveloper.fision.design.SongPalette.storeCached(appCtx, cacheKey, signature, sp);
                 }
-                androidx.palette.graphics.Palette p = androidx.palette.graphics.Palette
-                        .from(bm).maximumColorCount(24).generate();
-                int c1 = p.getVibrantColor(p.getMutedColor(fallback[0]));
-                int c2 = p.getLightVibrantColor(p.getLightMutedColor(fallback[1]));
-                int c3 = p.getDarkVibrantColor(p.getDarkMutedColor(fallback[2]));
-                final int[] out = new int[] { c1, c2, c3 };
-                runOnUiThread(() -> nebulaView.setPalette(out));
-            } catch (Throwable t) {
-                runOnUiThread(() -> nebulaView.setPalette(fallback));
-            }
-        }, "nebula-palette").start();
+            } catch (Throwable ignored) {}
+            final com.jotapeveloper.fision.design.SongPalette out = sp != null ? sp : fallback;
+            runOnUiThread(() -> {
+                // Drop a result that belongs to a song already switched away.
+                if (isDestroyed() || !folder.equals(SongFolder)) return;
+                applySongPalette(out);
+            });
+        }, "song-palette").start();
+    }
+
+    private void applySongPalette(com.jotapeveloper.fision.design.SongPalette sp) {
+        songPaletteFolder = SongFolder;
+        if (nebulaView != null) nebulaView.setPalette(sp.nebula, sp.nebulaAnchor);
+        applyUiAccent(sp.accent, sp.accentSecondary);
+        // Texture re-bake, instant; on a song change it runs under the black veil.
+        if (audio3DScene != null) audio3DScene.setRoomAccent(sp.accent);
+    }
+
+    /** Dialog and bottom-sheet layouts resolve ?attr/colorPrimary to the
+     *  picked theme accent; moves their accent-painted widgets (and
+     *  switches) to the player's runtime accent, instantly. */
+    private void recolorToPlayerAccent(View root) {
+        if (!uiAccentApplied || root == null) return;
+        com.jotapeveloper.fision.design.AccentColorManager mgr =
+                com.jotapeveloper.fision.design.AccentColorManager.get(this);
+        com.jotapeveloper.fision.design.AccentRecolorer.recolor(
+                java.util.Collections.singletonList(root),
+                mgr.getAccentColor(this), mgr.getAccentSecondaryColor(this),
+                uiAccent, uiAccentSecondary, 0L);
+    }
+
+    /** show() + {@link #recolorToPlayerAccent} on the dialog window. */
+    private void showWithPlayerAccent(android.app.Dialog d) {
+        d.show();
+        if (d.getWindow() != null) recolorToPlayerAccent(d.getWindow().getDecorView());
+    }
+
+    /** Installs [primary]/[secondary] as the player's runtime accent.
+     *  Buttons, sliders, switches and the seek bar fade from the previous
+     *  accent; everything else (text, highlights, adapters) switches
+     *  instantly. */
+    private void applyUiAccent(int primary, int secondary) {
+        com.jotapeveloper.fision.design.AccentColorManager mgr =
+                com.jotapeveloper.fision.design.AccentColorManager.get(this);
+        int fromP = uiAccentApplied ? uiAccent : mgr.getAccentColor(this);
+        int fromS = uiAccentApplied ? uiAccentSecondary : mgr.getAccentSecondaryColor(this);
+        if (uiAccentApplied && fromP == primary && fromS == secondary) return;
+        // Land any running fade on its target first: detection works by
+        // matching the old accent, so widgets must not sit mid-fade.
+        if (uiAccentAnim != null) uiAccentAnim.end();
+        // First application (player opening) is instant: nothing should be
+        // seen fading from the picked accent. Later changes (song switch) fade.
+        long fade = uiAccentApplied ? UI_ACCENT_FADE_MS : 0L;
+        com.jotapeveloper.fision.design.AccentColorManager.setRuntimeAccent(this, primary, secondary);
+        uiAccent = primary;
+        uiAccentSecondary = secondary;
+        uiAccentApplied = true;
+        java.util.List<View> roots = java.util.Collections.singletonList(getWindow().getDecorView());
+        uiAccentAnim = com.jotapeveloper.fision.design.AccentRecolorer.recolor(
+                roots, fromP, fromS, primary, secondary, fade);
+        // Instant consumers that paint from resolveAccent() at bind/draw time.
+        if (beatAdapter != null) beatAdapter.notifyDataSetChanged();
+        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.notifyDataSetChanged();
     }
 
     /** Shows or hides the "Reprocess" item depending on whether the current song has
@@ -1524,7 +1599,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         applyActivityBlur();
         dlg.setOnDismissListener(d -> removeActivityBlur());
         cancel.setOnClickListener(v -> dlg.dismiss());
-        dlg.show();
+        showWithPlayerAccent(dlg);
     }
 
     /** Blurs the activity decorView (Android 12+). Only affects the background. */
@@ -1673,7 +1748,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         applyActivityBlur();
         wizardDialog.setOnDismissListener(d -> removeActivityBlur());
         pushWizardStep(first);
-        wizardDialog.show();
+        showWithPlayerAccent(wizardDialog);
         // Force the same width as single_choice_dialog (300dp). The Back+Cancel
         // footer was making the root wrap_content grow larger than intended.
         if (win != null) {
@@ -1714,6 +1789,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 case STEM_FORMAT: buildStepFormat(false, true); break;
                 case PROGRESS:    buildStepProgress();    break;
             }
+            // Freshly built step views carry the theme accent.
+            recolorToPlayerAccent(wizardOptions.getRootView());
             // Body fade-in
             wizardOptions.setAlpha(0f);
             wizardOptions.animate().alpha(1f).setDuration(140).start();
@@ -2154,10 +2231,96 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         switchToSong(subdirs[target]);
     }
 
+    // Scene song swap: with the 3D scene on screen a song change fades the
+    // scene to black, swaps sprites / room colors / wall card underneath,
+    // and fades back once the new song's palette is applied and the scene
+    // has rendered the new state. The camera is untouched.
+    private static final long SCENE_SWAP_OUT_MS = 250L;
+    private static final long SCENE_SWAP_IN_MS = 350L;
+    private static final long SCENE_SWAP_PALETTE_TIMEOUT_MS = 1500L;
+    private static final long SCENE_SWAP_FRAME_FALLBACK_MS = 600L;
+    /** Target song while the scene is fading to black (latest request wins). */
+    private File sceneSwapFolder;
+    private int sceneSwapToken = 0;
+    /** Song folder whose palette was last applied (reveal gate). */
+    private File songPaletteFolder;
+
+    /** Switches to a song within the current Activity. With the 3D scene on
+     *  screen the switch runs under a fade to black (see SCENE_SWAP_*). */
+    private void switchToSong(File newFolder) {
+        if (playbackService == null || newFolder == null) return;
+        View black = findViewById(R.id.v_3d_sceneBlack);
+        if (!is3DViewShown || !isAudio3DScene() || black == null) {
+            switchToSongNow(newFolder);
+            return;
+        }
+        if (sceneSwapFolder != null) {
+            // Already fading to black: retarget, one switch at the end.
+            sceneSwapFolder = newFolder;
+            return;
+        }
+        sceneSwapFolder = newFolder;
+        final int token = ++sceneSwapToken;
+        black.animate().cancel();
+        black.setVisibility(View.VISIBLE);
+        long outDur = Math.round(SCENE_SWAP_OUT_MS * (1f - black.getAlpha()));
+        black.animate().alpha(1f).setDuration(outDur).withEndAction(() -> {
+            if (token != sceneSwapToken) return;
+            File target = sceneSwapFolder;
+            sceneSwapFolder = null;
+            switchToSongNow(target);
+            scheduleSceneSwapReveal(token);
+        }).start();
+    }
+
+    /** Lifts the black veil once the new song's palette is applied (or a
+     *  timeout passes) and the scene has rendered a few frames of the new
+     *  state. Stale tokens (another swap, 3D view closed) are ignored. */
+    private void scheduleSceneSwapReveal(final int token) {
+        final View black = findViewById(R.id.v_3d_sceneBlack);
+        if (black == null) return;
+        final File folder = SongFolder;
+        final long deadline = android.os.SystemClock.uptimeMillis() + SCENE_SWAP_PALETTE_TIMEOUT_MS;
+        final boolean[] revealed = { false };
+        final Runnable reveal = () -> {
+            if (revealed[0] || token != sceneSwapToken) return;
+            revealed[0] = true;
+            black.animate().alpha(0f).setDuration(SCENE_SWAP_IN_MS)
+                    .withEndAction(() -> {
+                        if (token != sceneSwapToken) return;
+                        black.setVisibility(View.GONE);
+                    }).start();
+        };
+        black.post(new Runnable() {
+            @Override public void run() {
+                if (token != sceneSwapToken) return;
+                boolean paletteReady = folder != null && folder.equals(songPaletteFolder);
+                if (!paletteReady && android.os.SystemClock.uptimeMillis() < deadline) {
+                    black.postDelayed(this, 50L);
+                    return;
+                }
+                if (audio3DScene != null) audio3DScene.runAfterFrames(3, reveal);
+                black.postDelayed(reveal, SCENE_SWAP_FRAME_FALLBACK_MS);
+            }
+        });
+    }
+
+    /** Drops any scene song swap in flight and clears the black veil. */
+    private void cancelSceneSongSwap() {
+        sceneSwapToken++;
+        sceneSwapFolder = null;
+        View black = findViewById(R.id.v_3d_sceneBlack);
+        if (black != null) {
+            black.animate().cancel();
+            black.setAlpha(0f);
+            black.setVisibility(View.GONE);
+        }
+    }
+
     /** Switches to a song within the current Activity: reloads files, recyclerviews,
      *  state, and triggers autoplay. The saved volumes are applied via
      *  readDataBase → updateUI (synchronous) → autoplayPending → performClick. */
-    private void switchToSong(File newFolder) {
+    private void switchToSongNow(File newFolder) {
         if (playbackService == null || newFolder == null) return;
 
         // 1) Stop timer to avoid callbacks with mixed state
@@ -2238,11 +2401,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // song exists in CloudRepository (came from the server or is LOCAL_ONLY).
         refreshReprocessDrawerVisibility();
 
-        // 11) Nebula palette follows the new artcover. Reset the handshake
-        // so the previous song's colours fade out cleanly and the new palette
-        // fades in only when it has actually been extracted.
+        // 11) Song colors (nebula, player accent, 3D room) follow the new
+        // artcover. Reset the nebula handshake so the previous song's colours
+        // fade out cleanly and the new palette fades in only when it has
+        // actually been extracted.
         if (nebulaView != null) nebulaView.resetPaletteFade();
-        refreshNebulaPalette();
+        refreshSongPalette();
     }
 
     /** Seek button (5s) bounce: scale-down on press, scale-up overshoot on release.
@@ -2520,16 +2684,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             // Ambient nebula pulse. In 4/4 (or 6/8): soft on the
                             // odd beats (1/3/5), strong on the even ones (2/4/6).
                             // In ternary metres (3): only the downbeat pulses hard.
+                            int beatPos = beatCells.get(idx).positionInBar;
+                            float beatIntensity;
+                            if (beatsPerBar == 3) {
+                                beatIntensity = beatPos == 1 ? 0.95f : 0.30f;
+                            } else {
+                                beatIntensity = (beatPos % 2 == 0) ? 0.90f : 0.35f;
+                            }
                             if (nebulaView != null && nebulaEnabled) {
-                                int pos = beatCells.get(idx).positionInBar;
-                                float intensity;
-                                if (beatsPerBar == 3) {
-                                    intensity = pos == 1 ? 0.95f : 0.30f;
-                                } else {
-                                    intensity = (pos % 2 == 0) ? 0.90f : 0.35f;
-                                }
-                                nebulaView.pulse(intensity);
-                                triggerBeatHaptic(intensity);
+                                nebulaView.pulse(beatIntensity);
+                                triggerBeatHaptic(beatIntensity);
                             }
                             final int targetIdx = idx;
                             rvChords.smoothScrollToPosition(targetIdx);
@@ -2774,6 +2938,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     @Override
     public void onBackPressed(){
+        // Scene tuning panel open: only its pill closes it.
+        if (sceneTuningOpen) return;
         // If the drawer is open, close it first
         if (drawerLayout != null && drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.END)) {
             drawerLayout.closeDrawer(androidx.core.view.GravityCompat.END);
@@ -3176,7 +3342,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
 
-        metronomeBottomSheet.show();
+        showWithPlayerAccent(metronomeBottomSheet);
 
     }
 
@@ -3196,7 +3362,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             ibPitchRestore.setOnClickListener(v -> rulerPitch.animateToValue(0, 420L));
         }
 
-        pitchBottomSheet.show();
+        showWithPlayerAccent(pitchBottomSheet);
     }
 
     /** Sets up the tempo ruler with either BPM units (when globalBpm > 0) or a
@@ -3411,7 +3577,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         });
 
         optionsBottomSheet.setContentView(bottomSheetView);
-        optionsBottomSheet.show();
+        showWithPlayerAccent(optionsBottomSheet);
     }
 
     /** Re-applies volume + pan to the engine for a given stem. */
@@ -3500,6 +3666,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     protected void onDestroy() {
         DestroyPlayers();
         releaseLyrics();
+        if (uiAccentAnim != null) uiAccentAnim.cancel();
+        com.jotapeveloper.fision.design.AccentColorManager.clearRuntimeAccent(this);
         if (audio3DScene != null) {
             // Re-assert the crash filter right before teardown: a display
             // event can land after the renderer is disposed, and a debugger
@@ -3974,6 +4142,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     audio3DScene = new com.jotapeveloper.fision.audio3d
                             .Audio3DSceneController(this, sv);
                     audio3DScene.setup();
+                    maybeInstallSceneTuningPanel();
                     // If the song has 3D audio stored as OFF the scene opens
                     // inert from the start (no orbit, no sprite drag).
                     audio3DScene.setInteractionEnabled(is3DEnabled);
@@ -4228,6 +4397,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  fully visible, no pending entry/reveal. */
     private void resetSceneTransitionViews() {
         cancelPendingSceneEntry();
+        cancelSceneSongSwap();
+        applyToolbarCompactForScene(false);
         View cover  = findViewById(R.id.v_3d_sceneCover);
         View chrome = findViewById(R.id.fl_3d_sceneChrome);
         if (cover != null) {
@@ -4289,12 +4460,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // New song → new stem catalog and poses; scene sprites must be rebuilt.
         sceneSpritesStale = true;
 
-        // Silent sync of the switch to avoid re-triggering apply3DEnabled below.
+        // Silent sync of both switches (flat header + scene header) to avoid
+        // re-triggering apply3DEnabled below. The scene one used to keep the
+        // previous song's state: ON over a song stored with 3D off.
         if (sw3DEnabled != null && sw3DEnabled.isChecked() != want) {
             sw3DEnabled.setOnCheckedChangeListener(null);
             sw3DEnabled.setChecked(want);
             sw3DEnabled.setOnCheckedChangeListener((btn, checked) -> apply3DEnabled(checked));
         }
+        wireSceneEnabledSwitch(findViewById(R.id.sw_3d_enabledScene));
 
         if (want) {
             apply3DEnabled(true);
@@ -4314,7 +4488,26 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 show3DViewNoAnim();
             }
         } else {
-            if (is3DViewShown) hide3DViewNoAnim();
+            if (is3DViewShown) {
+                // Switching from the scene's black veil (song change) into a
+                // song stored with 3D off: close the vista and fade the stems
+                // in instead of popping them over a black frame.
+                View black = findViewById(R.id.v_3d_sceneBlack);
+                boolean fromVeil = isAudio3DScene() && black != null
+                        && black.getVisibility() == View.VISIBLE && black.getAlpha() > 0f;
+                hide3DViewNoAnim();
+                View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
+                if (fromVeil && stemsStack != null) {
+                    stemsStack.setAlpha(0f);
+                    stemsStack.animate().alpha(1f).setDuration(300L)
+                            .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                            .start();
+                }
+            }
+            // The scene goes inert with 3D off (no orbit / sprite drag, greyed
+            // per-stem controls) — apply3DEnabled is not called on this path.
+            if (audio3DScene != null) audio3DScene.setInteractionEnabled(false);
+            setSceneControlsEnabled(false);
             // Sliders back to normal (previous song may have locked them).
             if (stemsAdapter != null) stemsAdapter.setEditingLocked(false);
             // Lights-off overlay reflects the off state. Flat and scene
@@ -4433,6 +4626,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         cover.animate().cancel();
         cover.setAlpha(1f);
         cover.setVisibility(View.VISIBLE);
+        applyToolbarCompactForScene(true);
         chrome.animate().cancel();
         chrome.setAlpha(0f);
         chrome.setScaleX(0.94f);
@@ -4643,6 +4837,367 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         float elev = (float) Math.toRadians(ss.elevationDeg);
         engine.setTrack3DPosition(trackId, sceneEngineAzimuth(ss, i, n),
                 sphericalDist(sceneHorizontalDistance(ss), elev), ss.elevationDeg);
+    }
+
+    // ---------------- Scene look tuning (debuggable builds only) ----------------
+
+    /** True while the debug tuning panel is open (playback controls hidden, back disabled). */
+    private boolean sceneTuningOpen = false;
+    /** Re-reads every tuning slider from the scene (after a pattern swap). */
+    private final java.util.List<Runnable> tuneRefreshers = new java.util.ArrayList<>();
+
+    private interface TuneGet { float get(); }
+    private interface TuneSet { void set(float v); }
+
+    /** Debug-only overlay on the 3D scene: sliders bound to the scene's live
+     *  {@code Tuning} (room textures, TV backlight, lamps) plus a copy
+     *  button that puts the values, ready to hard-code, on the clipboard and
+     *  in logcat. Not created in release builds. */
+    private void maybeInstallSceneTuningPanel() {
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) return;
+        if (audio3DScene == null) return;
+        android.widget.FrameLayout chrome = findViewById(R.id.fl_3d_sceneChrome);
+        if (chrome == null) return;
+        final com.jotapeveloper.fision.audio3d.Audio3DSceneController.Tuning t = audio3DScene.getTuning();
+        final float d = getResources().getDisplayMetrics().density;
+
+        // Toggle pill under the header.
+        TextView toggle = new TextView(this);
+        toggle.setText("DBG");
+        toggle.setTextColor(Color.WHITE);
+        toggle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
+        toggle.setPadding((int) (10 * d), (int) (4 * d), (int) (10 * d), (int) (4 * d));
+        android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
+        pill.setCornerRadius(12 * d);
+        pill.setColor(0xCC202326);
+        pill.setStroke((int) d, 0x66FFFFFF);
+        toggle.setBackground(pill);
+        android.widget.FrameLayout.LayoutParams tlp = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.TOP | android.view.Gravity.START);
+        tlp.topMargin = (int) (56 * d);
+        tlp.setMarginStart((int) (14 * d));
+        chrome.addView(toggle, tlp);
+
+        // Panel: scrollable list of rows that takes the place of the playback
+        // controls (same slot, same height), so the scene stays fully free
+        // for orbiting while tuning. Only the pill swaps them back.
+        final View bottomControls = findViewById(R.id.bottomLayout);
+        if (bottomControls == null || !(bottomControls.getParent() instanceof LinearLayout)) return;
+        LinearLayout bottomParent = (LinearLayout) bottomControls.getParent();
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setVisibility(View.GONE);
+        scroll.setBackgroundColor(0xFF101214);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding((int) (14 * d), (int) (10 * d), (int) (14 * d), (int) (10 * d));
+        scroll.addView(list);
+        bottomParent.addView(scroll, bottomParent.indexOfChild(bottomControls) + 1,
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        bottomControls.getLayoutParams().height));
+        toggle.setOnClickListener(v -> {
+            sceneTuningOpen = !sceneTuningOpen;
+            scroll.setVisibility(sceneTuningOpen ? View.VISIBLE : View.GONE);
+            bottomControls.setVisibility(sceneTuningOpen ? View.GONE : View.VISIBLE);
+        });
+
+        com.google.android.material.button.MaterialButton patterns =
+                new com.google.android.material.button.MaterialButton(this);
+        patterns.setText("Patrones pared / suelo…");
+        patterns.setAllCaps(false);
+        patterns.setBackgroundTintList(ColorStateList.valueOf(0xFF2A2E31));
+        patterns.setOnClickListener(v -> openScenePatternDialog());
+        list.addView(patterns);
+
+        LinearLayout sec = addTuneSection(list, "Paredes");
+        addTuneRow(sec, "Gris base", 0, 160, 0, t::getWallGrey, v -> t.setWallGrey(Math.round(v)));
+        addTuneRow(sec, "Acento", 0f, 1f, 2, t::getWallAccent, t::setWallAccent);
+        addTuneRow(sec, "Contraste", 0f, 3f, 2, t::getWallContrast, t::setWallContrast);
+        addTuneRow(sec, "Granularidad (m)", 0.1f, 3f, 2, t::getWallTileM, t::setWallTileM);
+        addTuneRow(sec, "Rotación (°)", 0f, 180f, 0, t::getWallRotationDeg, t::setWallRotationDeg);
+        addTuneRow(sec, "Desenfoque (px)", 0f, 6f, 0, () -> t.getWallBlurPx(), v -> t.setWallBlurPx(Math.round(v)));
+        addTuneRow(sec, "Nitidez", 0f, 3f, 2, t::getWallSharpen, t::setWallSharpen);
+        sec = addTuneSection(list, "Techo");
+        addTuneRow(sec, "Oscurecer", 0f, 1f, 2, t::getCeilingDarken, t::setCeilingDarken);
+        sec = addTuneSection(list, "Suelo");
+        addTuneRow(sec, "Tono base", 0, 120, 0, t::getFloorBase, v -> t.setFloorBase(Math.round(v)));
+        addTuneRow(sec, "Acento", 0f, 1f, 2, t::getFloorAccent, t::setFloorAccent);
+        addTuneRow(sec, "Contraste", 0f, 4f, 2, t::getFloorContrast, t::setFloorContrast);
+        addTuneRow(sec, "Granularidad (m)", 0.2f, 4f, 2, t::getFloorTileM, t::setFloorTileM);
+        addTuneRow(sec, "Rotación (°)", 0f, 180f, 0, t::getFloorRotationDeg, t::setFloorRotationDeg);
+        addTuneRow(sec, "Desenfoque (px)", 0f, 6f, 0, () -> t.getFloorBlurPx(), v -> t.setFloorBlurPx(Math.round(v)));
+        addTuneRow(sec, "Nitidez", 0f, 3f, 2, t::getFloorSharpen, t::setFloorSharpen);
+        sec = addTuneSection(list, "Halo de la tele");
+        addTuneRow(sec, "Tamaño (m)", 2.2f, 6f, 2, t::getBacklightSize, t::setBacklightSize);
+        addTuneRow(sec, "Intensidad", 0f, 1f, 2, t::getBacklightAlpha, t::setBacklightAlpha);
+        addTuneRow(sec, "Caída", 0.05f, 1f, 2, t::getBacklightFalloff, t::setBacklightFalloff);
+        addTuneRow(sec, "Desenfoque (px)", 0f, 24f, 0, t::getBacklightBlur, v -> t.setBacklightBlur(Math.round(v)));
+        sec = addTuneSection(list, "Lámparas");
+        addTuneRow(sec, "Lúmenes", 5000f, 3000000f, 0, t::getLampLumens, t::setLampLumens);
+        addTuneRow(sec, "Ambiente (IBL)", 0f, 1f, 2, t::getAmbientFactor, t::setAmbientFactor);
+        sec = addTuneSection(list, "Cámara");
+        addTuneRow(sec, "Focal (mm)", 12f, 50f, 1, t::getFocalMm, t::setFocalMm);
+
+        com.google.android.material.button.MaterialButton resetCam =
+                new com.google.android.material.button.MaterialButton(this);
+        resetCam.setText("Pose inicial");
+        resetCam.setAllCaps(false);
+        resetCam.setBackgroundTintList(ColorStateList.valueOf(0xFF2A2E31));
+        resetCam.setOnClickListener(v -> {
+            if (audio3DScene != null) audio3DScene.resetCameraPose();
+        });
+        sec.addView(resetCam);
+
+        // Scene closed by the app (e.g. next song with 3D off) while the panel
+        // is open: the pill is gone, so the controls are restored here. Posts
+        // on a detached view (activity gone) never run, which ends the loop.
+        Runnable panelGuard = new Runnable() {
+            @Override public void run() {
+                if (audio3DScene == null) return;
+                if (sceneTuningOpen && !chrome.isShown()) {
+                    sceneTuningOpen = false;
+                    scroll.setVisibility(View.GONE);
+                    if (bottomControls != null) bottomControls.setVisibility(View.VISIBLE);
+                }
+                chrome.postDelayed(this, 200L);
+            }
+        };
+        chrome.post(panelGuard);
+
+        com.google.android.material.button.MaterialButton copy =
+                new com.google.android.material.button.MaterialButton(this);
+        copy.setText("Copiar valores");
+        copy.setAllCaps(false);
+        copy.setBackgroundTintList(ColorStateList.valueOf(accent()));
+        copy.setOnClickListener(v -> {
+            String values = audio3DScene != null ? audio3DScene.debugDescribe() : t.describe();
+            Log.d("Audio3DTuning", values);
+            try {
+                android.content.ClipboardManager cm =
+                        (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("Audio3D tuning", values));
+                Toast.makeText(this, "Valores copiados", Toast.LENGTH_SHORT).show();
+            } catch (Throwable e) {
+                Toast.makeText(this, "Valores en logcat (Audio3DTuning)", Toast.LENGTH_SHORT).show();
+            }
+        });
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.topMargin = (int) (10 * d);
+        list.addView(copy, clp);
+    }
+
+    private void addTuneHeader(LinearLayout list, String title) {
+        TextView h = new TextView(this);
+        h.setText(title);
+        h.setTextColor(accent());
+        h.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
+        h.setTypeface(h.getTypeface(), android.graphics.Typeface.BOLD);
+        float d = getResources().getDisplayMetrics().density;
+        h.setPadding(0, (int) (10 * d), 0, (int) (2 * d));
+        list.addView(h);
+    }
+
+    /** Collapsible panel section: tappable header (title + chevron) over a
+     *  body that holds the section rows. Starts collapsed. Returns the body. */
+    private LinearLayout addTuneSection(LinearLayout list, String title) {
+        float d = getResources().getDisplayMetrics().density;
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        header.setPadding(0, (int) (10 * d), 0, (int) (6 * d));
+        TextView h = new TextView(this);
+        h.setText(title);
+        h.setTextColor(accent());
+        h.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
+        h.setTypeface(h.getTypeface(), android.graphics.Typeface.BOLD);
+        header.addView(h, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        android.widget.ImageView chevron = new android.widget.ImageView(this);
+        chevron.setImageResource(R.drawable.ic_collapsed);
+        chevron.setImageTintList(ColorStateList.valueOf(0xFFE0E3E5));
+        header.addView(chevron, new LinearLayout.LayoutParams((int) (20 * d), (int) (20 * d)));
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setVisibility(View.GONE);
+        header.setOnClickListener(v -> {
+            boolean open = body.getVisibility() != View.VISIBLE;
+            body.setVisibility(open ? View.VISIBLE : View.GONE);
+            chevron.setImageResource(open ? R.drawable.ic_expanded : R.drawable.ic_collapsed);
+        });
+        list.addView(header);
+        list.addView(body);
+        return body;
+    }
+
+    /** One labeled slider row bound to a tuning getter/setter; every change
+     *  is applied to the live scene. [decimals] formats the value label. */
+    private void addTuneRow(LinearLayout list, String label, float from, float to, int decimals,
+                            TuneGet get, TuneSet set) {
+        TextView tv = new TextView(this);
+        tv.setTextColor(0xFFE0E3E5);
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+        String fmt = "%s  %." + decimals + "f";
+        com.google.android.material.slider.Slider sl = new com.google.android.material.slider.Slider(this);
+        sl.setValueFrom(from);
+        sl.setValueTo(to);
+        float start = Math.max(from, Math.min(to, get.get()));
+        sl.setValue(start);
+        tv.setText(String.format(java.util.Locale.US, fmt, label, start));
+        sl.setTrackActiveTintList(ColorStateList.valueOf(accent()));
+        sl.setThumbTintList(ColorStateList.valueOf(
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccentSecondary(this)));
+        sl.setLabelBehavior(com.google.android.material.slider.LabelFormatter.LABEL_GONE);
+        sl.addOnChangeListener((s, v, fromUser) -> {
+            tv.setText(String.format(java.util.Locale.US, fmt, label, v));
+            if (!fromUser) return;
+            set.set(v);
+            if (audio3DScene != null) audio3DScene.applyTuning();
+        });
+        tuneRefreshers.add(() -> sl.setValue(Math.max(from, Math.min(to, get.get()))));
+        list.addView(tv);
+        list.addView(sl);
+    }
+
+    /** Debug picker for the wall/ceiling and floor patterns: a thumbnail
+     *  grid per surface; tapping selects, Confirm applies to the scene. */
+    private void openScenePatternDialog() {
+        if (audio3DScene == null) return;
+        final com.jotapeveloper.fision.audio3d.Audio3DSceneController.Tuning t = audio3DScene.getTuning();
+        final com.jotapeveloper.fision.audio3d.Audio3DSceneController.SurfacePattern[] sel =
+                { t.getWallPattern(), t.getFloorPattern(), t.getPanelPattern(), t.getTrapPattern() };
+        final float d = getResources().getDisplayMetrics().density;
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundResource(R.drawable.delete_dialogbg);
+        root.setPadding((int) (20 * d), (int) (18 * d), (int) (20 * d), (int) (14 * d));
+        TextView title = new TextView(this);
+        title.setText("Patrones de la sala");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f);
+        root.addView(title);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(content);
+        addTuneHeader(content, "Pared y techo");
+        addPatternGrid(content, com.jotapeveloper.fision.audio3d.Audio3DSceneController.Surface.WALL, sel, 0);
+        addTuneHeader(content, "Suelo");
+        addPatternGrid(content, com.jotapeveloper.fision.audio3d.Audio3DSceneController.Surface.FLOOR, sel, 1);
+        addTuneHeader(content, "Paneles");
+        addPatternGrid(content, com.jotapeveloper.fision.audio3d.Audio3DSceneController.Surface.PANEL, sel, 2);
+        addTuneHeader(content, "Pilares de las esquinas");
+        addPatternGrid(content, com.jotapeveloper.fision.audio3d.Audio3DSceneController.Surface.TRAP, sel, 3);
+        // Grid list capped at 60% of the screen; taller content scrolls.
+        content.measure(View.MeasureSpec.makeMeasureSpec(
+                getResources().getDisplayMetrics().widthPixels, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.UNSPECIFIED);
+        int maxListH = (int) (getResources().getDisplayMetrics().heightPixels * 0.6f);
+        root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                Math.min(content.getMeasuredHeight(), maxListH)));
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(android.view.Gravity.END);
+        com.google.android.material.button.MaterialButton bCancel =
+                new com.google.android.material.button.MaterialButton(this, null,
+                        com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        bCancel.setText(android.R.string.cancel);
+        bCancel.setAllCaps(false);
+        com.google.android.material.button.MaterialButton bConfirm =
+                new com.google.android.material.button.MaterialButton(this);
+        bConfirm.setText("Confirm");
+        bConfirm.setAllCaps(false);
+        bConfirm.setBackgroundTintList(ColorStateList.valueOf(accent()));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        blp.setMarginStart((int) (10 * d));
+        buttons.addView(bCancel);
+        buttons.addView(bConfirm, blp);
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowLp.topMargin = (int) (10 * d);
+        root.addView(buttons, rowLp);
+
+        androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(
+                this, R.style.Theme_Fision_BlurDialog)
+                .setView(root).create();
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        }
+        applyActivityBlur();
+        dlg.setOnDismissListener(x -> removeActivityBlur());
+        bCancel.setOnClickListener(x -> dlg.dismiss());
+        bConfirm.setOnClickListener(x -> {
+            if (audio3DScene != null) {
+                audio3DScene.setSurfacePatterns(sel[0], sel[1], sel[2], sel[3]);
+                for (Runnable r : tuneRefreshers) r.run();
+            }
+            dlg.dismiss();
+        });
+        showWithPlayerAccent(dlg);
+    }
+
+    /** Thumbnail grid of the patterns offered for one surface; the tapped
+     *  cell becomes {@code sel[slot]} and gets the accent outline. */
+    private void addPatternGrid(LinearLayout parent,
+                                com.jotapeveloper.fision.audio3d.Audio3DSceneController.Surface surface,
+                                com.jotapeveloper.fision.audio3d.Audio3DSceneController.SurfacePattern[] sel,
+                                int slot) {
+        final float d = getResources().getDisplayMetrics().density;
+        android.widget.GridLayout grid = new android.widget.GridLayout(this);
+        grid.setColumnCount(3);
+        final java.util.List<View> cells = new java.util.ArrayList<>();
+        final java.util.List<com.jotapeveloper.fision.audio3d.Audio3DSceneController.SurfacePattern> owners =
+                new java.util.ArrayList<>();
+        final Runnable paint = () -> {
+            for (int i = 0; i < cells.size(); i++) {
+                android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+                bg.setCornerRadius(10 * d);
+                boolean on = owners.get(i) == sel[slot];
+                bg.setStroke((int) ((on ? 2.5f : 1f) * d), on ? accent() : 0x33FFFFFF);
+                cells.get(i).setBackground(bg);
+            }
+        };
+        for (com.jotapeveloper.fision.audio3d.Audio3DSceneController.SurfacePattern p :
+                com.jotapeveloper.fision.audio3d.Audio3DSceneController.SurfacePattern.values()) {
+            boolean floor = surface == com.jotapeveloper.fision.audio3d.Audio3DSceneController.Surface.FLOOR;
+            if (floor ? !p.getOnFloor() : !p.getOnWall()) continue;
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            cell.setPadding((int) (5 * d), (int) (5 * d), (int) (5 * d), (int) (5 * d));
+            android.widget.ImageView iv = new android.widget.ImageView(this);
+            iv.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+            iv.setClipToOutline(true);
+            iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 7 * d);
+                }
+            });
+            iv.setImageBitmap(audio3DScene.patternPreview(p, surface));
+            cell.addView(iv, new LinearLayout.LayoutParams((int) (78 * d), (int) (78 * d)));
+            TextView label = new TextView(this);
+            label.setText(p.getLabel());
+            label.setTextColor(0xFFE0E3E5);
+            label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
+            label.setGravity(android.view.Gravity.CENTER);
+            label.setMaxWidth((int) (78 * d));
+            cell.addView(label);
+            cell.setOnClickListener(v -> {
+                sel[slot] = p;
+                paint.run();
+            });
+            android.widget.GridLayout.LayoutParams glp = new android.widget.GridLayout.LayoutParams();
+            glp.setMargins((int) (3 * d), (int) (3 * d), (int) (3 * d), (int) (3 * d));
+            grid.addView(cell, glp);
+            cells.add(cell);
+            owners.add(p);
+        }
+        paint.run();
+        parent.addView(grid);
     }
 
     /** Builds the scene sprites only when the song changed since the last build. */
@@ -5185,10 +5740,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** The wave speed slider only makes sense when at least one stem has
      *  the sine-wave oscillation enabled in the dance dialog. */
+    /** Swing speed slider: only while the scene dance runs with at least one
+     *  swinging stem — outside the dance it has nothing to act on. */
     private void refreshWaveSliderVisibility() {
         View waveGroup = findViewById(R.id.ll_3d_waveSpeedScene);
         if (waveGroup != null) {
-            waveGroup.setVisibility(danceSineStems.isEmpty() ? View.GONE : View.VISIBLE);
+            boolean dancing = audio3DScene != null && audio3DScene.isDanceActive();
+            waveGroup.setVisibility(dancing && !danceSineStems.isEmpty() ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -5409,6 +5967,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (di != null) di.setValue(danceDistance);
         }
         group.setVisibility(visible ? View.VISIBLE : View.GONE);
+        refreshWaveSliderVisibility();
     }
 
     private void showStemsDanceDialog() {
@@ -5481,7 +6040,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 startDance();
             }
         });
-        dlg.show();
+        showWithPlayerAccent(dlg);
     }
 
     /** Starts the dance: snapshots the current angle of each selected stem and
@@ -5647,7 +6206,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         applyActivityBlur();
         dlg.setOnDismissListener(d -> removeActivityBlur());
         bClose.setOnClickListener(v -> dlg.dismiss());
-        dlg.show();
+        showWithPlayerAccent(dlg);
     }
 
     /** Sets the HTML string on a dialog TextView, rendering <b> tags. */
@@ -5809,7 +6368,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (drawerLayout != null) drawerLayout.closeDrawer(androidx.core.view.GravityCompat.END);
             resetStemsToDefault();
         });
-        dlg.show();
+        showWithPlayerAccent(dlg);
     }
 
     /** Resets volumes (75) and pan (0) on every stem. Animates visible sliders. */
@@ -6004,6 +6563,25 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         tb.setBackgroundResource(lyricsVisible
                 ? R.drawable.player_toolbar_bg_lyrics
                 : R.drawable.player_toolbar_bg);
+    }
+
+    /** Compact toolbar while the 3D scene is on screen: the 24dp bottom fade
+     *  (and the empty band above it) goes, so the scene gains that height.
+     *  Solid black either way. Swapped only while the scene cover is opaque
+     *  or the scene is gone, so the relayout is never seen. */
+    private void applyToolbarCompactForScene(boolean compact) {
+        View tb = findViewById(R.id.toolbar);
+        if (tb == null) return;
+        float d = getResources().getDisplayMetrics().density;
+        int h = (int) ((compact ? 56 : 80) * d);
+        ViewGroup.LayoutParams lp = tb.getLayoutParams();
+        if (lp.height == h) return;
+        lp.height = h;
+        tb.setLayoutParams(lp);
+        tb.setPadding(tb.getPaddingLeft(), tb.getPaddingTop(), tb.getPaddingRight(),
+                compact ? 0 : (int) (24 * d));
+        if (compact) tb.setBackgroundColor(Color.BLACK);
+        else tb.setBackgroundResource(R.drawable.player_toolbar_bg);
     }
 
     private void transitionIntoLyrics(View chordsContainer, boolean chordsWereVisible) {
@@ -6493,7 +7071,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             dlg.dismiss();
             mLyricsMgr.cancelJob();
         });
-        dlg.show();
+        showWithPlayerAccent(dlg);
     }
 
     private void openLanguagePickerDialog() {
@@ -6524,7 +7102,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         applyActivityBlur();
         dlg.setOnDismissListener(d -> removeActivityBlur());
-        dlg.show();
+        showWithPlayerAccent(dlg);
         rv.scrollToPosition(currentIdx);
     }
 

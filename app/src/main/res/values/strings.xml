@@ -240,10 +240,10 @@
     <string name="settings_language_title">Language</string>
     <string name="design_section_title">Design</string>
     <string name="design_title">Design</string>
-    <string name="design_summary">Accent color and nebula palette</string>
+    <string name="design_summary">Accent color and song colors</string>
     <string name="design_accent_title">Accent color</string>
-    <string name="design_nebula_title">Fixed nebula colors</string>
-    <string name="design_nebula_summary">Off: colors follow the artcover palette</string>
+    <string name="design_song_colors_title">Adopt song colors</string>
+    <string name="design_song_colors_summary">The player takes its colors from the artwork</string>
     <string name="close">Close</string>
     <string name="performance_title">Performance</string>
     <string name="performance_audio3d_title">3D Audio view</string>

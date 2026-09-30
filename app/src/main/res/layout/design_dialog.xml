@@ -146,21 +146,21 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/design_nebula_title"
+                android:text="@string/design_song_colors_title"
                 android:textColor="@color/AppWhite"
                 android:textSize="14sp"
                 android:fontFamily="@font/yugothic_ui_regular" />
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/design_nebula_summary"
+                android:text="@string/design_song_colors_summary"
                 android:textColor="#919191"
                 android:textSize="12sp"
                 android:fontFamily="@font/yugothic_ui_regular" />
         </LinearLayout>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/sw_designNebulaFixed"
+            android:id="@+id/sw_designSongColors"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:showText="false"

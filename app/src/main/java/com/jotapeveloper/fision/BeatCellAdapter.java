@@ -93,14 +93,17 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
         holder.tv_chord.setText(ChordFormatter.format(cell.chord, semitonesShift, latinNotation, preferFlat));
         holder.tv_chord.setTypeface(typefaceForCurrent());
 
-        // Bar start -> visible vertical marker
+        int active = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(context);
+
+        // Bar start -> visible vertical marker, in the player accent (the XML
+        // ?attr/colorPrimary would stay on the theme accent).
         holder.v_marker.setVisibility(cell.isDownbeat ? View.VISIBLE : View.GONE);
+        holder.v_marker.setBackgroundColor(active);
 
         // Background color depending on state.
         // Beats of the current bar already elapsed -> trail.
         // The last beat of the previous bar stays in trail color until the next bar
         // begins (avoids switching it off too early).
-        int active = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(context);
         int trail = androidx.core.graphics.ColorUtils.blendARGB(active, 0xFF000000, 0.55f);
         int color;
         if (position == currentBeatIndex) {

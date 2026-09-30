@@ -641,8 +641,8 @@ public class SettingsActivity extends AppCompatActivity
     // ---------------- design dialog ----------------
     private void showDesignDialog() {
         View v = getLayoutInflater().inflate(R.layout.design_dialog, null);
-        com.google.android.material.switchmaterial.SwitchMaterial swNebula =
-                v.findViewById(R.id.sw_designNebulaFixed);
+        com.google.android.material.switchmaterial.SwitchMaterial swSongColors =
+                v.findViewById(R.id.sw_designSongColors);
         MaterialButton bClose = v.findViewById(R.id.b_designClose);
 
         int[] swatchIds = new int[] {
@@ -691,9 +691,9 @@ public class SettingsActivity extends AppCompatActivity
             });
         }
 
-        swNebula.setChecked(mgr.isNebulaFixedAccent());
-        swNebula.setOnCheckedChangeListener((btn, isChecked) ->
-                mgr.setNebulaFixedAccent(isChecked));
+        swSongColors.setChecked(mgr.isSongColorsEnabled());
+        swSongColors.setOnCheckedChangeListener((btn, isChecked) ->
+                mgr.setSongColorsEnabled(isChecked));
 
         bClose.setOnClickListener(x -> dlg.dismiss());
         dlg.show();

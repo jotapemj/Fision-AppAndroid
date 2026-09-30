@@ -157,12 +157,17 @@ public class NebulaBackgroundView extends View {
     /** Replaces the palette. Accepts 1..N colours; falls back to defaults when null. */
     public void setPalette(int[] colors) {
         if (colors == null || colors.length == 0) return;
+        setPalette(colors, colors[0]);
+    }
+
+    /** Blob colours plus an explicit colour for the static bottom anchor
+     *  (the glow behind the transport controls). */
+    public void setPalette(int[] colors, int anchor) {
+        if (colors == null || colors.length == 0) return;
         for (int i = 0; i < BLOB_COUNT; i++) {
             palette[i] = colors[i % colors.length];
         }
-        // Anchor uses the most vibrant colour available; the primary blob
-        // shares the same slot in the palette array.
-        anchorColor = colors[0];
+        anchorColor = anchor;
         boolean firstApply = !paletteApplied;
         paletteApplied = true;
         if (firstApply && pendingFadeIn) {

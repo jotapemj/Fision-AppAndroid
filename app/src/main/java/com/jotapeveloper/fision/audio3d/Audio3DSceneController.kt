@@ -24,6 +24,7 @@ import io.github.sceneview.math.Rotation
 import io.github.sceneview.math.Scale
 import io.github.sceneview.math.Size
 import io.github.sceneview.math.toColor
+import io.github.sceneview.texture.setBitmap
 import io.github.sceneview.node.CubeNode
 import io.github.sceneview.node.CylinderNode
 import io.github.sceneview.node.ImageNode
@@ -63,14 +64,16 @@ class Audio3DSceneController(
     companion object {
         private const val TAG = "Audio3DScene"
         private const val HEAD_ASSET = "models/head.glb"
-        // Default orbital pose. Behind the head (az=180°) with a slight
-        // upward tilt so the room reads as "in front of the listener".
-        // Angles captured from the live camera (scene info button log);
-        // distance keeps the home pose inside the room (front wall at
-        // z=-4.5, dollhouse toggle at 4.15) so it opens with the wall shown.
+        // Default orbital pose. Behind the head (az=180°), looking down at
+        // 30° so the floor layout of the stems reads at a glance. Values
+        // captured live with the debug tuning panel.
         private const val DEF_AZIMUTH_DEG = 179.7f
-        private const val DEF_PITCH_DEG   = 19.7f
-        private const val DEF_DISTANCE    = 4.2f
+        private const val DEF_PITCH_DEG   = 30.0f
+        private const val DEF_DISTANCE    = 4.36f
+        // Lens focal length (mm, 35 mm-film equivalent; SceneView default
+        // 28). Wider than the default: on a portrait screen 28 mm left only
+        // ~26° horizontally and the room read as a tunnel.
+        private const val CAMERA_FOCAL_MM = 19.1
 
         // Room geometry (metres): 9 x 9 x 3.8, studio-sized. Stems reach
         // 3 m from the head, leaving ~1.5 m to the walls. The camera may
@@ -165,6 +168,10 @@ class Audio3DSceneController(
         // lamps and surfaces scale with the room, so illuminance grows with
         // 1/scale² — 60k × 0.75² keeps the same look in the 9 m room.
         private const val LAMP_INTENSITY      = 34_000f
+        // Share of the SceneView default IBL (environment fill) kept in the
+        // room. The IBL is calibrated for daylight at the sunny-16 exposure,
+        // so at full strength it drowns the lamps' contribution.
+        private const val AMBIENT_FACTOR      = 1f
 
         // Fallback drag sensitivity when the raycast against the sphere
         // misses (finger outside the projected sphere on screen). Tuned
@@ -199,16 +206,72 @@ class Audio3DSceneController(
         // ImageNode matching the artcover aspect; its bitmap is refreshed
         // only when the song metadata changes — the panel is deliberately
         // static so it never contributes to the per-frame budget.
-        // The centre 2-cols × 3-rows block of the back wall's panel grid
-        // is skipped in addRoom to open the hole for it.
-        // Wall centre is world Y=0.5, so local -0.4 → world 0.10 (a hair
-        // below the head centre).
-        private const val SCREEN_LOCAL_Y = -0.40f
+        // The centre 2-cols × top-3-rows block of the back wall's panel grid
+        // is skipped in addRoom to open the hole for it; the bottom row of
+        // panels stays under the screen. Wall centre is world Y=0.5, so
+        // local 0.4 → world 0.90 (bezel top 1.9, backlight top 2.35, under
+        // the 2.4 ceiling).
+        private const val SCREEN_LOCAL_Y = 0.40f
         // Square image plus a uniform 0.06 bezel margin on every side.
         private const val SCREEN_IMG_SIZE = 1.88f
         private const val SCREEN_BEZEL_SIZE = 2.00f
         private const val SCREEN_BEZEL_D = 0.06f
         private const val SCREEN_BITMAP_SIZE = 1024
+
+        // TV backlight (ambient bias lighting): unlit glow plane on the back
+        // wall behind the bezel, colored per side from the artwork edges.
+        private const val BACKLIGHT_SIZE = 2.89f         // metres, square
+        private const val BACKLIGHT_Z = 0.004f           // wall-local, behind the bezel (0.005)
+        private const val BACKLIGHT_BITMAP = 256
+        private const val BACKLIGHT_PEAK_ALPHA = 0.78f
+        private const val BACKLIGHT_FALLOFF = 0.68f      // of the reach beyond the bezel
+        // Rounded-square glow shape (corner radius as a fraction of the
+        // bezel half-size) and a final box blur (px, 2 passes) so the halo
+        // reads as diffuse light, not a drawn shape.
+        private const val BACKLIGHT_CORNER = 0.45f
+        private const val BACKLIGHT_BLUR_PX = 14
+
+        // Room surface textures (tileable procedural fields, see fieldFor).
+        // Values picked live with the debug tuning panel: walls + ceiling =
+        // felt, floor = loop-pile carpet, panels and corner traps = cork.
+        // One tile covers TILE_M metres; CONTRAST scales the field deviation;
+        // tints come from wallTintFor / floorTintFor / ceilingTintFor.
+        // 256 px matches the preview: the field frequencies are per tile, so
+        // a larger bake would halve the per-pixel grain.
+        private const val SURFACE_TEX_SIZE = 256
+        private val WALL_PATTERN = SurfacePattern.FELT
+        private val FLOOR_PATTERN = SurfacePattern.CARPET_LOOP
+        // Acoustic panels and corner bass traps: own fixed colors
+        // (PANEL_COLOR / TRAP_COLOR), wall-pattern catalogue.
+        private val PANEL_PATTERN = SurfacePattern.CORK
+        private val TRAP_PATTERN = SurfacePattern.CORK
+        private val PANEL_COLOR = Color.rgb(40, 42, 46)
+        private val TRAP_COLOR = Color.rgb(30, 31, 34)
+        // Texture rotation (degrees) on walls/ceiling and floor: breaks the
+        // alignment of the repeat with the room edges.
+        private const val WALL_ROTATION_DEG = 132f
+        private const val FLOOR_ROTATION_DEG = 21f
+        // Texture filters on the deviation field: box blur radius (px, two
+        // passes ≈ gaussian) and unsharp-mask amount (0 = off).
+        private const val WALL_BLUR_PX = 1
+        private const val WALL_SHARPEN = 2.57f
+        private const val FLOOR_BLUR_PX = 2
+        private const val FLOOR_SHARPEN = 1.49f
+        private const val WALL_TILE_M = 1.26f
+        private const val FLOOR_TILE_M = 1.15f
+        private const val WALL_CONTRAST = 0.43f
+        private const val FLOOR_CONTRAST = 2.52f
+        private const val WALL_GREY = 45          // neutral base rgb(g-2, g, g+6)
+        private const val WALL_ACCENT = 0.46f     // accent share of the wall tint
+        private const val FLOOR_BASE = 15         // near-black base rgb(b, b, b+2)
+        private const val FLOOR_ACCENT = 0.18f
+        // Ceiling: same pattern as the walls, darker.
+        private const val CEILING_DARKEN = 0.16f
+        // Textured floor plane over the slab top: the slab is a CubeNode
+        // (UVs fixed 0..1 per face, no tiling), so the visible floor is a
+        // tiled PlaneNode lifted clear of the slab face (no z-fight) and
+        // below the blob shadows (+0.015).
+        private const val FLOOR_PLANE_LIFT = 0.005f
 
         // Studio front wall (z-, behind the listener): large tinted
         // control-room window plus a door on the listener's right (world
@@ -272,6 +335,254 @@ class Audio3DSceneController(
     private var screenBezel: CubeNode? = null
     private var screenImage: ImageNode? = null
     private var screenBitmap: Bitmap? = null
+    private var backlightNode: ImageNode? = null
+    /** Accent the room surfaces, selection ring and omni halo are tinted with. */
+    private var roomAccent: Int = 0
+
+    // Surface textures: tileable deviation fields generated once, re-tinted
+    // with the room accent into bitmaps uploaded to the material textures.
+    // The SceneView textured material has no color factor or normal map, so
+    // the tint is baked into the texture and the "rough" read comes from
+    // albedo variation (cork granules, carpet loops).
+    /** Deviation fields per pattern, generated on first use. */
+    private val patternFields = HashMap<SurfacePattern, FloatArray>()
+    private var wallTexture: com.google.android.filament.Texture? = null
+    private var ceilingTexture: com.google.android.filament.Texture? = null
+    private var floorTexture: com.google.android.filament.Texture? = null
+    private var panelTexture: com.google.android.filament.Texture? = null
+    private var trapTexture: com.google.android.filament.Texture? = null
+    private var ceilingMaterial: MaterialInstance? = null
+
+    /** Procedural surface patterns for walls/ceiling and floor. Each one
+     *  carries the contrast and tile size (metres per texture repeat) that
+     *  suit it on each surface; NaN = not offered for that surface. */
+    enum class SurfacePattern(
+        val label: String,
+        val wallContrast: Float, val wallTileM: Float,
+        val floorContrast: Float, val floorTileM: Float,
+    ) {
+        CORK("Corcho", 0.44f, 0.25f, Float.NaN, Float.NaN),
+        PLASTER("Yeso", 0.6f, 2.0f, Float.NaN, Float.NaN),
+        FOAM("Espuma acústica", 1.0f, 2.4f, Float.NaN, Float.NaN),
+        WOOD_SLATS("Listones de madera", 0.8f, 0.96f, Float.NaN, Float.NaN),
+        FELT("Fieltro", WALL_CONTRAST, WALL_TILE_M, 1.0f, 0.6f),
+        CARPET_LOOP("Moqueta de bucle", Float.NaN, Float.NaN, FLOOR_CONTRAST, FLOOR_TILE_M),
+        CARPET_PLUSH("Moqueta lisa", Float.NaN, Float.NaN, 1.2f, 1.0f),
+        WOOD_PLANKS("Tarima", Float.NaN, Float.NaN, 1.0f, 1.2f),
+        TERRAZZO("Terrazo", Float.NaN, Float.NaN, 1.0f, 1.0f);
+
+        val onWall get() = !wallContrast.isNaN()
+        val onFloor get() = !floorContrast.isNaN()
+    }
+
+    /** Live-tunable look parameters (debug panel in debuggable builds).
+     *  Defaults are the shipped values; [describe] prints them in a form
+     *  ready to hard-code. */
+    class Tuning {
+        var wallPattern = WALL_PATTERN
+        var floorPattern = FLOOR_PATTERN
+        var wallGrey = WALL_GREY
+        var wallAccent = WALL_ACCENT
+        var wallContrast = WALL_CONTRAST
+        var wallTileM = WALL_TILE_M
+        var ceilingDarken = CEILING_DARKEN
+        var floorBase = FLOOR_BASE
+        var floorAccent = FLOOR_ACCENT
+        var floorContrast = FLOOR_CONTRAST
+        var floorTileM = FLOOR_TILE_M
+        var panelPattern = PANEL_PATTERN
+        var trapPattern = TRAP_PATTERN
+        var wallRotationDeg = WALL_ROTATION_DEG
+        var floorRotationDeg = FLOOR_ROTATION_DEG
+        var wallBlurPx = WALL_BLUR_PX
+        var wallSharpen = WALL_SHARPEN
+        var floorBlurPx = FLOOR_BLUR_PX
+        var floorSharpen = FLOOR_SHARPEN
+        var backlightSize = BACKLIGHT_SIZE
+        var backlightAlpha = BACKLIGHT_PEAK_ALPHA
+        var backlightFalloff = BACKLIGHT_FALLOFF
+        var backlightBlur = BACKLIGHT_BLUR_PX
+        var lampLumens = LAMP_INTENSITY
+        var ambientFactor = AMBIENT_FACTOR
+        var focalMm = CAMERA_FOCAL_MM.toFloat()
+
+        fun describe(): String = String.format(java.util.Locale.US,
+            "WALL_PATTERN=%s FLOOR_PATTERN=%s PANEL_PATTERN=%s TRAP_PATTERN=%s " +
+            "WALL_ROTATION_DEG=%.0f FLOOR_ROTATION_DEG=%.0f WALL_BLUR_PX=%d WALL_SHARPEN=%.2f " +
+            "FLOOR_BLUR_PX=%d FLOOR_SHARPEN=%.2f ", wallPattern.name, floorPattern.name,
+            panelPattern.name, trapPattern.name, wallRotationDeg, floorRotationDeg,
+            wallBlurPx, wallSharpen, floorBlurPx, floorSharpen) +
+            String.format(java.util.Locale.US,
+            "WALL_GREY=%d WALL_ACCENT=%.2f WALL_CONTRAST=%.2f WALL_TILE_M=%.2f " +
+            "CEILING_DARKEN=%.2f FLOOR_BASE=%d FLOOR_ACCENT=%.2f FLOOR_CONTRAST=%.2f " +
+            "FLOOR_TILE_M=%.2f BACKLIGHT_SIZE=%.2f BACKLIGHT_PEAK_ALPHA=%.2f " +
+            "BACKLIGHT_FALLOFF=%.2f BACKLIGHT_BLUR_PX=%d LAMP_INTENSITY=%.0f " +
+            "AMBIENT_FACTOR=%.2f CAMERA_FOCAL_MM=%.1f",
+            wallGrey, wallAccent, wallContrast, wallTileM, ceilingDarken, floorBase,
+            floorAccent, floorContrast, floorTileM, backlightSize, backlightAlpha,
+            backlightFalloff, backlightBlur, lampLumens, ambientFactor, focalMm)
+    }
+
+    val tuning = Tuning()
+
+    /** Wall tint: accent share over a dark neutral grey. */
+    private fun wallTintFor(accent: Int): Int {
+        val g = tuning.wallGrey
+        val grey = Color.rgb((g - 2).coerceIn(0, 255), g, (g + 6).coerceIn(0, 255))
+        return androidx.core.graphics.ColorUtils.blendARGB(accent, grey, 1f - tuning.wallAccent)
+    }
+
+    /** Ceiling tint: the wall tint darkened by the ceiling factor. */
+    private fun ceilingTintFor(accent: Int): Int =
+        androidx.core.graphics.ColorUtils.blendARGB(wallTintFor(accent), Color.BLACK, tuning.ceilingDarken)
+
+    /** Floor tint: near-black base with an accent share. */
+    private fun floorTintFor(accent: Int): Int {
+        val b = tuning.floorBase
+        val base = Color.rgb(b, b, (b + 2).coerceIn(0, 255))
+        return androidx.core.graphics.ColorUtils.blendARGB(base, accent, tuning.floorAccent)
+    }
+
+    /** Re-tints walls, ceiling and floor to [accent] (texture re-bake,
+     *  instant — a song change runs it under the black veil) and rebuilds
+     *  the selection ring / omni halo bitmaps, swapping them into the live
+     *  sprites. */
+    fun setRoomAccent(accent: Int) {
+        if (accent == roomAccent) return
+        roomAccent = accent
+        rebakeRoomTextures()
+        // Ring + halo: new bitmaps; the previous ones are left to the GC
+        // (texture uploads are asynchronous and may still read them).
+        val ring = buildRingBitmap()
+        val omni = buildOmniGlow()
+        ringBitmap = ring
+        omniBitmap = omni
+        for (s in sprites.values) {
+            runCatching {
+                s.ring?.let { it.bitmap = ring; it.texture.generateMipmaps(sceneView.engine) }
+                s.omni?.let { it.bitmap = omni; it.texture.generateMipmaps(sceneView.engine) }
+            }
+        }
+    }
+
+    /** Re-bakes wall, ceiling and floor textures from the cached fields
+     *  with the current accent and tuning. */
+    private fun rebakeRoomTextures() {
+        val engine = sceneView.engine
+        val accent = roomAccent
+        runCatching {
+            fun rebake(tex: com.google.android.filament.Texture?, field: FloatArray?,
+                       tint: Int, contrast: Float) {
+                if (tex == null || field == null) return
+                tex.setBitmap(engine, bakeSurface(field, tint, contrast))
+                tex.generateMipmaps(engine)
+            }
+            val wf = surfaceField(tuning.wallPattern, floor = false)
+            rebake(wallTexture, wf, wallTintFor(accent), tuning.wallContrast)
+            rebake(ceilingTexture, wf, ceilingTintFor(accent), tuning.wallContrast)
+            rebake(floorTexture, surfaceField(tuning.floorPattern, floor = true),
+                floorTintFor(accent), tuning.floorContrast)
+            // Panels and traps keep their own colors (no accent).
+            panelTexture?.let { it.setBitmap(engine, bakePanelSurface()); it.generateMipmaps(engine) }
+            trapTexture?.let { it.setBitmap(engine, bakeTrapSurface()); it.generateMipmaps(engine) }
+        }.onFailure { Log.w(TAG, "room re-tint failed", it) }
+    }
+
+    /** Surfaces with a selectable pattern. Panels and traps use the wall
+     *  catalogue; the floor its own. */
+    enum class Surface { WALL, FLOOR, PANEL, TRAP }
+
+    /** One texture tile of [pattern] as it would look on [surface], with
+     *  the surface's current tint hue and the pattern's own contrast. The
+     *  tint is exposure-lifted (the lamps do that in the scene) so dark
+     *  bases still show the pattern. Debug pattern picker thumbnails. */
+    fun patternPreview(pattern: SurfacePattern, surface: Surface): Bitmap {
+        val accent = roomAccent
+        val floor = surface == Surface.FLOOR
+        val tint = when (surface) {
+            Surface.WALL -> wallTintFor(accent)
+            Surface.FLOOR -> floorTintFor(accent)
+            Surface.PANEL -> PANEL_COLOR
+            Surface.TRAP -> TRAP_COLOR
+        }
+        val lum = ((Color.red(tint) + Color.green(tint) + Color.blue(tint)) / 3).coerceAtLeast(1)
+        val k = (110f / lum).coerceIn(1f, 10f)
+        val lifted = Color.rgb(
+            (Color.red(tint) * k).toInt().coerceAtMost(255),
+            (Color.green(tint) * k).toInt().coerceAtMost(255),
+            (Color.blue(tint) * k).toInt().coerceAtMost(255))
+        return bakeSurface(surfaceField(pattern, floor), lifted,
+            if (floor) pattern.floorContrast else pattern.wallContrast)
+    }
+
+    /** Swaps the surface patterns live. A wall or floor whose pattern
+     *  changes takes that pattern's contrast and tile size. */
+    fun setSurfacePatterns(wall: SurfacePattern, floor: SurfacePattern,
+                           panel: SurfacePattern, trap: SurfacePattern) {
+        if (panel.onWall) tuning.panelPattern = panel
+        if (trap.onWall) tuning.trapPattern = trap
+        if (wall.onWall && wall != tuning.wallPattern) {
+            tuning.wallPattern = wall
+            tuning.wallContrast = wall.wallContrast
+            tuning.wallTileM = wall.wallTileM
+        }
+        if (floor.onFloor && floor != tuning.floorPattern) {
+            tuning.floorPattern = floor
+            tuning.floorContrast = floor.floorContrast
+            tuning.floorTileM = floor.floorTileM
+        }
+        applyTuning()
+    }
+
+    /** Planes whose UV tiling follows the tuning: (node, span u, span v, isFloor). */
+    private data class TiledPlane(val node: PlaneNode, val spanU: Float, val spanV: Float, val floor: Boolean)
+    private val tiledPlanes = mutableListOf<TiledPlane>()
+
+    /** Tiling + rotation of one room plane. SceneView's Plane only scales
+     *  UVs, so the scaled vertices are rebuilt with their UVs rotated about
+     *  the origin (texture sampler repeats, any angle stays seamless) and
+     *  written in place into the plane's vertex buffer. */
+    private fun applyPlaneUv(tp: TiledPlane) {
+        val tile = if (tp.floor) tuning.floorTileM else tuning.wallTileM
+        val deg = if (tp.floor) tuning.floorRotationDeg else tuning.wallRotationDeg
+        runCatching {
+            val scale = io.github.sceneview.geometries.UvScale(tp.spanU / tile, tp.spanV / tile)
+            tp.node.updateGeometry(uvScale = scale)
+            if (deg == 0f) return@runCatching
+            val g = tp.node.geometry
+            val a = Math.toRadians(deg.toDouble())
+            val c = kotlin.math.cos(a).toFloat()
+            val s = kotlin.math.sin(a).toFloat()
+            val verts = io.github.sceneview.geometries.Plane.getVertices(g.size, g.center, g.normal, scale)
+                .map { v ->
+                    val uv = v.uvCoordinate ?: return@map v
+                    v.copy(uvCoordinate = io.github.sceneview.geometries.UvCoordinate(
+                        uv.x * c - uv.y * s, uv.x * s + uv.y * c))
+                }
+            g.update(sceneView.engine, vertices = verts)
+        }
+    }
+    /** Artwork the backlight was last built from (re-used by tuning). */
+    private var backlightCover: Bitmap? = null
+
+    /** Applies the whole [tuning] live: textures, UV tiling, backlight and
+     *  lamps. Debug panel only; cheap enough to run on every slider tick. */
+    fun applyTuning() {
+        rebakeRoomTextures()
+        for (tp in tiledPlanes) applyPlaneUv(tp)
+        backlightNode?.let { glow ->
+            runCatching {
+                glow.bitmap = buildBacklightBitmap(backlightCover)
+                glow.texture.generateMipmaps(sceneView.engine)
+                val s = tuning.backlightSize / BACKLIGHT_SIZE
+                glow.scale = Scale(s, s, 1f)
+            }
+        }
+        for (i in cornerBaseIntensity.indices) cornerBaseIntensity[i] = tuning.lampLumens
+        setLightIntensity(currentLightIntensity)
+        runCatching { sceneView.cameraNode.focalLength = tuning.focalMm.toDouble() }
+    }
+
     /** Reflection streaks over the control-room window. */
     private var glassStreakBitmap: Bitmap? = null
     private var backWallRef: PlaneNode? = null
@@ -424,6 +735,25 @@ class Audio3DSceneController(
 
     fun cancelWarmWaiters() {
         warmWaiters.clear()
+        frameWaiters.clear()
+    }
+
+    /** (target frame count, action) pairs for [runAfterFrames]. */
+    private val frameWaiters = mutableListOf<Pair<Int, Runnable>>()
+
+    /** Runs [action] once [frames] more frames have been rendered — lets
+     *  freshly swapped textures and geometry reach the screen before a
+     *  cover is lifted. Only fires while the frame loop runs (resumed). */
+    fun runAfterFrames(frames: Int, action: Runnable) {
+        frameWaiters.add(Pair(framesRendered + frames, action))
+    }
+
+    private fun checkFrameWaiters() {
+        if (frameWaiters.isEmpty()) return
+        val due = frameWaiters.filter { framesRendered >= it.first }
+        if (due.isEmpty()) return
+        frameWaiters.removeAll(due)
+        due.forEach { it.second.run() }
     }
 
     private fun checkWarm() {
@@ -437,6 +767,10 @@ class Audio3DSceneController(
 
     fun setup() {
         setupAtMs = SystemClock.uptimeMillis()
+        // Stored by the node and re-applied on every viewport resize.
+        runCatching { sceneView.cameraNode.focalLength = CAMERA_FOCAL_MM }
+            .onFailure { Log.w(TAG, "focal length not applied", it) }
+        roomAccent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
         touchSlopPx = ViewConfiguration.get(activity).scaledTouchSlop
         doubleTapRadiusPx = (DOUBLE_TAP_RADIUS_DP * activity.resources.displayMetrics.density).toInt()
         prepareBitmaps()
@@ -498,7 +832,7 @@ class Audio3DSceneController(
                 Position( kx, lampY,  kz)
             )
             for (pos in corners) {
-                addCornerLight(pos, LAMP_INTENSITY)
+                addCornerLight(pos, tuning.lampLumens)
             }
         } catch (t: Throwable) {
             Log.w(TAG, "corner lights setup failed", t)
@@ -640,28 +974,34 @@ class Audio3DSceneController(
             val height = ROOM_CEIL_Y - ROOM_FLOOR_Y
             val centerY = (ROOM_FLOOR_Y + ROOM_CEIL_Y) / 2f
 
-            // Walls carry a subtle tint of the active theme accent over the
-            // matte gray base so each theme paints its own room.
-            val accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
-            // Wall tint: 35% accent over 65% neutral grey. Higher accent
-            // shares (0.30 ratio → 70% accent) painted the room in
-            // saturated colour that fought the dark acoustic panels and
-            // competed with the sprites — the panels/sprites need the
-            // wall to sit back.
-            val wallTint  = androidx.core.graphics.ColorUtils.blendARGB(accent, Color.rgb(74, 76, 82), 0.65f)
-            roomMaterial = sceneView.materialLoader.createColorInstance(
-                wallTint, 0f, 0.9f, 0.02f
+            // Walls + ceiling and floor (patterns from the tuning) carry the player
+            // accent (picked accent, or the song's when the player adopts
+            // artwork colors) over dark neutral bases; see *TintFor. The
+            // ceiling reuses the wall field with a darker tint.
+            val accent = roomAccent
+            val engine = sceneView.engine
+            val wf = surfaceField(tuning.wallPattern, floor = false)
+            val ff = surfaceField(tuning.floorPattern, floor = true)
+            fun texture(field: FloatArray, tint: Int, contrast: Float) =
+                io.github.sceneview.texture.ImageTexture.Builder()
+                    .bitmap(bakeSurface(field, tint, contrast))
+                    .build(engine)
+            val wallTex = texture(wf, wallTintFor(accent), tuning.wallContrast).also { wallTexture = it }
+            val ceilTex = texture(wf, ceilingTintFor(accent), tuning.wallContrast).also { ceilingTexture = it }
+            val floorTex = texture(ff, floorTintFor(accent), tuning.floorContrast).also { floorTexture = it }
+            roomMaterial = sceneView.materialLoader.createTextureInstance(
+                wallTex, true, 0f, 0.9f, 0.02f
             )
-            // Floor tone: slab + bottom plane. Same lit path as the walls so
-            // the four ceiling lamps hit both surfaces consistently — the
-            // earlier emissive shortcut auto-lit the floor and broke the
-            // hierarchy (floor read brighter than the walls). Dark near-black
-            // with a whisper of accent so the theme still tints the ground.
-            // The gltfio ubershader defaults roughness to 0, which produced a
-            // piano-black mirror; keep it high and matte instead.
-            val floorTint = androidx.core.graphics.ColorUtils.blendARGB(Color.rgb(18, 18, 20), accent, 0.12f)
-            floorMaterial = sceneView.materialLoader.createColorInstance(
-                floorTint, 0f, 0.95f, 0.02f
+            ceilingMaterial = sceneView.materialLoader.createTextureInstance(
+                ceilTex, true, 0f, 0.9f, 0.02f
+            )
+            // Floor: same lit path as the walls so the four ceiling lamps
+            // hit both surfaces consistently — the earlier emissive shortcut
+            // auto-lit the floor and broke the hierarchy (floor read brighter
+            // than the walls). Keep roughness high: low values produced a
+            // piano-black mirror.
+            floorMaterial = sceneView.materialLoader.createTextureInstance(
+                floorTex, true, 0f, 0.95f, 0.02f
             )
 
             // (size, anchor, rotation, local normal, material). XY planes
@@ -689,18 +1029,23 @@ class Audio3DSceneController(
                           Rotation(0f, 90f, 0f), Direction(0f, 0f, 1f), roomMaterial),
                 // Ceiling: XZ plane at y=+ceil, roll 180 turns +Y into -Y.
                 PlaneSpec(Size(width, 0f, width), Position(0f, ROOM_CEIL_Y, 0f),
-                          Rotation(180f, 0f, 0f), Direction(0f, 1f, 0f), roomMaterial)
+                          Rotation(180f, 0f, 0f), Direction(0f, 1f, 0f), ceilingMaterial)
             )
             val created = mutableListOf<PlaneNode>()
             walls.forEach { spec ->
                 val anchor = Node(sceneView.engine).apply { position = spec.center }
+                // XY planes span (x, y), the XZ ceiling spans (x, z).
+                val spanV = if (spec.size.y > 0f) spec.size.y else spec.size.z
                 val wall = PlaneNode(
                     engine = sceneView.engine,
                     size = spec.size,
                     center = Position(0f, 0f, 0f),
                     normal = spec.normal,
+                    uvScale = io.github.sceneview.geometries.UvScale(
+                        spec.size.x / tuning.wallTileM, spanV / tuning.wallTileM),
                     materialInstance = spec.material
                 ).apply { rotation = spec.rotation }
+                tiledPlanes.add(TiledPlane(wall, spec.size.x, spanV, floor = false))
                 anchor.addChildNode(wall)
                 sceneView.addChildNode(anchor)
                 wallNodes.add(wall)
@@ -739,14 +1084,32 @@ class Audio3DSceneController(
             sceneView.addChildNode(floor)
             floorNode = floor
 
+            // Visible floor surface: tiled textured plane just above the slab
+            // top (the slab's cube UVs stretch one tile over the whole room).
+            val floorSurface = PlaneNode(
+                engine = sceneView.engine,
+                size = Size(width - 0.05f, 0f, depth - 0.05f),
+                center = Position(0f, ROOM_FLOOR_SURFACE_Y + FLOOR_PLANE_LIFT, 0f),
+                normal = Direction(0f, 1f, 0f),
+                uvScale = io.github.sceneview.geometries.UvScale(
+                    width / tuning.floorTileM, depth / tuning.floorTileM),
+                materialInstance = floorMaterial
+            )
+            tiledPlanes.add(TiledPlane(floorSurface, width, depth, floor = true))
+            sceneView.addChildNode(floorSurface)
+            wallNodes.add(floorSurface)
+            for (tp in tiledPlanes) applyPlaneUv(tp)
+
             // Studio furniture. Panels read as studio foam: matte, darker
             // than the walls, no accent so they never compete with the
             // sprites. Each panel is a child of its wall plane — the wall's
             // local +Z points into the room, so the same local offsets work
             // for every wall, and the dollhouse visibility toggle (which
             // flips the wall node) hides the panels along with it.
-            val panelMaterial = sceneView.materialLoader.createColorInstance(
-                Color.rgb(40, 42, 46), 0f, 0.95f, 0.02f
+            val panelTex = io.github.sceneview.texture.ImageTexture.Builder()
+                .bitmap(bakePanelSurface()).build(engine).also { panelTexture = it }
+            val panelMaterial = sceneView.materialLoader.createTextureInstance(
+                panelTex, true, 0f, 0.95f, 0.02f
             )
             // Side and back walls only: the front wall is hidden by the
             // dollhouse for most of the session, so its panels would be
@@ -800,6 +1163,22 @@ class Audio3DSceneController(
             backWall.addChildNode(bezel)
             screenBezel = bezel
 
+            // Ambient backlight behind the TV (unlit → reads as emitted
+            // light on the dark wall). Recolored with each song card.
+            try {
+                val glow = ImageNode(
+                    materialLoader = sceneView.materialLoader,
+                    bitmap = buildBacklightBitmap(null),
+                    size = Size(BACKLIGHT_SIZE, BACKLIGHT_SIZE, 0f)
+                ).apply {
+                    position = Position(0f, SCREEN_LOCAL_Y, BACKLIGHT_Z)
+                }
+                backWall.addChildNode(glow)
+                backlightNode = glow
+            } catch (t: Throwable) {
+                Log.e(TAG, "TV backlight failed", t)
+            }
+
             val placeholder = buildPlaceholderCardBitmap()
             screenBitmap = placeholder
             // Pass size explicitly (metres). If omitted the plane takes
@@ -824,8 +1203,10 @@ class Audio3DSceneController(
             // the corner without z-fighting either face. The (sx, sz)
             // signs identify the corner so updateRoomVisibility can hide
             // the trap when either adjacent wall goes.
-            val trapMaterial = sceneView.materialLoader.createColorInstance(
-                Color.rgb(30, 31, 34), 0f, 0.95f, 0.02f
+            val trapTex = io.github.sceneview.texture.ImageTexture.Builder()
+                .bitmap(bakeTrapSurface()).build(engine).also { trapTexture = it }
+            val trapMaterial = sceneView.materialLoader.createTextureInstance(
+                trapTex, true, 0f, 0.95f, 0.02f
             )
             val trapHeight = ROOM_CEIL_Y - ROOM_FLOOR_Y
             val trapY = (ROOM_FLOOR_Y + ROOM_CEIL_Y) / 2f
@@ -991,7 +1372,7 @@ class Audio3DSceneController(
         val size = 128
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
+        val accent = roomAccent
         val r = Color.red(accent); val g = Color.green(accent); val b = Color.blue(accent)
         val grad = RadialGradient(
             size / 2f, size / 2f, size / 2f,
@@ -1024,6 +1405,315 @@ class Audio3DSceneController(
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
+    /** Tileable fractal value noise in [-1, 1], [SURFACE_TEX_SIZE]². Each
+     *  octave's lattice wraps at the tile edge, so the texture repeats
+     *  seamlessly. [baseCells] = lattice cells of the first octave. */
+    private fun fbmNoise(baseCells: Int, octaves: Int, seed: Long): FloatArray {
+        val size = SURFACE_TEX_SIZE
+        val out = FloatArray(size * size)
+        val rnd = java.util.Random(seed)
+        var cells = baseCells
+        var amp = 1f
+        var total = 0f
+        repeat(octaves) {
+            val lat = FloatArray(cells * cells) { rnd.nextFloat() }
+            val scale = cells.toFloat() / size
+            for (y in 0 until size) {
+                val fy = y * scale
+                val y0 = fy.toInt()
+                val y1 = (y0 + 1) % cells
+                val ty = (fy - y0).let { it * it * (3f - 2f * it) }
+                for (x in 0 until size) {
+                    val fx = x * scale
+                    val x0 = fx.toInt()
+                    val x1 = (x0 + 1) % cells
+                    val tx = (fx - x0).let { it * it * (3f - 2f * it) }
+                    val a = lat[y0 * cells + x0]; val b = lat[y0 * cells + x1]
+                    val c = lat[y1 * cells + x0]; val d = lat[y1 * cells + x1]
+                    val top = a + (b - a) * tx
+                    val bot = c + (d - c) * tx
+                    out[y * size + x] += amp * (top + (bot - top) * ty)
+                }
+            }
+            total += amp
+            amp *= 0.5f
+            cells *= 2
+        }
+        for (i in out.indices) out[i] = out[i] / total * 2f - 1f
+        return out
+    }
+
+    /** Per-pixel grain in [-1, 1] (fixed seed → stable across re-tints). */
+    private fun grainField(seed: Long): FloatArray {
+        val rnd = java.util.Random(seed)
+        return FloatArray(SURFACE_TEX_SIZE * SURFACE_TEX_SIZE) { rnd.nextFloat() * 2f - 1f }
+    }
+
+    /** Tileable cellular noise over [cells]² jittered points: per pixel the
+     *  tone of the nearest cell in [-1, 1] and the F2-F1 edge distance (in
+     *  cell units; small near the gaps between cells). */
+    private fun cellularField(cells: Int, seed: Long, jitter: Float = 0.9f): Pair<FloatArray, FloatArray> {
+        val size = SURFACE_TEX_SIZE
+        val rnd = java.util.Random(seed)
+        val n = cells * cells
+        val px = FloatArray(n); val py = FloatArray(n); val tone = FloatArray(n)
+        for (i in 0 until n) {
+            px[i] = 0.5f + (rnd.nextFloat() - 0.5f) * jitter
+            py[i] = 0.5f + (rnd.nextFloat() - 0.5f) * jitter
+            tone[i] = rnd.nextFloat() * 2f - 1f
+        }
+        val value = FloatArray(size * size)
+        val edge = FloatArray(size * size)
+        val scale = cells.toFloat() / size
+        for (y in 0 until size) {
+            val fy = y * scale
+            val cy = fy.toInt()
+            for (x in 0 until size) {
+                val fx = x * scale
+                val cx = fx.toInt()
+                var d1 = 9f; var d2 = 9f; var id = 0
+                for (j in -1..1) for (i in -1..1) {
+                    val gx = cx + i; val gy = cy + j
+                    val wx = ((gx % cells) + cells) % cells
+                    val wy = ((gy % cells) + cells) % cells
+                    val k = wy * cells + wx
+                    val dx = gx + px[k] - fx; val dy = gy + py[k] - fy
+                    val d = dx * dx + dy * dy
+                    if (d < d1) { d2 = d1; d1 = d; id = k } else if (d < d2) d2 = d
+                }
+                value[y * size + x] = tone[id]
+                edge[y * size + x] = sqrt(d2) - sqrt(d1)
+            }
+        }
+        return Pair(value, edge)
+    }
+
+    /** Fine agglomerated cork (deviation field, brightness = 1 + c·d):
+     *  granule tones ±16%, dark gaps between granules, faint mottling and
+     *  grain. Same recipe as the texture preview ("corcho-fino"). */
+    private fun corkField(): FloatArray {
+        val (value, edge) = cellularField(cells = 40, seed = 71L)
+        val mottle = fbmNoise(baseCells = 4, octaves = 3, seed = 72L)
+        val grain = grainField(73L)
+        return FloatArray(value.size) { i ->
+            val e = edge[i]
+            val gap = if (e < 0.06f) -0.22f * (1f - e / 0.06f) else 0f
+            0.16f * value[i] + gap + 0.05f * mottle[i] + 0.05f * grain[i]
+        }
+    }
+
+    /** Loop-pile carpet (deviation field): staggered rows of small loops,
+     *  faint mottling and strong per-pixel grain. Same recipe as the
+     *  texture preview ("moqueta-bucle"). */
+    private fun carpetLoopField(): FloatArray {
+        val size = SURFACE_TEX_SIZE
+        val mottle = fbmNoise(baseCells = 16, octaves = 2, seed = 31L)
+        val grain = grainField(32L)
+        val rows = 64f
+        val twoPi = (2.0 * Math.PI).toFloat()
+        val out = FloatArray(size * size)
+        for (y in 0 until size) {
+            val ry = y * rows / size
+            val shift = if (ry.toInt() % 2 == 1) 0.5f else 0f
+            val sy = kotlin.math.sin(ry * twoPi)
+            for (x in 0 until size) {
+                val i = y * size + x
+                val loop = kotlin.math.sin((x * rows / size + shift) * twoPi) * sy
+                out[i] = 0.07f * loop + 0.05f * mottle[i] + 0.14f * grain[i]
+            }
+        }
+        return out
+    }
+
+    /** Cached deviation field of [pattern]. */
+    private fun fieldFor(pattern: SurfacePattern): FloatArray = patternFields.getOrPut(pattern) {
+        when (pattern) {
+            SurfacePattern.CORK -> corkField()
+            SurfacePattern.PLASTER -> plasterField()
+            SurfacePattern.FOAM -> foamWedgeField()
+            SurfacePattern.WOOD_SLATS -> woodField(vertical = true)
+            SurfacePattern.FELT -> feltField()
+            SurfacePattern.CARPET_LOOP -> carpetLoopField()
+            SurfacePattern.CARPET_PLUSH -> carpetPlushField()
+            SurfacePattern.WOOD_PLANKS -> woodField(vertical = false)
+            SurfacePattern.TERRAZZO -> terrazzoField()
+        }
+    }
+
+    /** [pattern]'s field with the surface's blur and sharpen applied
+     *  (walls/ceiling or [floor]). Unfiltered = the cached field itself. */
+    private fun surfaceField(pattern: SurfacePattern, floor: Boolean): FloatArray {
+        val blur = if (floor) tuning.floorBlurPx else tuning.wallBlurPx
+        val sharpen = if (floor) tuning.floorSharpen else tuning.wallSharpen
+        var f = fieldFor(pattern)
+        if (blur > 0) f = boxBlurField(boxBlurField(f, blur), blur)
+        if (sharpen > 0f) {
+            val base = f
+            val soft = boxBlurField(base, 1)
+            f = FloatArray(base.size) { i -> base[i] + sharpen * (base[i] - soft[i]) }
+        }
+        return f
+    }
+
+    /** Separable box blur of a tileable field (wraps at the edges, so the
+     *  result still tiles seamlessly). */
+    private fun boxBlurField(src: FloatArray, radius: Int): FloatArray {
+        val n = SURFACE_TEX_SIZE
+        val span = (2 * radius + 1).toFloat()
+        val tmp = FloatArray(n * n)
+        val out = FloatArray(n * n)
+        for (y in 0 until n) for (x in 0 until n) {
+            var s = 0f
+            for (k in -radius..radius) s += src[y * n + (x + k + n) % n]
+            tmp[y * n + x] = s / span
+        }
+        for (y in 0 until n) for (x in 0 until n) {
+            var s = 0f
+            for (k in -radius..radius) s += tmp[((y + k + n) % n) * n + x]
+            out[y * n + x] = s / span
+        }
+        return out
+    }
+
+    /** Troweled plaster: broad soft clouds, faint trowel ridges, fine grain. */
+    private fun plasterField(): FloatArray {
+        val low = fbmNoise(baseCells = 3, octaves = 4, seed = 81L)
+        val mid = fbmNoise(baseCells = 12, octaves = 3, seed = 82L)
+        val grain = grainField(83L)
+        return FloatArray(low.size) { i ->
+            0.14f * low[i] + 0.06f * (0.5f - kotlin.math.abs(mid[i])) + 0.02f * grain[i]
+        }
+    }
+
+    /** Pressed felt: dense fine fibres over soft density clouds. */
+    private fun feltField(): FloatArray {
+        val fiber = fbmNoise(baseCells = 96, octaves = 2, seed = 91L)
+        val mid = fbmNoise(baseCells = 24, octaves = 2, seed = 92L)
+        val low = fbmNoise(baseCells = 4, octaves = 3, seed = 93L)
+        val grain = grainField(94L)
+        return FloatArray(fiber.size) { i ->
+            0.10f * fiber[i] + 0.06f * mid[i] + 0.05f * low[i] + 0.08f * grain[i]
+        }
+    }
+
+    /** Wedge acoustic foam: 8×8 blocks per tile, 4 wedges per block, block
+     *  orientation alternating as a checkerboard. Facets lit from above
+     *  (horizontal ridges) or the side (vertical ridges), dark valleys and
+     *  block seams, open-cell pore grain. */
+    private fun foamWedgeField(): FloatArray {
+        val size = SURFACE_TEX_SIZE
+        val block = size / 8
+        val grain = grainField(95L)
+        val mottle = fbmNoise(baseCells = 8, octaves = 2, seed = 96L)
+        val out = FloatArray(size * size)
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                val i = y * size + x
+                val u = (x % block).toFloat() / block
+                val v = (y % block).toFloat() / block
+                val horizontal = ((x / block) + (y / block)) % 2 == 0
+                val t = ((if (horizontal) v else u) * 4f) % 1f
+                val lit = if (horizontal) 0.18f else 0.10f
+                var s = if (t < 0.5f) lit else -lit
+                val valley = kotlin.math.min(t, 1f - t)
+                if (valley < 0.08f) s -= 0.25f * (1f - valley / 0.08f)
+                val seam = minOf(u, 1f - u, v, 1f - v)
+                if (seam < 0.02f) s -= 0.2f
+                out[i] = s + 0.07f * grain[i] + 0.03f * mottle[i]
+            }
+        }
+        return out
+    }
+
+    /** Wood boards, 8 per tile. [vertical] = wall slats (full-height
+     *  boards); otherwise floor planks along X, one tile-long plank per row
+     *  (it wraps across the tile edge) with a staggered end joint.
+     *  Per-board tone, warped grain streaks, dark gaps between boards. */
+    private fun woodField(vertical: Boolean): FloatArray {
+        val size = SURFACE_TEX_SIZE
+        val board = size / 8
+        val gapPx = 2
+        val rnd = java.util.Random(if (vertical) 101L else 111L)
+        val tones = FloatArray(8) { rnd.nextFloat() * 2f - 1f }
+        val joints = IntArray(8) { rnd.nextInt(size) }
+        val warp = fbmNoise(baseCells = 4, octaves = 3, seed = if (vertical) 102L else 112L)
+        val grain = grainField(if (vertical) 103L else 113L)
+        val twoPi = (2.0 * Math.PI).toFloat()
+        val out = FloatArray(size * size)
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                val i = y * size + x
+                // across = coordinate across the boards, along = along them.
+                val across = if (vertical) x else y
+                val along = if (vertical) y else x
+                val row = across / board
+                val gap = (across % board) < gapPx ||
+                        (!vertical && kotlin.math.abs(along - joints[row]) < gapPx)
+                val streak = kotlin.math.sin((across * 48f / size + 2f * warp[i]) * twoPi)
+                out[i] = if (gap) -0.35f
+                else 0.08f * tones[row] + 0.06f * streak + 0.03f * grain[i]
+            }
+        }
+        return out
+    }
+
+    /** Short-pile plush carpet: fine pile over soft shading patches. */
+    private fun carpetPlushField(): FloatArray {
+        val pile = fbmNoise(baseCells = 48, octaves = 2, seed = 121L)
+        val patch = fbmNoise(baseCells = 5, octaves = 3, seed = 122L)
+        val grain = grainField(123L)
+        return FloatArray(pile.size) { i ->
+            0.12f * grain[i] + 0.07f * pile[i] + 0.06f * patch[i]
+        }
+    }
+
+    /** Terrazzo: large and small stone chips (shrunk cellular cells, some
+     *  cells left empty) set in a fine-grained cement. */
+    private fun terrazzoField(): FloatArray {
+        val (bigTone, bigEdge) = cellularField(cells = 18, seed = 131L)
+        val (smallTone, smallEdge) = cellularField(cells = 52, seed = 132L)
+        val cement = fbmNoise(baseCells = 8, octaves = 3, seed = 133L)
+        val grain = grainField(134L)
+        return FloatArray(bigTone.size) { i ->
+            when {
+                bigEdge[i] > 0.12f && bigTone[i] > -0.3f -> 0.28f * bigTone[i]
+                smallEdge[i] > 0.18f && smallTone[i] > 0.2f -> 0.30f * smallTone[i]
+                else -> 0.03f * cement[i] + 0.04f * grain[i]
+            }
+        }
+    }
+
+    /** Bakes [tint] modulated by [field] (brightness = 1 + contrast·d) into
+     *  an opaque bitmap. */
+    private fun bakeSurface(field: FloatArray, tint: Int, contrast: Float, repeatY: Int = 1): Bitmap {
+        val size = SURFACE_TEX_SIZE
+        val r = Color.red(tint); val g = Color.green(tint); val b = Color.blue(tint)
+        val tile = size * size
+        val px = IntArray(tile * repeatY)
+        for (i in px.indices) {
+            val f = 1f + contrast * field[i % tile]
+            px[i] = Color.rgb(
+                (r * f).toInt().coerceIn(0, 255),
+                (g * f).toInt().coerceIn(0, 255),
+                (b * f).toInt().coerceIn(0, 255))
+        }
+        return Bitmap.createBitmap(px, size, size * repeatY, Bitmap.Config.ARGB_8888)
+    }
+
+    /** Acoustic panel texture: one tile per face in the panel color. */
+    private fun bakePanelSurface(): Bitmap = tuning.panelPattern.let {
+        bakeSurface(surfaceField(it, floor = false), PANEL_COLOR, it.wallContrast)
+    }
+
+    /** Bass trap texture: the cylinder maps one texture over its whole
+     *  side, so the tile is repeated vertically to match the side's aspect
+     *  (circumference : height) and keep the pattern undistorted. */
+    private fun bakeTrapSurface(): Bitmap = tuning.trapPattern.let {
+        val circumference = 2f * Math.PI.toFloat() * TRAP_RADIUS
+        val reps = kotlin.math.round((ROOM_CEIL_Y - ROOM_FLOOR_Y) / circumference).toInt().coerceAtLeast(1)
+        bakeSurface(surfaceField(it, floor = false), TRAP_COLOR, it.wallContrast, reps)
+    }
+
     /** Soft radial disc used for ground shadows. [alphas] are the black
      *  shadow alpha values per stop; [stops] shape the falloff — a long
      *  ramp reads as a diffuse wash, a short one as a tight disc. */
@@ -1046,7 +1736,7 @@ class Audio3DSceneController(
         val size = 128
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(activity)
+        val accent = roomAccent
         val paint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
@@ -1298,7 +1988,7 @@ class Audio3DSceneController(
         try {
             val ibl = sceneView.indirectLight
             if (ibl != null && !baseIndirectIntensity.isNaN()) {
-                ibl.setIntensity(baseIndirectIntensity * k)
+                ibl.setIntensity(baseIndirectIntensity * tuning.ambientFactor * k)
             }
         } catch (_: Throwable) {}
         for (i in cornerLights.indices) {
@@ -1514,6 +2204,7 @@ class Audio3DSceneController(
             sceneView.onFrame = { _ ->
                 framesRendered++
                 checkWarm()
+                checkFrameWaiters()
                 if (danceActive) tickDance()
                 updateCameraBounds()
                 updateRoomVisibility()
@@ -1576,6 +2267,10 @@ class Audio3DSceneController(
         // cannot coexist with the immediate drag arm, and the GD double-
         // tap tolerance (~touch slop) is too strict for on-screen sprites.
         gestureDetector?.setIsLongpressEnabled(false)
+
+        // No camera pan: the orbit target stays on the listener, so the view
+        // always matches what is heard and the home-pose constants stay valid.
+        sceneView.cameraGestureDetector?.isPanEnabled = false
 
         // Route touch through sceneview's own onTouchEvent hook — it
         // executes before the camera manipulator's gesture detector and
@@ -1891,22 +2586,35 @@ class Audio3DSceneController(
      *  pitchDeg / distance fields are NOT read — they only track explicit
      *  setCameraPose calls, not free orbit. */
     fun logCameraPose() {
-        val cam = try { sceneView.cameraNode } catch (_: Throwable) { null } ?: return
+        cameraPoseConstants()?.let { Log.i(TAG, "CamPose $it") }
+    }
+
+    /** Live camera pose as the orbit constants (azimuth / pitch / distance
+     *  around the head target) plus the world position; null when the
+     *  camera is not readable. Same convention as [applyCameraPose]. */
+    fun cameraPoseConstants(): String? {
+        val cam = try { sceneView.cameraNode } catch (_: Throwable) { null } ?: return null
         val cp = cam.position
         val dx = cp.x
         val dy = cp.y - HEAD_CENTER_Y
         val dz = cp.z
         val r = sqrt(dx * dx + dy * dy + dz * dz)
-        if (r < 0.01f) return
-        val az = atan2(dx.toDouble(), dz.toDouble()).toFloat()
-        val pitch = asin((dy / r).coerceIn(-1f, 1f)).toFloat()
-        Log.i(
-            TAG,
-            "CamPose az=%.1f° pitch=%.1f° dist=%.2f  world=(%.2f, %.2f, %.2f)"
-                .format(Math.toDegrees(az.toDouble()), Math.toDegrees(pitch.toDouble()), r,
-                    cp.x, cp.y, cp.z)
-        )
+        if (r < 0.01f) return null
+        val az = Math.toDegrees(atan2(dx.toDouble(), dz.toDouble()))
+        val pitch = Math.toDegrees(asin((dy / r).coerceIn(-1f, 1f)).toDouble())
+        return String.format(java.util.Locale.US,
+            "DEF_AZIMUTH_DEG=%.1f DEF_PITCH_DEG=%.1f DEF_DISTANCE=%.2f  world=(%.2f, %.2f, %.2f)",
+            az, pitch, r, cp.x, cp.y, cp.z)
     }
+
+    /** Debug: camera back to the shipped home pose. */
+    fun resetCameraPose() {
+        setCameraPose(DEF_AZIMUTH_DEG, DEF_PITCH_DEG, DEF_DISTANCE)
+    }
+
+    /** Debug "copy values": tuning constants + lens + live camera pose. */
+    fun debugDescribe(): String =
+        tuning.describe() + "\n" + (cameraPoseConstants() ?: "camera pose unavailable")
 
     // --- Song card --------------------------------------------------------
 
@@ -1932,6 +2640,151 @@ class Audio3DSceneController(
             img.texture.generateMipmaps(sceneView.engine)
         } catch (t: Throwable) {
             Log.w(TAG, "setSongCard bitmap swap failed", t)
+        }
+        backlightCover = cover
+        backlightNode?.let { glow ->
+            runCatching {
+                glow.bitmap = buildBacklightBitmap(cover)
+                glow.texture.generateMipmaps(sceneView.engine)
+            }.onFailure { Log.w(TAG, "backlight swap failed", it) }
+        }
+    }
+
+    /** Average color of a rectangle of [src] (sampled on a coarse grid). */
+    private fun averageColor(src: Bitmap, l: Int, t: Int, r: Int, b: Int): Int {
+        var sr = 0L; var sg = 0L; var sb = 0L; var n = 0L
+        val stepX = maxOf(1, (r - l) / 12); val stepY = maxOf(1, (b - t) / 12)
+        var y = t
+        while (y < b) {
+            var x = l
+            while (x < r) {
+                val c = src.getPixel(x, y)
+                sr += Color.red(c); sg += Color.green(c); sb += Color.blue(c); n++
+                x += stepX
+            }
+            y += stepY
+        }
+        if (n == 0L) return roomAccent
+        return Color.rgb((sr / n).toInt(), (sg / n).toInt(), (sb / n).toInt())
+    }
+
+    /** Pushes a sampled edge color towards a readable light: saturation at
+     *  least 0.45 (keeps grey covers neutral-ish), lightness 0.50..0.62. */
+    private fun asLightColor(c: Int): Int {
+        val hsl = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(c, hsl)
+        if (hsl[1] > 0.08f) hsl[1] = maxOf(hsl[1], 0.45f)
+        hsl[2] = hsl[2].coerceIn(0.50f, 0.62f)
+        return androidx.core.graphics.ColorUtils.HSLToColor(hsl)
+    }
+
+    /** Backlight bitmap: 8 colors sampled from the artwork border (corners
+     *  + side middles; room accent without artwork), blended by angle
+     *  around the TV, with alpha fading out with the distance beyond the
+     *  bezel. The area behind the bezel is fully lit (hidden anyway). */
+    private fun buildBacklightBitmap(cover: Bitmap?): Bitmap {
+        val colors = IntArray(8)
+        if (cover != null && !cover.isRecycled && cover.width >= 8 && cover.height >= 8) {
+            val w = cover.width; val h = cover.height
+            val bw = maxOf(1, w / 6); val bh = maxOf(1, h / 6)
+            val third = w / 3; val thirdH = h / 3
+            // Order by angle, starting at +X (right) going counter-clockwise
+            // in screen terms (y up): right, top-right, top, top-left, left,
+            // bottom-left, bottom, bottom-right.
+            colors[0] = averageColor(cover, w - bw, thirdH, w, 2 * thirdH)
+            colors[1] = averageColor(cover, w - bw, 0, w, bh)
+            colors[2] = averageColor(cover, third, 0, 2 * third, bh)
+            colors[3] = averageColor(cover, 0, 0, bw, bh)
+            colors[4] = averageColor(cover, 0, thirdH, bw, 2 * thirdH)
+            colors[5] = averageColor(cover, 0, h - bh, bw, h)
+            colors[6] = averageColor(cover, third, h - bh, 2 * third, h)
+            colors[7] = averageColor(cover, w - bw, h - bh, w, h)
+        } else {
+            colors.fill(roomAccent)
+        }
+        for (i in colors.indices) colors[i] = asLightColor(colors[i])
+
+        val n = BACKLIGHT_BITMAP
+        val half = n / 2f
+        val tvHalf = (SCREEN_BEZEL_SIZE / tuning.backlightSize) * half   // bezel half-size in px
+        val reach = half - tvHalf
+        val corner = BACKLIGHT_CORNER * tvHalf
+        val inner = tvHalf - corner
+        val cr = FloatArray(8) { Color.red(colors[it]).toFloat() }
+        val cg = FloatArray(8) { Color.green(colors[it]).toFloat() }
+        val cb = FloatArray(8) { Color.blue(colors[it]).toFloat() }
+        val anchorAng = FloatArray(8) { (it * Math.PI / 4).toFloat() }
+        // Premultiplied channels, blurred afterwards.
+        val pa = FloatArray(n * n); val pr = FloatArray(n * n)
+        val pg = FloatArray(n * n); val pb = FloatArray(n * n)
+        for (y in 0 until n) {
+            val dy = half - (y + 0.5f)          // y up
+            for (x in 0 until n) {
+                val dx = (x + 0.5f) - half
+                // Signed distance to a rounded square (the bezel): round
+                // falloff contours instead of hard square corners.
+                val qx = kotlin.math.abs(dx) - inner
+                val qy = kotlin.math.abs(dy) - inner
+                val out = kotlin.math.hypot(maxOf(qx, 0f), maxOf(qy, 0f)) +
+                        minOf(maxOf(qx, qy), 0f) - corner
+                val t = if (out <= 0f) 0f else out / reach
+                if (t >= 1f) continue
+                // Exponential falloff, eased to exactly zero at the edge.
+                val a = tuning.backlightAlpha *
+                        kotlin.math.exp(-t / tuning.backlightFalloff) * (1f - t) * (1f - t)
+                // Smooth angular color: soft weights over the 8 edge samples
+                // (no sector seams).
+                val ang = kotlin.math.atan2(dy, dx)
+                var wr = 0f; var wg = 0f; var wb = 0f; var ws = 0f
+                for (k in 0 until 8) {
+                    val w = kotlin.math.exp(2.2f * kotlin.math.cos(ang - anchorAng[k]))
+                    wr += w * cr[k]; wg += w * cg[k]; wb += w * cb[k]; ws += w
+                }
+                val i = y * n + x
+                pa[i] = a
+                pr[i] = a * wr / ws; pg[i] = a * wg / ws; pb[i] = a * wb / ws
+            }
+        }
+        val radius = tuning.backlightBlur
+        if (radius > 0) {
+            repeat(2) {
+                for (ch in arrayOf(pa, pr, pg, pb)) boxBlur(ch, n, radius)
+            }
+        }
+        val px = IntArray(n * n)
+        for (i in px.indices) {
+            val a = pa[i]
+            if (a <= 0.002f) continue
+            px[i] = Color.argb(
+                (a * 255f).toInt().coerceIn(0, 255),
+                (pr[i] / a).toInt().coerceIn(0, 255),
+                (pg[i] / a).toInt().coerceIn(0, 255),
+                (pb[i] / a).toInt().coerceIn(0, 255))
+        }
+        return Bitmap.createBitmap(px, n, n, Bitmap.Config.ARGB_8888)
+    }
+
+    /** Separable box blur of an [n]×[n] channel, edges clamped. */
+    private fun boxBlur(ch: FloatArray, n: Int, radius: Int) {
+        val tmp = FloatArray(n * n)
+        val span = 2 * radius + 1
+        for (y in 0 until n) {
+            var sum = 0f
+            for (k in -radius..radius) sum += ch[y * n + k.coerceIn(0, n - 1)]
+            for (x in 0 until n) {
+                tmp[y * n + x] = sum / span
+                sum += ch[y * n + (x + radius + 1).coerceAtMost(n - 1)] -
+                        ch[y * n + (x - radius).coerceAtLeast(0)]
+            }
+        }
+        for (x in 0 until n) {
+            var sum = 0f
+            for (k in -radius..radius) sum += tmp[k.coerceIn(0, n - 1) * n + x]
+            for (y in 0 until n) {
+                ch[y * n + x] = sum / span
+                sum += tmp[(y + radius + 1).coerceAtMost(n - 1) * n + x] -
+                        tmp[(y - radius).coerceAtLeast(0) * n + x]
+            }
         }
     }
 
@@ -2042,6 +2895,13 @@ class Audio3DSceneController(
 
     fun release() {
         pause()
+        patternFields.clear()
+        panelTexture = null
+        trapTexture = null
+        wallTexture = null
+        ceilingTexture = null
+        floorTexture = null
+        ceilingMaterial = null
         clearSprites()
         wallNodes.forEach { runCatching { sceneView.removeChildNode(it) } }
         wallNodes.clear()
@@ -2064,6 +2924,9 @@ class Audio3DSceneController(
         // above); the composed bitmap is ours.
         screenBezel = null
         screenImage = null
+        backlightNode = null
+        backlightCover = null
+        tiledPlanes.clear()
         backWallRef = null
         screenBitmap?.let { runCatching { it.recycle() } }
         screenBitmap = null

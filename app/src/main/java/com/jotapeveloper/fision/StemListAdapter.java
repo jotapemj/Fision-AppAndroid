@@ -176,6 +176,14 @@ public class StemListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         // Clear previous listeners of the recycled slider to avoid stacking handlers
         holder.sb_stemVol.clearOnChangeListeners();
 
+        // Accent colors from the context (follows the player's runtime accent
+        // when it adopts the song colors; the XML theme values otherwise).
+        android.content.Context ctx = holder.itemView.getContext();
+        holder.sb_stemVol.setTrackActiveTintList(android.content.res.ColorStateList.valueOf(
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx)));
+        holder.sb_stemVol.setThumbTintList(android.content.res.ColorStateList.valueOf(
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccentSecondary(ctx)));
+
         // Set the initial slider value from the saved setting + icon alpha.
         // During the post-load initial pass, start at 0 (PlayerActivity animates
         // to saved afterwards). Prevents the "saved → 0 → animated" flash.
