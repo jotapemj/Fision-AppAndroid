@@ -49,3 +49,6 @@ docs/fision/
 /extraer_comentarios.py
 /comentarios_espanol.txt
 /comentarios_es.txt
+
+# Local deploy helper (machine specific)
+tools/deploy.py
