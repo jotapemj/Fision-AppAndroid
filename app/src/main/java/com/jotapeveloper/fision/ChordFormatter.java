@@ -27,6 +27,13 @@ public final class ChordFormatter {
 
     private ChordFormatter() {}
 
+    /** Name of a single pitch class (0 = C) in the given notation. */
+    public static String noteName(int pitchClass, boolean latin, boolean preferFlat) {
+        int i = ((pitchClass % 12) + 12) % 12;
+        if (latin) return preferFlat ? LATIN_FLAT[i] : LATIN_SHARP[i];
+        return preferFlat ? FLAT_NOTES[i] : SHARP_NOTES[i];
+    }
+
     /**
      * Applies transposition + notation + accidental.
      * @param chord      original chord

@@ -121,6 +121,10 @@ public class LicenseCatalog {
                 "MIT / Public Domain", "https://github.com/mackron/dr_libs",
                 LIC_MIT + "\n\n---\n\n" + LIC_PUBLIC_DOMAIN));
         ENTRIES.add(new LicenseEntry(
+                "chords-db", "David Rubert",
+                "MIT", "https://github.com/tombatossals/chords-db",
+                "Copyright (c) 2016 David Rubert\n\n" + LIC_MIT));
+        ENTRIES.add(new LicenseEntry(
                 "KEMAR HRTF dataset", "Bill Gardner, Keith Martin — MIT Media Lab",
                 "Research / Personal use", "https://sound.media.mit.edu/resources/KEMAR.html",
                 LIC_KEMAR));

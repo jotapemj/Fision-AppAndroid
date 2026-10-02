@@ -275,6 +275,9 @@ Real-time pitch shift and tempo change.
 <b>dr_flac</b> · David Reid (mackron) · MIT / Public Domain
 Single-header FLAC decoder.
 
+<b>chords-db</b> · David Rubert · MIT
+Guitar and ukulele chord shapes.
+
 <b>KEMAR HRTF dataset</b> · MIT Media Lab
 Head-related impulse responses for the Audio 3D mode. Free for research and personal use.
 
@@ -446,5 +449,15 @@ HTTP client and server API bindings.]]></string>
     <string name="lyrics_lang_ca">Catalan</string>
     <string name="lyrics_lang_uk">Ukrainian</string>
     <string name="lyrics_lang_pl">Polish</string>
+
+    <!-- Chord diagrams -->
+    <string name="chord_diagram_piano">Piano</string>
+    <string name="chord_diagram_guitar">Guitar</string>
+    <string name="chord_diagram_ukulele">Ukulele</string>
+    <string name="chord_diagram_zone_open">Open</string>
+    <string name="chord_diagram_zone_auto">Auto</string>
+    <string name="chord_diagram_bass">Bass: %1$s</string>
+    <string name="chord_mode_diagrams">Chord diagrams</string>
+    <string name="chord_mode_carousel">Show/hide chords</string>
 
 </resources>

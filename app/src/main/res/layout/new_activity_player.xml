@@ -169,6 +169,9 @@
             <!-- Overlaid lyrics view: same coverage as the ITD view above. -->
             <include layout="@layout/player_lyrics_view" />
 
+            <!-- Chord diagrams (piano / guitar / ukulele), below the carousel. -->
+            <include layout="@layout/player_chord_diagram_view" />
+
         </FrameLayout>
 
 
@@ -432,8 +435,7 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
-                    android:onClick="ShowChords"
-                    app:icon="@raw/ic_chord"
+                    app:icon="@drawable/ic_chord_carousel"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Chord diagram view (piano / guitar / ukulele). Overlay of the central
+    player area like the lyrics view, starting below the chord carousel,
+    which stays visible on top while this view is open. Transparent, so the
+    animated background shows through.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/chordDiagram_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginTop="71dp"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <com.jotapeveloper.fision.chords.SlidingChipSelector
+        android:id="@+id/sel_chordInstrument"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="80dp" />
+
+    <com.jotapeveloper.fision.chords.ChordStageView
+        android:id="@+id/stage_chordDiagram"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:layout_weight="1" />
+
+    <com.jotapeveloper.fision.chords.SlidingChipSelector
+        android:id="@+id/sel_chordZone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="64dp"
+        android:layout_marginEnd="64dp"
+        android:layout_marginBottom="14dp" />
+
+</LinearLayout>

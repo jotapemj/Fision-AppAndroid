@@ -254,6 +254,9 @@ Canvi de pitch i tempo en temps real.
 <b>dr_flac</b> · David Reid (mackron) · MIT / Domini públic
 Descodificador FLAC de capçalera única.
 
+<b>chords-db</b> · David Rubert · MIT
+Posicions d\'acords de guitarra i ukulele.
+
 <b>KEMAR HRTF dataset</b> · MIT Media Lab
 Respostes impulsives per al mode Audio 3D. Lliure per a recerca i ús personal.
 
@@ -425,4 +428,14 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="lyrics_lang_ca">Català</string>
     <string name="lyrics_lang_uk">Ucraïnès</string>
     <string name="lyrics_lang_pl">Polonès</string>
+
+    <!-- Diagrames d'acords -->
+    <string name="chord_diagram_piano">Piano</string>
+    <string name="chord_diagram_guitar">Guitarra</string>
+    <string name="chord_diagram_ukulele">Ukulele</string>
+    <string name="chord_diagram_zone_open">Oberta</string>
+    <string name="chord_diagram_zone_auto">Auto</string>
+    <string name="chord_diagram_bass">Baix: %1$s</string>
+    <string name="chord_mode_diagrams">Diagrames d\'acords</string>
+    <string name="chord_mode_carousel">Mostrar/amagar acords</string>
 </resources>

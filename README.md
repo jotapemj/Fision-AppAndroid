@@ -32,6 +32,8 @@ The magic starts with the fision of your music.
 - Real-time pitch shift and tempo change.
 - Chord charts synced to bars and downbeats, in American or Latin notation,
   with flats or sharps.
+- Chord diagrams for piano, guitar and ukulele, showing the current and the
+  next chord in sync with the song.
 - Per-song synchronized lyrics powered by server-side Whisper transcription,
   with 27 language options plus automatic detection.
 - Dynamic metronome that follows the song's own beat grid.
@@ -225,8 +227,13 @@ side to side you find:
   Its icon and tint change to reflect the active mode.
 - **Pitch button**: opens the pitch bottom sheet.
 - **Metronome button**: opens the dynamic metronome bottom sheet.
-- **Show/hide chords button**: collapses the chord section to give the
-  stem list more room.
+- **Chords button**: unfolds into a small pill with two entries. The
+  bottom one shows or hides the chord section to give the stem list more
+  room. The top one opens the chord diagrams view: the current chord and
+  the next one drawn for piano, guitar or ukulele, with a fret zone
+  selector (open, 3-7, 7-12 or automatic) for the fretted instruments.
+  Guitar and ukulele shapes come from chords-db (MIT). While the diagrams
+  are open, the button closes them.
 - **Lyrics button**: opens the lyrics overlay for the current song.
 - **Audio 3D button**: switches into the 3D positioning view.
 

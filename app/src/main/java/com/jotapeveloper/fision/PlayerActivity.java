@@ -570,7 +570,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // Show chords section: initial state on song load
         View chordsContainer = findViewById(R.id.chords_container);
-        if(chordsActive){
+        if (isChordDiagramShown) {
+            // Diagrams view keeps the carousel on and the button in its diagrams state.
+            b_chord.setIconTint(ColorStateList.valueOf(accent()));
+        } else if(chordsActive){
             b_chord.setIconTint(ColorStateList.valueOf(accent()));
         }
         else{
@@ -717,6 +720,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // Rhythm visualizer: builds cells from beats/chords/downbeats
         buildBeatCells();
+        if (chordDiagrams != null) chordDiagrams.setCells(beatCells);
 
         rvChords = (RecyclerView) findViewById(R.id.rv_chords);
         beatAdapter = new BeatCellAdapter(this, beatCells, beatsPerBar);
@@ -975,6 +979,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         attachSeekButtonBounce(b_seconds_forward);
         b_metronome = findViewById(R.id.b_metronome);
         b_chord = findViewById(R.id.b_chord);
+        chordIcon = b_chord.getIcon();
+        b_chord.setOnClickListener(v -> onChordButton());
         b_pitch = findViewById(R.id.b_pitch);
         b_back = findViewById(R.id.b_back);
         b3d = findViewById(R.id.b_3d);
@@ -1491,6 +1497,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     .edit().putBoolean(PREF_LATIN_NOTATION, latinNotation).apply();
             updateCifradoDrawerSubtitle();
             if (beatAdapter != null) beatAdapter.setLatinNotation(latinNotation);
+            if (chordDiagrams != null) chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
         });
     }
 
@@ -1509,6 +1516,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     .edit().putBoolean(PREF_PREFER_FLAT, preferFlat).apply();
             updateNotationDrawerSubtitle();
             if (beatAdapter != null) beatAdapter.setPreferFlat(preferFlat);
+            if (chordDiagrams != null) chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
         });
     }
 
@@ -2000,6 +2008,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Reapplies the display shift to the adapter (after pitch or switch change). */
     private void applyDisplayShiftToAdapter() {
         if (beatAdapter != null) beatAdapter.setSemitonesShift(currentDisplayShift());
+        if (chordDiagrams != null) chordDiagrams.setShift(currentDisplayShift());
     }
 
     /** Extracts a WAV from res/raw into a cache file so a path can be passed to the engine.
@@ -2506,6 +2515,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         readChordsFile(SongFolder.getAbsolutePath());
         filterGhostChords();
         buildBeatCells();
+        if (chordDiagrams != null) chordDiagrams.setCells(beatCells);
         if (beatAdapter != null) {
             beatAdapter.notifyDataSetChanged();
             // Reposition to the current beat
@@ -2704,6 +2714,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             }
                             pendingTileHighlight = () -> {
                                 if (beatAdapter != null) beatAdapter.setHighlight(targetIdx);
+                                // Diagrams change together with the carousel highlight.
+                                if (isChordDiagramShown && chordDiagrams != null) {
+                                    chordDiagrams.onBeat(targetIdx);
+                                }
                             };
                             rvChords.postDelayed(pendingTileHighlight, 80);
 
@@ -3639,6 +3653,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             rvChords.removeCallbacks(pendingTileHighlight);
         }
         if (beatAdapter != null) beatAdapter.setHighlight(idx);
+        if (isChordDiagramShown && chordDiagrams != null) chordDiagrams.onBeat(Math.max(0, idx));
         // Immediate BPM refresh so the readout follows a seek without waiting
         // for the next beat transition.
         updateLocalBpmDisplay(idx);
@@ -3664,6 +3679,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (chordModePill != null) chordModePill.dismissNow();
         DestroyPlayers();
         releaseLyrics();
         if (uiAccentAnim != null) uiAccentAnim.cancel();
@@ -4099,6 +4115,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private LyricsLanguage mSelectedLyricsLanguage = LyricsLanguage.LANGUAGES[0]; // Auto
     private LyricsUiState mLyricsUiState = LyricsUiState.PICKER;
     private boolean isLyricsViewShown = false;
+
+    // Chord diagrams view (piano / guitar / ukulele), opened from the pill of
+    // the chords button. While open the chords button shows the chord grid and closes it.
+    private boolean isChordDiagramShown = false;
+    private View chordDiagramRoot;
+    private com.jotapeveloper.fision.chords.ChordDiagramController chordDiagrams;
+    private com.jotapeveloper.fision.chords.ChordModePill chordModePill;
+    private android.graphics.drawable.Drawable chordIcon;
     // While opening the lyrics overlay, applyChordsOverlayForLyrics() is a
     // no-op so the transition owns the chord fade. Otherwise setLyricsUiState
     // (invoked from refreshLyricsViewForCurrentSong before transitionIntoLyrics
@@ -4353,8 +4377,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Toggles between the normal view (stems + chords) and the 3D view with crossfade. */
     private void toggle3DView() {
         ensure3DRefs();
-        // Never overlap with the lyrics overlay.
-        if (isLyricsViewShown) return;
+        // Never overlap with the lyrics overlay or the chord diagrams.
+        if (isLyricsViewShown || isChordDiagramShown) return;
         is3DViewShown = !is3DViewShown;
         View chordsContainer = findViewById(R.id.chords_container);
         if (is3DViewShown) transitionInto3D(chordsContainer);
@@ -6474,7 +6498,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void toggleLyricsView() {
         ensureLyricsRefs();
-        if (is3DViewShown) return;  // never overlap with the 3D view
+        // Never overlap with the 3D view or the chord diagrams.
+        if (is3DViewShown || isChordDiagramShown) return;
         isLyricsViewShown = !isLyricsViewShown;
         refreshBLyricsTint();
         View chordsContainer = findViewById(R.id.chords_container);
@@ -6582,6 +6607,170 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 compact ? 0 : (int) (24 * d));
         if (compact) tb.setBackgroundColor(Color.BLACK);
         else tb.setBackgroundResource(R.drawable.player_toolbar_bg);
+    }
+
+    // ---------------- Chord diagrams ----------------
+
+    /** Chords button. In diagrams mode it closes them; otherwise it
+     *  unfolds the pill: carousel toggle below, diagrams on top. */
+    private void onChordButton() {
+        if (isChordDiagramShown) {
+            closeChordDiagrams();
+            return;
+        }
+        if (chordModePill == null) {
+            chordModePill = new com.jotapeveloper.fision.chords.ChordModePill(this, b_chord,
+                    newDiagramsIcon(),
+                    new com.jotapeveloper.fision.chords.ChordModePill.Listener() {
+                        @Override public void onCarouselToggle() { ShowChords(b_chord); }
+                        @Override public void onDiagramsOpen() { openChordDiagrams(); }
+                    });
+        }
+        chordModePill.show(!is3DViewShown && !isLyricsViewShown);
+    }
+
+    /** Chord grid icon of the diagrams entry (own instance, safe to tint). */
+    private android.graphics.drawable.Drawable newDiagramsIcon() {
+        android.graphics.drawable.Drawable icon = androidx.appcompat.content.res.AppCompatResources
+                .getDrawable(this, R.drawable.ic_chord_diagram);
+        return icon != null ? icon.mutate() : new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT);
+    }
+
+    /** Typeface of the chord names, same rule as the carousel. */
+    private android.graphics.Typeface chordTypeface() {
+        try {
+            return androidx.core.content.res.ResourcesCompat.getFont(this,
+                    latinNotation ? R.font.yugothic_ui_regular : R.font.mus_glyhps);
+        } catch (Exception e) {
+            return android.graphics.Typeface.DEFAULT;
+        }
+    }
+
+    /** Swaps the chords button icon with a shrink / grow morph. */
+    private void morphChordButtonIcon(android.graphics.drawable.Drawable icon, int tint) {
+        final int full = b_chord.getIconSize() > 0 ? b_chord.getIconSize()
+                : (int) (24 * getResources().getDisplayMetrics().density);
+        android.animation.ValueAnimator out = android.animation.ValueAnimator.ofInt(full, 0);
+        out.setDuration(110);
+        out.setInterpolator(new android.view.animation.AccelerateInterpolator());
+        out.addUpdateListener(a -> b_chord.setIconSize((int) a.getAnimatedValue()));
+        out.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator a) {
+                b_chord.setIcon(icon);
+                b_chord.setIconTint(ColorStateList.valueOf(tint));
+                android.animation.ValueAnimator in = android.animation.ValueAnimator.ofInt(0, full);
+                in.setDuration(200);
+                in.setInterpolator(new android.view.animation.OvershootInterpolator(2f));
+                in.addUpdateListener(b -> b_chord.setIconSize((int) b.getAnimatedValue()));
+                in.start();
+            }
+        });
+        out.start();
+    }
+
+    /** Opens the chord diagrams: stems out, carousel forced visible (its own
+     *  setting is restored on close), diagrams in with the lyrics transition. */
+    private void openChordDiagrams() {
+        if (isChordDiagramShown || is3DViewShown || isLyricsViewShown) return;
+        if (chordDiagramRoot == null) chordDiagramRoot = findViewById(R.id.chordDiagram_root);
+        if (chordDiagramRoot == null) return;
+        if (chordDiagrams == null) {
+            chordDiagrams = new com.jotapeveloper.fision.chords.ChordDiagramController(
+                    this, chordDiagramRoot);
+        }
+        chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
+        chordDiagrams.setShift(currentDisplayShift());
+        chordDiagrams.setCells(beatCells);
+        chordDiagrams.onBeat(Math.max(0, currentBeatIdx));
+        isChordDiagramShown = true;
+        morphChordButtonIcon(newDiagramsIcon(), accent());
+
+        final long OUT_DUR = 200L;
+        final long IN_DUR  = 300L;
+        float slidePx = 18f * getResources().getDisplayMetrics().density;
+        final View chordsContainer = findViewById(R.id.chords_container);
+        final boolean revealChords = chordsContainer != null
+                && chordsContainer.getVisibility() != View.VISIBLE;
+        View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
+        if (stemsBox != null) {
+            stemsBox.animate().cancel();
+            stemsBox.animate().alpha(0f).translationY(slidePx)
+                    .withLayer()
+                    .setDuration(OUT_DUR)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        stemsBox.setVisibility(View.GONE);
+                        stemsBox.setTranslationY(0f);
+                        // Carousel appears once the stems are gone, so the
+                        // layout reflow is never visible.
+                        if (revealChords) {
+                            chordsContainer.setAlpha(0f);
+                            chordsContainer.setVisibility(View.VISIBLE);
+                            if (rvChords != null) rvChords.scrollToPosition(Math.max(0, currentBeatIdx));
+                            chordsContainer.animate().alpha(1f).setDuration(IN_DUR)
+                                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                                    .start();
+                        }
+                    }).start();
+        }
+        chordDiagramRoot.setAlpha(0f);
+        chordDiagramRoot.setScaleX(0.94f);
+        chordDiagramRoot.setScaleY(0.94f);
+        chordDiagramRoot.setVisibility(View.VISIBLE);
+        chordDiagramRoot.animate().cancel();
+        chordDiagramRoot.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .withLayer()
+                .setStartDelay(OUT_DUR - 80L)
+                .setDuration(IN_DUR)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+    }
+
+    /** Closes the chord diagrams: back to the stems, carousel back to the
+     *  song's own chords setting, button icon back to chords. */
+    private void closeChordDiagrams() {
+        if (!isChordDiagramShown) return;
+        isChordDiagramShown = false;
+        morphChordButtonIcon(chordIcon, chordsActive ? accent() : Color.WHITE);
+
+        final long OUT_DUR = 200L;
+        final long IN_DUR  = 260L;
+        float slidePx = 18f * getResources().getDisplayMetrics().density;
+        if (chordDiagramRoot != null) {
+            chordDiagramRoot.animate().cancel();
+            chordDiagramRoot.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+                    .withLayer()
+                    .setDuration(OUT_DUR)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> chordDiagramRoot.setVisibility(View.GONE))
+                    .start();
+        }
+        final View chordsContainer = findViewById(R.id.chords_container);
+        final boolean hideChords = !chordsActive && chordsContainer != null
+                && chordsContainer.getVisibility() == View.VISIBLE;
+        if (hideChords) {
+            chordsContainer.animate().cancel();
+            chordsContainer.animate().alpha(0f).setDuration(OUT_DUR)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        chordsContainer.setVisibility(View.GONE);
+                        chordsContainer.setAlpha(1f);
+                    }).start();
+        }
+        View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
+        if (stemsBox != null) {
+            stemsBox.setAlpha(0f);
+            stemsBox.setTranslationY(slidePx);
+            stemsBox.setVisibility(View.VISIBLE);
+            stemsBox.animate().cancel();
+            stemsBox.animate().alpha(1f).translationY(0f)
+                    .withLayer()
+                    // Wait for the carousel to collapse so the stems do not jump.
+                    .setStartDelay(hideChords ? OUT_DUR : OUT_DUR - 80L)
+                    .setDuration(IN_DUR)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        }
     }
 
     private void transitionIntoLyrics(View chordsContainer, boolean chordsWereVisible) {

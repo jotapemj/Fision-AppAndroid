@@ -254,6 +254,9 @@
 <b>dr_flac</b> · David Reid (mackron) · MIT / Public Domain
 Однофайловий декодер FLAC.
 
+<b>chords-db</b> · David Rubert · MIT
+Аплікатури акордів для гітари та укулеле.
+
 <b>KEMAR HRTF dataset</b> · MIT Media Lab
 Імпульсні відгуки для режиму Audio 3D. Вільно для дослідницького та особистого використання.
 
@@ -425,5 +428,15 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="lyrics_lang_ca">Каталонська</string>
     <string name="lyrics_lang_uk">Українська</string>
     <string name="lyrics_lang_pl">Польська</string>
+
+    <!-- Діаграми акордів -->
+    <string name="chord_diagram_piano">Піаніно</string>
+    <string name="chord_diagram_guitar">Гітара</string>
+    <string name="chord_diagram_ukulele">Укулеле</string>
+    <string name="chord_diagram_zone_open">Відкриті</string>
+    <string name="chord_diagram_zone_auto">Авто</string>
+    <string name="chord_diagram_bass">Бас: %1$s</string>
+    <string name="chord_mode_diagrams">Діаграми акордів</string>
+    <string name="chord_mode_carousel">Показати/сховати акорди</string>
 
 </resources>

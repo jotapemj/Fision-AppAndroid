@@ -274,6 +274,9 @@ Pitch shift y cambio de tempo en tiempo real.
 <b>dr_flac</b> · David Reid (mackron) · MIT / Dominio público
 Decoder FLAC single-header.
 
+<b>chords-db</b> · David Rubert · MIT
+Posiciones de acordes de guitarra y ukelele.
+
 <b>KEMAR HRTF dataset</b> · MIT Media Lab
 Respuestas impulsivas para el modo Audio 3D. Libre para investigación y uso personal.
 
@@ -445,5 +448,15 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="lyrics_lang_ca">Catalán</string>
     <string name="lyrics_lang_uk">Ucraniano</string>
     <string name="lyrics_lang_pl">Polaco</string>
+
+    <!-- Diagramas de acordes -->
+    <string name="chord_diagram_piano">Piano</string>
+    <string name="chord_diagram_guitar">Guitarra</string>
+    <string name="chord_diagram_ukulele">Ukelele</string>
+    <string name="chord_diagram_zone_open">Abierta</string>
+    <string name="chord_diagram_zone_auto">Auto</string>
+    <string name="chord_diagram_bass">Bajo: %1$s</string>
+    <string name="chord_mode_diagrams">Diagramas de acordes</string>
+    <string name="chord_mode_carousel">Mostrar/ocultar acordes</string>
 
 </resources>
