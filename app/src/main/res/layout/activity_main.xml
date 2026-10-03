@@ -36,7 +36,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:srcCompat="@mipmap/applogo" />
+                app:srcCompat="@drawable/fision_logo" />
 
             <TextView
                 android:id="@+id/tv_AppTitle"

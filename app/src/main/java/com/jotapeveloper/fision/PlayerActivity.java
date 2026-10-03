@@ -4498,8 +4498,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Toggles between the normal view (stems + chords) and the 3D view with crossfade. */
     private void toggle3DView() {
         ensure3DRefs();
-        // Never overlap with the lyrics overlay or the chord diagrams.
-        if (isLyricsViewShown || isChordDiagramShown) return;
+        // From the chord diagrams: close them (button back to its default
+        // icon) and open the 3D view once they are out.
+        if (isChordDiagramShown) {
+            closeChordDiagrams(this::toggle3DView);
+            return;
+        }
+        // Never overlap with the lyrics overlay.
+        if (isLyricsViewShown) return;
         is3DViewShown = !is3DViewShown;
         View chordsContainer = findViewById(R.id.chords_container);
         if (is3DViewShown) transitionInto3D(chordsContainer);
@@ -6605,8 +6611,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void toggleLyricsView() {
         ensureLyricsRefs();
-        // Never overlap with the 3D view or the chord diagrams.
-        if (is3DViewShown || isChordDiagramShown) return;
+        // From the chord diagrams: close them (button back to its default
+        // icon) and open the lyrics once they are out.
+        if (isChordDiagramShown) {
+            closeChordDiagrams(this::toggleLyricsView);
+            return;
+        }
+        // Never overlap with the 3D view.
+        if (is3DViewShown) return;
         isLyricsViewShown = !isLyricsViewShown;
         refreshBLyricsTint();
         View chordsContainer = findViewById(R.id.chords_container);
@@ -6838,6 +6850,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Closes the chord diagrams: back to the stems, carousel back to the
      *  song's own chords setting, button icon back to chords. */
     private void closeChordDiagrams() {
+        closeChordDiagrams(null);
+    }
+
+    /**
+     * Closes the chord diagrams. With [handoff] (opening lyrics or the 3D view
+     * from the diagrams) the stems are not brought back, since the next view
+     * hides them anyway (no flash); [handoff] runs once the diagrams are out.
+     */
+    private void closeChordDiagrams(@androidx.annotation.Nullable Runnable handoff) {
         if (!isChordDiagramShown) return;
         isChordDiagramShown = false;
         morphChordButtonIcon(chordIcon, chordsActive ? accent() : Color.WHITE);
@@ -6865,6 +6886,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                         chordsContainer.setVisibility(View.GONE);
                         chordsContainer.setAlpha(1f);
                     }).start();
+        }
+        if (handoff != null) {
+            // The next view opens once the diagrams (and the forced carousel)
+            // are out; it handles the stems itself.
+            // Slightly after OUT_DUR, so the carousel hide has committed its
+            // final visibility (the next view reads it).
+            new Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (!isDestroyed) handoff.run();
+            }, OUT_DUR + 40L);
+            return;
         }
         View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
         if (stemsBox != null) {
