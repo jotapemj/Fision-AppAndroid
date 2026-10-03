@@ -270,7 +270,7 @@
                         android:backgroundTint="@color/black"
                         android:contentDescription="@string/b_seconds_back_description"
                         android:onClick="moveBackward"
-                        app:icon="@raw/ic_seconds_back"
+                        app:icon="@drawable/ic_seek_back_5"
                         app:iconSize="24dp"
                         app:iconTint="@color/white"
                         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
@@ -297,7 +297,7 @@
                     android:layout_width="50dp"
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
-                    app:icon="@raw/ic_previous"
+                    app:icon="@drawable/ic_skip_previous"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
@@ -325,7 +325,7 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
-                    app:icon="@raw/ic_next"
+                    app:icon="@drawable/ic_skip_next"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
@@ -344,7 +344,7 @@
                         android:layout_height="50dp"
                         android:backgroundTint="@color/black"
                         android:onClick="moveForward"
-                        app:icon="@raw/ic_seconds_forward"
+                        app:icon="@drawable/ic_seek_forward_5"
                         app:iconSize="24dp"
                         app:iconTint="@color/white"
                         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
@@ -396,7 +396,7 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
-                    app:icon="@raw/ic_lyrics"
+                    app:icon="@drawable/ic_lyrics"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
@@ -409,7 +409,7 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
-                    app:icon="@raw/ic_pitch"
+                    app:icon="@drawable/ic_pitch"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
@@ -422,7 +422,7 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
-                    app:icon="@raw/ic_metronome"
+                    app:icon="@drawable/ic_metronome"
                     app:iconSize="24dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />

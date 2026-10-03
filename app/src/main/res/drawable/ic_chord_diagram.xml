@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Chord diagram grid: frame, four evenly spaced strings, two frets and
-     three finger rings. Entry of the chord diagrams view. -->
+     three finger rings. Entry of the chord diagrams view. Scaled into the
+     20-unit live area of the bar icons; stroke compensated to 0.75. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -8,18 +9,24 @@
     android:viewportHeight="24"
     android:tint="#FFFFFF">
 
-    <path
-        android:strokeColor="@android:color/white"
-        android:strokeWidth="0.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M3.05,0.45H20.95A1.75,1.75 0,0 1,22.7 2.2V21.8A1.75,1.75 0,0 1,20.95 23.55H3.05A1.75,1.75 0,0 1,1.3 21.8V2.2A1.75,1.75 0,0 1,3.05 0.45Z
-            M1.3,8.15H22.7M1.3,15.85H22.7
-            M5.58,0.45V17.6M5.58,21.8V23.55
-            M9.86,0.45V9.9M9.86,14.1V23.55
-            M14.14,0.45V23.55
-            M18.42,0.45V2.2M18.42,6.4V23.55
-            M16.32,4.3a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0Z
-            M7.76,12a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0Z
-            M3.48,19.7a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0Z" />
+    <group
+        android:pivotX="12"
+        android:pivotY="12"
+        android:scaleX="0.866"
+        android:scaleY="0.866">
+        <path
+            android:strokeColor="@android:color/white"
+            android:strokeWidth="0.866"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M3.05,0.45H20.95A1.75,1.75 0,0 1,22.7 2.2V21.8A1.75,1.75 0,0 1,20.95 23.55H3.05A1.75,1.75 0,0 1,1.3 21.8V2.2A1.75,1.75 0,0 1,3.05 0.45Z
+                M1.3,8.15H22.7M1.3,15.85H22.7
+                M5.58,0.45V17.6M5.58,21.8V23.55
+                M9.86,0.45V9.9M9.86,14.1V23.55
+                M14.14,0.45V23.55
+                M18.42,0.45V2.2M18.42,6.4V23.55
+                M16.32,4.3a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0Z
+                M7.76,12a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0Z
+                M3.48,19.7a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0Z" />
+    </group>
 </vector>

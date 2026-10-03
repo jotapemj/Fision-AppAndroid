@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Pause, two bars matching the play halves for the morph. Fill plus a
+     round joined stroke of the same color softens the corners. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -6,10 +8,16 @@
     android:viewportHeight="24">
     <path
         android:name="left_bar"
-        android:pathData="M5,3 L5,21 L9,21 L9,3 Z"
-        android:fillColor="#FFFFFF" />
+        android:pathData="M5.8,3.8 L5.8,20.2 L8.4,20.2 L8.4,3.8 Z"
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineJoin="round" />
     <path
         android:name="right_bar"
-        android:pathData="M15,3 L15,21 L19,21 L19,3 Z"
-        android:fillColor="#FFFFFF" />
+        android:pathData="M15.6,3.8 L15.6,20.2 L18.2,20.2 L18.2,3.8 Z"
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineJoin="round" />
 </vector>
