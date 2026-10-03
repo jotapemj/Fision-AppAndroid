@@ -396,8 +396,10 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp"
                     app:icon="@drawable/ic_lyrics"
-                    app:iconSize="24dp"
+                    app:iconSize="32dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 
@@ -409,8 +411,10 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp"
                     app:icon="@drawable/ic_pitch"
-                    app:iconSize="24dp"
+                    app:iconSize="28dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 
@@ -435,8 +439,10 @@
                     android:layout_height="50dp"
                     android:backgroundTint="@color/black"
                     android:layout_marginEnd="20dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp"
                     app:icon="@drawable/ic_chord_carousel"
-                    app:iconSize="24dp"
+                    app:iconSize="36dp"
                     app:iconTint="@color/white"
                     app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 

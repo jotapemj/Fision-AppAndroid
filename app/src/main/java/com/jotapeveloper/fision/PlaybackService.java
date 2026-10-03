@@ -64,6 +64,13 @@ public class PlaybackService extends Service {
     private final java.util.Map<String, Integer> stemTracks = new java.util.LinkedHashMap<>();
     private final java.util.List<String>         stemOrder  = new java.util.ArrayList<>();
 
+    // Asynchronous load (loadSongAsync): decode thread, the generation that
+    // invalidates superseded results, and the in-progress flag (main thread).
+    private final java.util.concurrent.ExecutorService loadExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+    private int loadGeneration = 0;
+    private boolean loading = false;
+
     // Metronomes are special (always looping)
     private int metronomeTrack      = -1;
     private int metronomeHalfTrack  = -1;
@@ -205,6 +212,11 @@ public class PlaybackService extends Service {
         FisionApplication.setForegroundListener(null);
         mainHandler.removeCallbacks(idleStop);
         unregisterNoisyReceiver();
+        // A decode still running finishes on its own; its result is discarded
+        // (and its engine disposed) because the generation no longer matches.
+        loadGeneration++;
+        loading = false;
+        loadExecutor.shutdown();
         releaseInternal();
         if (mediaSession != null) { mediaSession.release(); mediaSession = null; }
         super.onDestroy();
@@ -307,14 +319,80 @@ public class PlaybackService extends Service {
             currentSongId   = songId;
             return true;
         }
+        // A synchronous load supersedes any asynchronous one still decoding.
+        loadGeneration++;
+        loading = false;
 
         // Release the previous one
         releaseInternal();
 
+        DecodedSong song = decodeSong(songPath);
+        if (song == null) return false;
+        commitSong(song, songName, songId);
+        return true;
+    }
+
+    /** True while {@link #loadSongAsync} is decoding (engine is still null). */
+    public boolean isLoading() { return loading; }
+
+    /**
+     * Same as {@link #loadSong} with the decode on a background thread, so the
+     * caller's UI keeps animating. The previous song is released at once; the
+     * engine stays null until the result is committed on the main thread, so
+     * nothing can start playback halfway. [done] runs on the main thread with
+     * the result; it is not called when a newer load supersedes this one.
+     */
+    public void loadSongAsync(String songPath, String songName, int songId,
+                              java.util.function.Consumer<Boolean> done) {
+        if (isCurrentSong(songPath) && engine != null) {
+            currentSongName = songName;
+            currentSongId   = songId;
+            done.accept(true);
+            return;
+        }
+        final int generation = ++loadGeneration;
+        loading = true;
+        releaseInternal();
+        loadExecutor.execute(() -> {
+            DecodedSong song = decodeSong(songPath);
+            mainHandler.post(() -> {
+                if (generation != loadGeneration) {
+                    if (song != null) song.engine.dispose();
+                    return;
+                }
+                loading = false;
+                if (song == null) {
+                    done.accept(false);
+                    return;
+                }
+                commitSong(song, songName, songId);
+                done.accept(true);
+            });
+        });
+    }
+
+    /** Result of {@link #decodeSong}: built off the main thread, applied by
+     *  {@link #commitSong} on it. */
+    private static final class DecodedSong {
+        AudioEngine engine;
+        final java.util.Map<String, Integer> stems = new java.util.HashMap<>();
+        int metronome = -1, metronomeHalf = -1, metronomeDouble = -1;
+        String path;
+        SongMetadata metadata;
+    }
+
+    /**
+     * Builds a new engine for the song and decodes its stems in parallel.
+     * Touches no service state, so it is safe on a background thread. Returns
+     * null (engine disposed) when the folder is invalid or the minimum stems
+     * are missing.
+     */
+    @androidx.annotation.Nullable
+    private DecodedSong decodeSong(String songPath) {
         File folder = new File(songPath);
         if (!folder.isDirectory()) {
             Log.e(TAG, "Invalid song folder: " + songPath);
-            return false;
+            return null;
         }
 
         // Enumerate with a direct File.listFiles (more reliable than DocumentFile for paths
@@ -322,11 +400,15 @@ public class PlaybackService extends Service {
         File[] files = folder.listFiles();
         if (files == null) {
             Log.e(TAG, "listFiles returned null: " + songPath);
-            return false;
+            return null;
         }
         Log.i(TAG, "loadSong scanning " + files.length + " files in " + folder.getName());
 
-        engine = new AudioEngine();
+        final DecodedSong song = new DecodedSong();
+        song.path = songPath;
+        final AudioEngine engine = new AudioEngine();
+        song.engine = engine;
+        final java.util.Map<String, Integer> stemTracks = song.stems;
         // HRTF: load the HRIR bank when the asset exists. It is propagated to each Track
         // in the subsequent addTrack. When the file is missing, the engine falls back to ITD/ILD.
         try {
@@ -334,8 +416,6 @@ public class PlaybackService extends Service {
         } catch (Throwable t) {
             Log.w(TAG, "HRTF init failed", t);
         }
-        stemTracks.clear();
-        stemOrder.clear();
 
         // Pre-filter valid audio files once so the parallel decode pool knows the
         // amount of work up front and can size itself accordingly.
@@ -367,17 +447,17 @@ public class PlaybackService extends Service {
                 switch (bare) {
                     case "metronome": {
                         int id = engine.addTrack(absPath, true);
-                        if (id >= 0) { engine.setVolume(id, 0f, 0f); metronomeTrack = id; }
+                        if (id >= 0) { engine.setVolume(id, 0f, 0f); song.metronome = id; }
                         return;
                     }
                     case "metronome_half": {
                         int id = engine.addTrack(absPath, true);
-                        if (id >= 0) { engine.setVolume(id, 0f, 0f); metronomeHalfTrack = id; }
+                        if (id >= 0) { engine.setVolume(id, 0f, 0f); song.metronomeHalf = id; }
                         return;
                     }
                     case "metronome_double": {
                         int id = engine.addTrack(absPath, true);
-                        if (id >= 0) { engine.setVolume(id, 0f, 0f); metronomeDoubleTrack = id; }
+                        if (id >= 0) { engine.setVolume(id, 0f, 0f); song.metronomeDouble = id; }
                         return;
                     }
                 }
@@ -405,39 +485,55 @@ public class PlaybackService extends Service {
             if (!pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
                 Log.e(TAG, "loadSong decode timed out");
                 pool.shutdownNow();
-                return false;
+                engine.dispose();
+                return null;
             }
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             pool.shutdownNow();
-            return false;
+            engine.dispose();
+            return null;
         }
 
-        Log.i(TAG, "loadSong tracks: stems=" + stemTracks + " metronome=" + metronomeTrack
-                + " metronomeHalf=" + metronomeHalfTrack + " metronomeDouble=" + metronomeDoubleTrack);
+        Log.i(TAG, "loadSong tracks: stems=" + stemTracks + " metronome=" + song.metronome
+                + " metronomeHalf=" + song.metronomeHalf + " metronomeDouble=" + song.metronomeDouble);
 
         // Validate: at least vocals + (other or instrumental) are required
         if (!stemTracks.containsKey("vocals")
                 || (!stemTracks.containsKey("other") && !stemTracks.containsKey("instrumental"))) {
             Log.e(TAG, "Minimum stems not found. Detected=" + stemTracks.keySet()
                     + ". Expected at least 'vocals' + ('other' or 'instrumental').");
-            return false;
+            engine.dispose();
+            return null;
         }
+        // Optional metadata from info.txt + artcover.png
+        song.metadata = SongMetadata.read(folder);
+        return song;
+    }
+
+    /** Applies a decoded song to the service state (main thread). */
+    private void commitSong(DecodedSong song, String songName, int songId) {
+        engine = song.engine;
+        stemTracks.clear();
+        stemTracks.putAll(song.stems);
+        metronomeTrack       = song.metronome;
+        metronomeHalfTrack   = song.metronomeHalf;
+        metronomeDoubleTrack = song.metronomeDouble;
 
         // Sort by StemSpec.ORDER
+        stemOrder.clear();
         stemOrder.addAll(stemTracks.keySet());
         java.util.Collections.sort(stemOrder,
                 (a, b) -> Integer.compare(StemSpec.orderIndex(a), StemSpec.orderIndex(b)));
 
-        currentSongPath = songPath;
+        currentSongPath = song.path;
         currentSongName = songName;
         currentSongId   = songId;
         songDurationMs  = engine.getDurationMs();
         // Loading a new song clears the ONE-mode latch so the extra repeat
         // pass runs on the new song too.
         repeatOneUsed   = false;
-        // Optional metadata from info.txt + artcover.png
-        currentMetadata = SongMetadata.read(folder);
+        currentMetadata = song.metadata;
         // Invalidate the cover cache when switching songs (do not recycle: the previous
         // MediaSession may still reference it for a few ms — leave it to the GC).
         cachedCoverBitmap = null;
@@ -445,7 +541,6 @@ public class PlaybackService extends Service {
         updateMediaMetadata(getDisplayTitle(), songDurationMs);
         notifyListeners();
         reevaluateIdleStop();
-        return true;
     }
 
     // === Controls ===

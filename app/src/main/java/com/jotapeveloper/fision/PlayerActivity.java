@@ -170,6 +170,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     boolean chordsActive = true;
     boolean paused = true;
     private volatile boolean isDestroyed = false;
+    // Loading curtain shown from onCreate until the first full load; null after.
+    @androidx.annotation.Nullable private com.jotapeveloper.fision.brand.LoadingCurtain loadingCurtain;
 
 
     // These fields are populated after binding to the PlaybackService
@@ -286,26 +288,31 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void onServiceReady() {
         String SongPath = SongFolder != null ? SongFolder.getAbsolutePath() : null;
 
-        // Load the song in the service when it is not the current one
-        try {
-            if (SongPath != null && !playbackService.isCurrentSong(SongPath)) {
-                boolean ok = playbackService.loadSong(SongPath, SongName, SongId);
+        // Load the song in the service when it is not the current one. The
+        // decode runs off the main thread so the loading curtain keeps animating.
+        if (SongPath != null && !playbackService.isCurrentSong(SongPath)) {
+            playbackService.loadSongAsync(SongPath, SongName, SongId, ok -> {
+                if (isFinishing() || isDestroyed || playbackService == null) return;
                 if (!ok) {
                     Toast.makeText(this, "Error opening song. Missing files.", Toast.LENGTH_LONG).show();
                     // Release the service so no phantom notification is left with the
                     // startForegroundService promise dangling
                     playbackService.releaseSongAndStop();
                     finish();
-
-                    
                     return;
                 }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+                onSongLoaded();
+            });
+            return;
         }
+        // Already loaded (back from the mini-player): nothing new to show off,
+        // the curtain is a standard spinner with a quick fade.
+        curtainResolves = false;
+        onSongLoaded();
+    }
 
-
+    /** Second half of onServiceReady, once the song is loaded in the service. */
+    private void onSongLoaded() {
         // Sync references (only metronomes are loose IDs; stems come from service.getStemOrder)
         engine = playbackService.getEngine();
         metronomeTrack       = playbackService.getMetronomeTrack();
@@ -355,6 +362,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         super.onCreate(savedInstanceState);
         com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.new_activity_player);
+        // Black curtain with the loading spinner until the player is fully
+        // loaded (revealed from updateUI, when the stem sliders animate).
+        loadingCurtain = com.jotapeveloper.fision.brand.LoadingCurtain.show(this);
         // load preferences language
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -638,6 +648,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         }
 
+        // The player is fully loaded. Behind the loading curtain (open or song
+        // change) it closes its ring and lifts once the colors are in;
+        // autoplay and the slider animation start as it lifts, so they are seen.
+        revealCurtainWhenReady();
+    }
+
+    /** Autoplay and stem slider animation: the moment the loaded player shows. */
+    private void startPlayerReveal() {
+        if (isDestroyed || playbackService == null) return;
+        java.util.List<String> order = playbackService.getStemOrder();
+
         // Now it is safe to start. The engine already has the correct volumes.
         if (autoplayPending) {
             autoplayPending = false;
@@ -727,6 +748,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         beatAdapter.setLatinNotation(latinNotation);
         beatAdapter.setPreferFlat(preferFlat);
         beatAdapter.setSemitonesShift(currentDisplayShift());
+        // Tap on a beat cell jumps the song there.
+        beatAdapter.setOnCellClickListener(this::seekToBeat);
         rvChords.setHasFixedSize(true);
         rvChords.setLayoutManager(new SpeedyLinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         rvChords.setAdapter(beatAdapter);
@@ -753,18 +776,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
-                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) movingChords = true;
+                // Dragging browses the chords without seeking (a tap on a cell
+                // seeks). While browsing the carousel stops following the song;
+                // on release a magnet brings it back to the current beat.
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    movingChords = true;
+                    browsingChords = true;
+                    rvChords.removeCallbacks(chordsMagnet);
+                }
                 if (newState == RecyclerView.SCROLL_STATE_IDLE && movingChords) {
-                    View snappedView = helper.findSnapView(recyclerView.getLayoutManager());
-                    if (snappedView != null) {
-                        int position = recyclerView.getLayoutManager().getPosition(snappedView);
-                        if (position >= 0 && position < beatCells.size()) {
-                            int newPos = (int) (beatCells.get(position).time * 1000);
-                            manualMoveProgressBar(newPos);
-                            currentBeatIdx = position;
-                        }
-                    }
                     movingChords = false;
+                    View snappedView = helper.findSnapView(recyclerView.getLayoutManager());
+                    int position = snappedView != null
+                            ? recyclerView.getLayoutManager().getPosition(snappedView)
+                            : Math.max(0, currentBeatIdx);
+                    scheduleChordsMagnet(Math.abs(position - Math.max(0, currentBeatIdx)));
                 }
             }
         });
@@ -1074,19 +1100,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (engine == null) return;
                 int newPosPermille = sb_progressBar.getProgress();
                 int songDuration = (int) engine.getDurationMs();
-                int newPosMillis = (int) ((long) newPosPermille * songDuration / 10000L);
-
-                engine.seekTo(newPosMillis);
-
-                // If paused, refresh the UI manually (the Timer does not tick)
-                if (paused) DefineNewProgress(newPosMillis);
-
-                // Reposition chords
-                relocateChords(newPosMillis, chordList);
-                // Keep the half metronome phase after seek (engine.seekTo has not yet
-                // updated the published position; the target is passed explicitly)
-                applyMetronomeHalfPhase(newPosMillis);
-                cancelPendingDownbeats();
+                seekToMs((int) ((long) newPosPermille * songDuration / 10000L));
             }
 
         });
@@ -2240,90 +2254,73 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         switchToSong(subdirs[target]);
     }
 
-    // Scene song swap: with the 3D scene on screen a song change fades the
-    // scene to black, swaps sprites / room colors / wall card underneath,
-    // and fades back once the new song's palette is applied and the scene
-    // has rendered the new state. The camera is untouched.
-    private static final long SCENE_SWAP_OUT_MS = 250L;
-    private static final long SCENE_SWAP_IN_MS = 350L;
-    private static final long SCENE_SWAP_PALETTE_TIMEOUT_MS = 1500L;
-    private static final long SCENE_SWAP_FRAME_FALLBACK_MS = 600L;
-    /** Target song while the scene is fading to black (latest request wins). */
-    private File sceneSwapFolder;
-    private int sceneSwapToken = 0;
+    // Song change under the loading curtain: it fades in over the current song,
+    // the new one loads behind it (async decode, no freeze) and it lifts once
+    // the player is fully rebuilt and the new song's colors are applied (or a
+    // timeout passes), after the 3D scene has rendered a few frames of the new
+    // state. Autoplay and the slider animation start as it lifts.
+    private static final long REVEAL_PALETTE_TIMEOUT_MS = 1500L;
+    private static final long REVEAL_FRAME_FALLBACK_MS = 600L;
     /** Song folder whose palette was last applied (reveal gate). */
     private File songPaletteFolder;
+    /** Latest song requested while a switch is still behind the curtain. */
+    @androidx.annotation.Nullable private File queuedSongSwitch;
+    /** False when nothing was loaded behind the curtain (song already in the
+     *  service): it lifts as a standard spinner, without closing the ring. */
+    private boolean curtainResolves = true;
 
-    /** Switches to a song within the current Activity. With the 3D scene on
-     *  screen the switch runs under a fade to black (see SCENE_SWAP_*). */
+    /** Switches to a song within the current Activity, under the curtain. */
     private void switchToSong(File newFolder) {
         if (playbackService == null || newFolder == null) return;
-        View black = findViewById(R.id.v_3d_sceneBlack);
-        if (!is3DViewShown || !isAudio3DScene() || black == null) {
-            switchToSongNow(newFolder);
+        if (loadingCurtain != null) {
+            // A load is already behind the curtain: the latest request wins
+            // and runs once that load is ready.
+            queuedSongSwitch = newFolder;
             return;
         }
-        if (sceneSwapFolder != null) {
-            // Already fading to black: retarget, one switch at the end.
-            sceneSwapFolder = newFolder;
-            return;
-        }
-        sceneSwapFolder = newFolder;
-        final int token = ++sceneSwapToken;
-        black.animate().cancel();
-        black.setVisibility(View.VISIBLE);
-        long outDur = Math.round(SCENE_SWAP_OUT_MS * (1f - black.getAlpha()));
-        black.animate().alpha(1f).setDuration(outDur).withEndAction(() -> {
-            if (token != sceneSwapToken) return;
-            File target = sceneSwapFolder;
-            sceneSwapFolder = null;
-            switchToSongNow(target);
-            scheduleSceneSwapReveal(token);
-        }).start();
+        loadingCurtain = com.jotapeveloper.fision.brand.LoadingCurtain.showFading(this,
+                () -> { if (!isDestroyed) switchToSongNow(newFolder); });
     }
 
-    /** Lifts the black veil once the new song's palette is applied (or a
-     *  timeout passes) and the scene has rendered a few frames of the new
-     *  state. Stale tokens (another swap, 3D view closed) are ignored. */
-    private void scheduleSceneSwapReveal(final int token) {
-        final View black = findViewById(R.id.v_3d_sceneBlack);
-        if (black == null) return;
+    /** Lifts the loading curtain once the new song's palette is applied (or a
+     *  timeout passes) and, with the 3D scene on screen, after it rendered a
+     *  few frames. A song queued meanwhile is switched to first. */
+    private void revealCurtainWhenReady() {
+        final com.jotapeveloper.fision.brand.LoadingCurtain curtain = loadingCurtain;
+        if (curtain == null) { startPlayerReveal(); return; }
+        final View host = findViewById(android.R.id.content);
         final File folder = SongFolder;
-        final long deadline = android.os.SystemClock.uptimeMillis() + SCENE_SWAP_PALETTE_TIMEOUT_MS;
+        final long deadline = android.os.SystemClock.uptimeMillis() + REVEAL_PALETTE_TIMEOUT_MS;
         final boolean[] revealed = { false };
         final Runnable reveal = () -> {
-            if (revealed[0] || token != sceneSwapToken) return;
+            if (revealed[0] || isDestroyed || loadingCurtain != curtain) return;
             revealed[0] = true;
-            black.animate().alpha(0f).setDuration(SCENE_SWAP_IN_MS)
-                    .withEndAction(() -> {
-                        if (token != sceneSwapToken) return;
-                        black.setVisibility(View.GONE);
-                    }).start();
+            if (queuedSongSwitch != null) {
+                File next = queuedSongSwitch;
+                queuedSongSwitch = null;
+                switchToSongNow(next);       // stays behind the same curtain
+                return;
+            }
+            loadingCurtain = null;
+            curtain.reveal(this::startPlayerReveal, curtainResolves);
+            curtainResolves = true;
         };
-        black.post(new Runnable() {
+        host.post(new Runnable() {
             @Override public void run() {
-                if (token != sceneSwapToken) return;
+                if (isDestroyed || loadingCurtain != curtain) return;
                 boolean paletteReady = folder != null && folder.equals(songPaletteFolder);
                 if (!paletteReady && android.os.SystemClock.uptimeMillis() < deadline) {
-                    black.postDelayed(this, 50L);
+                    host.postDelayed(this, 50L);
                     return;
                 }
-                if (audio3DScene != null) audio3DScene.runAfterFrames(3, reveal);
-                black.postDelayed(reveal, SCENE_SWAP_FRAME_FALLBACK_MS);
+                if (is3DViewShown && isAudio3DScene() && audio3DScene != null) {
+                    audio3DScene.runAfterFrames(3, reveal);
+                    host.postDelayed(reveal, REVEAL_FRAME_FALLBACK_MS);
+                } else {
+                    reveal.run();
+                }
             }
         });
-    }
-
-    /** Drops any scene song swap in flight and clears the black veil. */
-    private void cancelSceneSongSwap() {
-        sceneSwapToken++;
-        sceneSwapFolder = null;
-        View black = findViewById(R.id.v_3d_sceneBlack);
-        if (black != null) {
-            black.animate().cancel();
-            black.setAlpha(0f);
-            black.setVisibility(View.GONE);
-        }
     }
 
     /** Switches to a song within the current Activity: reloads files, recyclerviews,
@@ -2331,6 +2328,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  readDataBase → updateUI (synchronous) → autoplayPending → performClick. */
     private void switchToSongNow(File newFolder) {
         if (playbackService == null || newFolder == null) return;
+        curtainResolves = true;               // a real load: the curtain resolves
 
         // 1) Stop timer to avoid callbacks with mixed state
         if (UpdateProgressBar != null) { UpdateProgressBar.cancel(); UpdateProgressBar = null; }
@@ -2363,6 +2361,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             engine.setClickDuckTrack(-1);
         }
         loadedDownbeatType = -1;
+        // The chord strip's data was just cleared and its new adapter only
+        // arrives after the asynchronous load: detach the old one so layout
+        // and prefetch never see stale positions meanwhile (behind the curtain).
+        stopChordsBrowsing();
+        if (rvChords != null) {
+            if (pendingTileHighlight != null) rvChords.removeCallbacks(pendingTileHighlight);
+            rvChords.stopScroll();
+            rvChords.setAdapter(null);
+        }
 
         chordsBasicMode    = false;
         hasBasicChordsFile = new File(SongPath, "chords_basic.txt").exists();
@@ -2372,13 +2379,28 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         readBeatsFile(SongPath);
         filterGhostChords();
 
-        // 5) Load into the service (releaseInternal frees the previous one)
-        boolean ok = playbackService.loadSong(SongPath, SongName, SongId);
-        if (!ok) {
-            Toast.makeText(this, "Error opening song. Missing files.", Toast.LENGTH_LONG).show();
-            return;
-        }
+        // 5) Load into the service off the main thread (the previous song is
+        // released at once; the stale engine reference is dropped meanwhile).
+        engine = null;
+        final File loadingFolder = newFolder;
+        playbackService.loadSongAsync(SongPath, SongName, SongId, ok -> {
+            if (isDestroyed || playbackService == null || !loadingFolder.equals(SongFolder)) return;
+            if (!ok) {
+                Toast.makeText(this, "Error opening song. Missing files.", Toast.LENGTH_LONG).show();
+                if (loadingCurtain != null) {
+                    com.jotapeveloper.fision.brand.LoadingCurtain c = loadingCurtain;
+                    loadingCurtain = null;
+                    queuedSongSwitch = null;
+                    c.reveal(null);
+                }
+                return;
+            }
+            onSwitchedSongLoaded();
+        });
+    }
 
+    /** Rest of switchToSongNow once the new song is loaded in the service. */
+    private void onSwitchedSongLoaded() {
         // 6) Re-sync engine refs
         engine = playbackService.getEngine();
         metronomeTrack       = playbackService.getMetronomeTrack();
@@ -2622,8 +2644,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // Skip progress refresh while the user is dragging the SeekBar so
             // the manual thumb position is not overwritten by the timer tick.
             if (!mUserSeekingProgress) {
+                // Same post-seek floor as the clock and the beat iterator.
+                int barPos = PerceivedPos;
+                int target = seekTargetMs;
+                if (target >= 0 && android.os.SystemClock.uptimeMillis() - seekAtMs < SEEK_SETTLE_MS) {
+                    barPos = Math.max(barPos, target);
+                }
                 int posPermille = songDuration > 0
-                        ? (int) ((PerceivedPos * 10000L) / songDuration) : 0;
+                        ? (int) ((barPos * 10000L) / songDuration) : 0;
                 if (posPermille < 0) posPermille = 0;
                 if (posPermille > 10000) posPermille = 10000;
                 sb_progressBar.setProgress(posPermille);
@@ -2670,17 +2698,43 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
 
             final int UiPos = PerceivedPos;
+            final int tickGeneration = seekGeneration;
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    // A tick computed before the latest seek carries the old
+                    // position: drop it entirely.
+                    if (tickGeneration != seekGeneration) return;
 
-                    String tvNewCurrentPos = getTime(UiPos);
+                    // Right after a seek the heard position still lags the
+                    // target by the output latency: use the target as a floor
+                    // (clock and beat), so neither steps back after the jump.
+                    int shownPos = UiPos;
+                    if (seekTargetMs >= 0) {
+                        if (android.os.SystemClock.uptimeMillis() - seekAtMs < SEEK_SETTLE_MS) {
+                            shownPos = Math.max(shownPos, seekTargetMs);
+                        } else {
+                            seekTargetMs = -1;
+                        }
+                    }
+
+                    String tvNewCurrentPos = getTime(shownPos);
                     tv_currentPos.setText(tvNewCurrentPos);
 
-                    // Current beat: find the last beat whose time <= UiPos
-                    if (!relocating && !movingChords && !beatCells.isEmpty()) {
-                        float tSec = UiPos / 1000f;
-                        int idx = currentBeatIdx;
+                    // Current beat: find the last beat whose time <= shownPos
+                    // Keeps running while the carousel is browsed (highlight,
+                    // clicks, nebula, diagrams); only its auto-scroll pauses.
+                    if (!relocating && !beatCells.isEmpty()) {
+                        float tSec = shownPos / 1000f;
+                        int idx = Math.min(currentBeatIdx, beatCells.size() - 1);
+                        // Step back while the position is behind the current beat:
+                        // a seek backwards, or a tick computed before a seek that
+                        // advanced past its target. Without it the iterator only
+                        // moves forward and the carousel stays stuck until the
+                        // song catches up again.
+                        while (idx > 0 && beatCells.get(idx).time > tSec) {
+                            idx--;
+                        }
                         // Linear advance while the next beat has already sounded
                         while (idx + 1 < beatCells.size() && beatCells.get(idx + 1).time <= tSec) {
                             idx++;
@@ -2706,7 +2760,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                                 triggerBeatHaptic(beatIntensity);
                             }
                             final int targetIdx = idx;
-                            rvChords.smoothScrollToPosition(targetIdx);
+                            if (!browsingChords) rvChords.smoothScrollToPosition(targetIdx);
                             // Delay the highlight so the tile lights up once it has already
                             // scrolled to the center. Cancel the previous one if still alive.
                             if (pendingTileHighlight != null) {
@@ -2934,20 +2988,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (newPos < 0) newPos = 0;
         if (newPos > duration) newPos = duration;
 
-        engine.seekTo(newPos);
+        // Same path as the progress bar: chords, highlight, metronome phase and
+        // clicks follow the seek.
+        seekToMs((int) newPos);
 
-        // Reposition the chords recycler so it follows the seek (previously it was
-        // only repositioned while dragging the SeekBar; the 5s buttons left it offset)
-        relocateChords((int) newPos, chordList);
-        applyMetronomeHalfPhase(newPos);
-        cancelPendingDownbeats();
-
-        // Resume if it was playing, otherwise just update UI
-        if (!paused) {
-            engine.resume();
-        } else {
-            DefineNewProgress((int)newPos); // <-- used to refresh UI (bar, time)
-        }
+        // Resume if it was playing
+        if (!paused) engine.resume();
     }
 
     @Override
@@ -3667,6 +3713,77 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (paused) DefineNewProgress(newPosMillis);
     }
 
+    // Seek bookkeeping for the timer's beat iterator: ticks computed before the
+    // latest seek are dropped (seekGeneration), and right after it the heard
+    // position still lags the target by the output latency, so for
+    // SEEK_SETTLE_MS the iterator uses the target as a floor instead of
+    // stepping back one beat and forward again.
+    private static final long SEEK_SETTLE_MS = 700L;
+    private volatile int seekGeneration = 0;
+    private volatile int seekTargetMs = -1;
+    private volatile long seekAtMs = 0L;
+
+    /** Single seek path (progress bar, chord carousel, chord diagrams): moves
+     *  the engine and re-syncs chords, highlight, half metronome phase,
+     *  downbeat clicks, progress bar and clock at once. */
+    private void seekToMs(int newPosMillis) {
+        if (engine == null) return;
+        if (songDuration > 0) newPosMillis = Math.max(0, Math.min(songDuration - 1, newPosMillis));
+        stopChordsBrowsing();                 // the carousel follows the seek
+        seekGeneration++;
+        seekTargetMs = newPosMillis;
+        seekAtMs = android.os.SystemClock.uptimeMillis();
+        engine.seekTo(newPosMillis);
+        if (paused) DefineNewProgress(newPosMillis);
+        if (songDuration > 0) {
+            sb_progressBar.setProgress((int) ((long) newPosMillis * 10000L / songDuration));
+        }
+        tv_currentPos.setText(getTime(newPosMillis));
+        relocateChords(newPosMillis, chordList);
+        // Keep the half metronome phase after seek (engine.seekTo has not yet
+        // updated the published position; the target is passed explicitly)
+        applyMetronomeHalfPhase(newPosMillis);
+        cancelPendingDownbeats();
+    }
+
+    // Chord carousel browsing: dragging moves it freely without seeking; the
+    // magnet then pulls it back to the current beat. Close (<= MAGNET_NEAR
+    // cells) it returns at once; farther it waits longer, so there is time to
+    // read or tap a cell.
+    private static final int MAGNET_NEAR = 2;
+    private static final long MAGNET_BASE_MS = 1500L, MAGNET_PER_CELL_MS = 100L,
+            MAGNET_MAX_MS = 4000L;
+    private boolean browsingChords = false;
+    private final Runnable chordsMagnet = () -> {
+        browsingChords = false;
+        if (rvChords != null && !beatCells.isEmpty()) {
+            rvChords.smoothScrollToPosition(Math.max(0, currentBeatIdx));
+        }
+    };
+
+    /** Schedules the return to the current beat for a release [distance]
+     *  cells away from it. */
+    private void scheduleChordsMagnet(int distance) {
+        if (rvChords == null) return;
+        rvChords.removeCallbacks(chordsMagnet);
+        long delay = distance <= MAGNET_NEAR ? 0L
+                : Math.min(MAGNET_MAX_MS, MAGNET_BASE_MS + MAGNET_PER_CELL_MS * distance);
+        rvChords.postDelayed(chordsMagnet, delay);
+    }
+
+    /** Ends carousel browsing at once (seek, song change): it follows the
+     *  song again from the next scroll. */
+    private void stopChordsBrowsing() {
+        browsingChords = false;
+        if (rvChords != null) rvChords.removeCallbacks(chordsMagnet);
+    }
+
+    /** Jumps the song to the start of beat cell [beatIdx]. */
+    private void seekToBeat(int beatIdx) {
+        if (beatIdx < 0 || beatIdx >= beatCells.size()) return;
+        seekToMs(Math.round(beatCells.get(beatIdx).time * 1000f));
+    }
+
     protected void onStop() {
         super.onStop();
         // The engine keeps its independent click queue; no need to clear it when
@@ -3679,6 +3796,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (loadingCurtain != null) { loadingCurtain.dismissNow(); loadingCurtain = null; }
         if (chordModePill != null) chordModePill.dismissNow();
         DestroyPlayers();
         releaseLyrics();
@@ -3711,6 +3829,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private final PlaybackService.SkipRequestHandler skipRequestHandler =
             delta -> {
                 if (isDestroyed) return false;
+                // Still loading the song behind the curtain: swallow the skip
+                // (a service-side load would supersede the pending one).
+                if (engine == null) return true;
                 runOnUiThread(() -> {
                     if (delta < 0) handlePreviousRequest();
                     else            openAdjacentSong(delta);
@@ -4421,7 +4542,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  fully visible, no pending entry/reveal. */
     private void resetSceneTransitionViews() {
         cancelPendingSceneEntry();
-        cancelSceneSongSwap();
         applyToolbarCompactForScene(false);
         View cover  = findViewById(R.id.v_3d_sceneCover);
         View chrome = findViewById(R.id.fl_3d_sceneChrome);
@@ -4512,22 +4632,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 show3DViewNoAnim();
             }
         } else {
-            if (is3DViewShown) {
-                // Switching from the scene's black veil (song change) into a
-                // song stored with 3D off: close the vista and fade the stems
-                // in instead of popping them over a black frame.
-                View black = findViewById(R.id.v_3d_sceneBlack);
-                boolean fromVeil = isAudio3DScene() && black != null
-                        && black.getVisibility() == View.VISIBLE && black.getAlpha() > 0f;
-                hide3DViewNoAnim();
-                View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
-                if (fromVeil && stemsStack != null) {
-                    stemsStack.setAlpha(0f);
-                    stemsStack.animate().alpha(1f).setDuration(300L)
-                            .setInterpolator(new android.view.animation.DecelerateInterpolator())
-                            .start();
-                }
-            }
+            // Song stored with 3D off: close the vista (behind the loading
+            // curtain on a song change, so nothing pops).
+            if (is3DViewShown) hide3DViewNoAnim();
             // The scene goes inert with 3D off (no orbit / sprite drag, greyed
             // per-stem controls) — apply3DEnabled is not called on this path.
             if (audio3DScene != null) audio3DScene.setInteractionEnabled(false);
@@ -6677,6 +6784,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (chordDiagrams == null) {
             chordDiagrams = new com.jotapeveloper.fision.chords.ChordDiagramController(
                     this, chordDiagramRoot);
+            // Swipe on the stage jumps to the next / previous chord change.
+            chordDiagrams.setSeekListener(this::seekToBeat);
         }
         chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
         chordDiagrams.setShift(currentDisplayShift());
@@ -7412,12 +7521,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  without duplicating the resume / pause logic. */
     private void seekToLyricsPosSec(double startSec) {
         if (engine == null) return;
-        int startMs = (int) Math.max(0.0, startSec * 1000.0);
-        engine.seekTo(startMs);
-        relocateChords(startMs, chordList);
-        applyMetronomeHalfPhase(startMs);
-        cancelPendingDownbeats();
-        if (paused) DefineNewProgress(startMs);
+        seekToMs((int) Math.max(0.0, startSec * 1000.0));
     }
 
     /** Persists the karaoke mode toggle and syncs it with the adapter so the

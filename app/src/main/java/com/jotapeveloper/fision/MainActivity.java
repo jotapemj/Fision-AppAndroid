@@ -1907,9 +1907,17 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         final String path = folder.getAbsolutePath();
         final String name = folder.getName();
         final int    id   = name.hashCode();
-        boolean ok = playbackService.loadSong(path, name, id);
-        if (!ok) return;
+        // Decode off the main thread so the list and the mini-player keep
+        // responding while the song loads.
+        playbackService.loadSongAsync(path, name, id, ok -> {
+            if (ok) applySavedVolumes(id, autoplay);
+        });
+    }
 
+    /** Reads the saved volumes/pan from Room, applies them to the engine and,
+     *  when [autoplay], starts playback afterwards. */
+    private void applySavedVolumes(int id, boolean autoplay) {
+        if (playbackService == null) return;
         // Background: read Room, apply volumes/pan, then play on the main thread
         AppDatabase db = AppDatabase.getInstance(getApplicationContext());
         Executors.newSingleThreadExecutor().execute(() -> {

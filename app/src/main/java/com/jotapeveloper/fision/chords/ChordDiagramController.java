@@ -53,12 +53,30 @@ public final class ChordDiagramController {
     private int lastBeat = -1;
     @Nullable private ChordShapes shapes;
 
+    /** Seek request from a swipe on the stage: start of the chord change at
+     *  beat cell [beatIdx]. */
+    public interface SeekListener { void seekToBeat(int beatIdx); }
+
+    @Nullable private SeekListener seekListener;
+
+    public void setSeekListener(@Nullable SeekListener l) { seekListener = l; }
+
+    /** Swipe: jumps to the start of the next (+1) or previous (-1) chord. */
+    private void onSwipe(int direction) {
+        if (seekListener == null || changes.isEmpty()) return;
+        int cur = shownIdx == Integer.MIN_VALUE ? changeAt(Math.max(0, lastBeat)) : shownIdx;
+        int target = Math.max(0, Math.min(changes.size() - 1, cur + direction));
+        if (target == cur && cur >= 0) return;
+        seekListener.seekToBeat(changes.get(target).beat);
+    }
+
     public ChordDiagramController(Context ctx, View root) {
         this.ctx = ctx;
         prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         instrumentSel = root.findViewById(R.id.sel_chordInstrument);
         zoneSel = root.findViewById(R.id.sel_chordZone);
         stage = root.findViewById(R.id.stage_chordDiagram);
+        stage.setOnSwipeListener(this::onSwipe);
 
         instrumentSel.setOptions(ctx.getString(R.string.chord_diagram_piano),
                 ctx.getString(R.string.chord_diagram_guitar),
@@ -121,9 +139,12 @@ public final class ChordDiagramController {
         lastBeat = beatIdx;
         int idx = changeAt(beatIdx);
         if (idx == shownIdx) return;
-        boolean step = idx == shownIdx + 1 && shownIdx != Integer.MIN_VALUE;
+        boolean known = shownIdx != Integer.MIN_VALUE;
+        boolean stepForward = known && idx == shownIdx + 1;
+        boolean stepBack = known && idx == shownIdx - 1;
         shownIdx = idx;
-        if (step) stage.advance(card(idx), card(idx + 1));
+        if (stepForward) stage.advance(card(idx), card(idx + 1));
+        else if (stepBack) stage.retreat(card(idx), card(idx + 1));
         else stage.show(card(idx), card(idx + 1));
     }
 

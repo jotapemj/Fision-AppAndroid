@@ -2,23 +2,33 @@ package com.jotapeveloper.fision;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.jotapeveloper.fision.brand.FisionSplashView;
+
+/**
+ * Animated splash (nucleus, neutron impact, fission, wordmark), then the song
+ * list with a fade. The system splash of Android 12+ is plain black with no
+ * icon (SplashTheme), so it flows straight into this animation.
+ */
 public class SplashScreenActivity extends AppCompatActivity {
 
-    private static final int DURATION_SPLASH = 1000;
+    private boolean launched;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        new Handler().postDelayed(new Runnable(){
-            public void run(){
-                // Close this activity and start main activity
-                Intent intent = new Intent(SplashScreenActivity.this, MainActivity.class);
-                startActivity(intent);
-                finish();
-            };
-        }, DURATION_SPLASH);
+        FisionSplashView splash = new FisionSplashView(this);
+        splash.setOnFinished(this::openMain);
+        setContentView(splash);
+    }
+
+    private void openMain() {
+        if (launched || isFinishing()) return;
+        launched = true;
+        startActivity(new Intent(this, MainActivity.class));
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        finish();
     }
 }

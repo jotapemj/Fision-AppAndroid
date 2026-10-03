@@ -209,12 +209,19 @@ is used as a match target.
 ![](./docs/screenshots/player.png)
 
 
-The player screen is the main working surface. From top to bottom and
+The player screen is the main working surface. While a song loads (on
+open or when changing songs) a black curtain shows the animated Fision
+mark; the stems are decoded in the background, so the animation never
+freezes, and playback starts as the curtain lifts. From top to bottom and
 side to side you find:
 
 - **Chord section with bars**: a horizontal strip of beat cells that
   scrolls in sync with the song. Each cell shows the chord that plays at
-  that beat when available. Bar lines are drawn at each downbeat.
+  that beat when available. Bar lines are drawn at each downbeat. Elapsed
+  beats keep a subtle tint, with a stronger trail over the last bar.
+  Tapping a cell jumps the song to that beat; dragging the strip browses
+  ahead or back without jumping, and it returns to the current beat on
+  its own shortly after release.
 - **Stem controls**: one row per stem, with an icon that toggles mute,
   a volume slider, a restore button that animates the slider back to
   the default value, and a menu button that opens the stem bottom
@@ -232,8 +239,9 @@ side to side you find:
   room. The top one opens the chord diagrams view: the current chord and
   the next one drawn for piano, guitar or ukulele, with a fret zone
   selector (open, 3-7, 7-12 or automatic) for the fretted instruments.
-  Guitar and ukulele shapes come from chords-db (MIT). While the diagrams
-  are open, the button closes them.
+  Guitar and ukulele shapes come from chords-db (MIT). Swiping the
+  diagrams jumps to the next or previous chord. While the diagrams are
+  open, the button closes them.
 - **Lyrics button**: opens the lyrics overlay for the current song.
 - **Audio 3D button**: switches into the 3D positioning view.
 

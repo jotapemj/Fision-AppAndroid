@@ -80,6 +80,40 @@ public class ChordStageView extends FrameLayout {
         for (Card card : cards) card.name.setTypeface(tf);
     }
 
+    /** Swipe along the stage axis: +1 next chord, -1 previous chord. */
+    public interface OnSwipeListener { void onSwipe(int direction); }
+
+    private static final float SWIPE_MIN_DP = 40f;
+    @Nullable private OnSwipeListener swipeListener;
+    private float downX, downY;
+
+    public void setOnSwipeListener(@Nullable OnSwipeListener l) { swipeListener = l; }
+
+    // Fretted: left = next, right = previous. Piano (stacked): up = next.
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent e) {
+        if (swipeListener == null) return super.onTouchEvent(e);
+        switch (e.getActionMasked()) {
+            case android.view.MotionEvent.ACTION_DOWN:
+                downX = e.getX();
+                downY = e.getY();
+                return true;
+            case android.view.MotionEvent.ACTION_UP: {
+                float dx = e.getX() - downX, dy = e.getY() - downY;
+                float along = mode == Mode.PIANO ? dy : dx;
+                float across = mode == Mode.PIANO ? dx : dy;
+                float min = SWIPE_MIN_DP * getResources().getDisplayMetrics().density;
+                if (Math.abs(along) >= min && Math.abs(along) > Math.abs(across)) {
+                    performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                    swipeListener.onSwipe(along < 0 ? +1 : -1);
+                }
+                return true;
+            }
+            default:
+                return true;
+        }
+    }
+
     public void setMode(Mode mode, int strings) {
         this.mode = mode;
         this.strings = strings;
@@ -111,6 +145,22 @@ public class ChordStageView extends FrameLayout {
         curCard = nextCard;
         nextCard = spareCard;
         spareCard = oldCur;
+    }
+
+    /** Reverse of {@link #advance}: [cur] (the previous chord) slides back in
+     *  as current, the current card becomes the next one and the next leaves. */
+    public void retreat(CardData cur, CardData next) {
+        endAnimations();
+        Card back = cards[spareCard], oldCur = cards[curCard], oldNext = cards[nextCard];
+        back.bind(cur);
+        place(back, OUT);
+        animateTo(back, CUR);
+        animateTo(oldCur, NEXT);
+        animateTo(oldNext, IN);
+        int spare = spareCard;
+        spareCard = nextCard;
+        nextCard = curCard;
+        curCard = spare;
     }
 
     private void endAnimations() {

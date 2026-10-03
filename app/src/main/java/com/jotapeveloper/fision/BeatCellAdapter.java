@@ -14,8 +14,9 @@ import java.util.List;
 
 /**
  * Adapter of the rhythm visualizer. Each cell = one beat.
- * The beat currently playing lights up; past beats of the current bar
- * keep a faint trail; the rest stay at the base color.
+ * The beat currently playing lights up; the last bar's worth of elapsed beats
+ * keeps a trail; every earlier elapsed beat a subtle played tint; beats still
+ * to come stay at the base color.
  */
 public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHolder> {
 
@@ -39,11 +40,21 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     // Colors
     private static final int COLOR_BASE      = Color.parseColor("#262626");
     private static final int COLOR_DOWNBEAT  = Color.parseColor("#3A3A3A");
+    /** Accent share of the played-history tint (subtle, below the trail). */
+    private static final float PLAYED_TINT   = 0.22f;
+
+    /** Tap on a beat cell (jump the song to that beat). */
+    public interface OnCellClickListener { void onCellClick(int position); }
+    @androidx.annotation.Nullable private OnCellClickListener cellClickListener;
 
     public BeatCellAdapter(Context context, List<BeatCell> cells, int beatsPerBar) {
         this.context     = context;
         this.cells       = cells;
         this.beatsPerBar = beatsPerBar;
+    }
+
+    public void setOnCellClickListener(@androidx.annotation.Nullable OnCellClickListener l) {
+        cellClickListener = l;
     }
 
     /** Switches notation (American/Latin) and refreshes the whole recycler. */
@@ -70,21 +81,29 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     public void setHighlight(int beatIndex) {
         int old = currentBeatIndex;
         currentBeatIndex = beatIndex;
-        // Repaint the affected range: old bar + new bar (covers the transition
-        // between bars so the trail does not switch off abruptly).
-        int min = old >= 0 ? Math.min(old, beatIndex) : beatIndex;
-        int max = old >= 0 ? Math.max(old, beatIndex) : beatIndex;
-        if (max < 0) return;
-        int barStart = (min / beatsPerBar) * beatsPerBar;
-        int barEnd   = Math.min(cells.size() - 1, ((max / beatsPerBar) + 1) * beatsPerBar - 1);
-        for (int i = barStart; i <= barEnd; i++) notifyItemChanged(i);
+        // Every cell between the old and the new position changes state
+        // (played history), plus one bar ahead of the highest for the trail.
+        // A reset (-1) or a first highlight repaints from the start.
+        int min = (old >= 0 && beatIndex >= 0) ? Math.min(old, beatIndex) : 0;
+        int max = Math.max(old, beatIndex);
+        if (max < 0 || cells.isEmpty()) return;
+        int from = Math.max(0, min - beatsPerBar);
+        int to   = Math.min(cells.size() - 1, max + beatsPerBar);
+        if (to >= from) notifyItemRangeChanged(from, to - from + 1);
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(context).inflate(R.layout.beat_cell_item, parent, false);
-        return new ViewHolder(v);
+        ViewHolder h = new ViewHolder(v);
+        v.setOnClickListener(view -> {
+            int pos = h.getAdapterPosition();
+            if (pos != RecyclerView.NO_POSITION && cellClickListener != null) {
+                cellClickListener.onCellClick(pos);
+            }
+        });
+        return h;
     }
 
     @Override
@@ -100,10 +119,12 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
         holder.v_marker.setVisibility(cell.isDownbeat ? View.VISIBLE : View.GONE);
         holder.v_marker.setBackgroundColor(active);
 
-        // Background color depending on state.
-        // Beats of the current bar already elapsed -> trail.
-        // The last beat of the previous bar stays in trail color until the next bar
-        // begins (avoids switching it off too early).
+        // Background color depending on state:
+        // - current beat: full accent;
+        // - the last bar's worth of elapsed beats: trail (stronger);
+        // - every earlier elapsed beat: played (subtle accent tint), so the
+        //   carousel shows how far the song has gone with no hard cut;
+        // - beats still to come: base / downbeat.
         int trail = androidx.core.graphics.ColorUtils.blendARGB(active, 0xFF000000, 0.55f);
         int color;
         if (position == currentBeatIndex) {
@@ -112,6 +133,9 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
                 && position < currentBeatIndex
                 && currentBeatIndex - position < beatsPerBar) {
             color = trail;
+        } else if (currentBeatIndex >= 0 && position < currentBeatIndex) {
+            color = androidx.core.graphics.ColorUtils.blendARGB(
+                    cell.isDownbeat ? COLOR_DOWNBEAT : COLOR_BASE, active, PLAYED_TINT);
         } else if (cell.isDownbeat) {
             color = COLOR_DOWNBEAT;
         } else {

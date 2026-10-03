@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Seek 5 s back: open arc with an arrowhead and a "5" (Yu Gothic UI
-     outline). Line weight 0.75 like the other bar tools. -->
+     outline, emboldened with a thin stroke). Line weight 1.2 like the other
+     bar tools. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -10,11 +11,14 @@
 
     <path
         android:strokeColor="@android:color/white"
-        android:strokeWidth="0.75"
+        android:strokeWidth="1.2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:pathData="M10.5,5.1A8,8 0,1 1,4.1 11.6M12.6,2.9L10.3,5.1L12.6,7.3" />
     <path
         android:fillColor="@android:color/white"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="0.5"
+        android:strokeLineJoin="round"
         android:pathData="M13.77 14.37Q13.77 14.83 13.61 15.2Q13.45 15.58 13.16 15.84Q12.87 16.11 12.45 16.26Q12.04 16.4 11.54 16.4Q10.66 16.4 10.23 16.14V15.37Q10.87 15.79 11.55 15.79Q11.89 15.79 12.16 15.68Q12.44 15.58 12.63 15.4Q12.82 15.22 12.93 14.97Q13.03 14.72 13.03 14.41Q13.03 13.8 12.62 13.45Q12.2 13.1 11.42 13.1Q11.29 13.1 11.15 13.11Q11.01 13.11 10.87 13.12Q10.73 13.12 10.6 13.13Q10.46 13.14 10.35 13.15L10.57 10H13.48V10.65H11.19L11.06 12.5Q11.2 12.49 11.36 12.48Q11.52 12.47 11.64 12.47Q12.14 12.47 12.54 12.61Q12.93 12.74 13.21 12.98Q13.48 13.22 13.62 13.58Q13.77 13.93 13.77 14.37Z" />
 </vector>

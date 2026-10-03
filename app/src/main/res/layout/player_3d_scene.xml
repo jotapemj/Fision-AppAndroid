@@ -60,18 +60,6 @@
         android:visibility="gone"
         app:fadeEdge="none" />
 
-    <!-- Black veil over the scene while a song change swaps sprites, room
-         colors and the wall card (fade to black, swap, fade back in). -->
-    <View
-        android:id="@+id/v_3d_sceneBlack"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/black"
-        android:alpha="0"
-        android:visibility="gone"
-        android:clickable="false"
-        android:focusable="false" />
-
     <com.jotapeveloper.fision.NebulaBackdropView
         android:id="@+id/v_3d_sceneFadeTop"
         android:layout_width="match_parent"

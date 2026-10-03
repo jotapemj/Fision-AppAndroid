@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lyrics: three shortening text lines and a beamed pair of eighth notes. -->
+<!-- Lyrics: three shortening text lines and a beamed pair of eighth notes.
+     Shown at 32dp: stroke 0.9 renders the common 1.2dp weight of the 24dp
+     bar icons. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -9,7 +11,7 @@
 
     <path
         android:strokeColor="@android:color/white"
-        android:strokeWidth="0.75"
+        android:strokeWidth="0.9"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:pathData="M2.5,4.5H21.5M2.5,8.5H17M2.5,12.5H11
