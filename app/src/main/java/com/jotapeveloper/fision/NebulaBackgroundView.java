@@ -72,16 +72,28 @@ public class NebulaBackgroundView extends View {
      *  (e.g. edge fades over a SurfaceView). Invalidated with this view. */
     private final java.util.List<View> mirrors = new java.util.ArrayList<>();
 
+    /** Redraw rate. The blobs drift slowly, so 30 fps reads as smooth while
+     *  costing a quarter of a 120 Hz panel. */
+    private static final long FRAME_MS = 1000L / 30L;
+    /** The delayed callback lands on the first vsync after the delay; the
+     *  margin keeps it from slipping one vsync past the frame period. */
+    private static final long FRAME_DELAY_MS = FRAME_MS - 4L;
+    /** Pulse decay rate per second (~100 ms half-life). */
+    private static final float PULSE_DECAY_PER_SEC = 7f;
+    private long lastFrameNanos = 0L;
+
     private final Choreographer.FrameCallback frameCb = new Choreographer.FrameCallback() {
         @Override public void doFrame(long frameTimeNanos) {
             if (!running) return;
-            // Decay pulse toward floor (~200ms half-life), once per frame so
-            // extra draws from mirrors do not speed it up.
-            float dt = 1f / 60f;
-            pulse = PULSE_FLOOR + (pulse - PULSE_FLOOR) * (float) Math.exp(-dt * 3.5f);
+            // Decay pulse toward floor with the real elapsed time, once per
+            // frame so extra draws from mirrors do not speed it up.
+            float dt = lastFrameNanos == 0L ? FRAME_MS / 1000f
+                    : Math.min(0.1f, (frameTimeNanos - lastFrameNanos) / 1_000_000_000f);
+            lastFrameNanos = frameTimeNanos;
+            pulse = PULSE_FLOOR + (pulse - PULSE_FLOOR) * (float) Math.exp(-dt * PULSE_DECAY_PER_SEC);
             if (pulse < 0.005f) pulse = 0f;
             invalidateWithMirrors();
-            Choreographer.getInstance().postFrameCallback(this);
+            Choreographer.getInstance().postFrameCallbackDelayed(this, FRAME_DELAY_MS);
         }
     };
 
@@ -201,6 +213,7 @@ public class NebulaBackgroundView extends View {
     public void setNebulaEnabled(boolean enabled, boolean animate) {
         animate().cancel();
         if (enabled) {
+            wanted = true;
             if (getVisibility() != VISIBLE) {
                 setAlpha(0f);
                 setVisibility(VISIBLE);
@@ -219,11 +232,13 @@ public class NebulaBackgroundView extends View {
             pendingFadeIn = false;
             if (animate) {
                 animate().alpha(0f).setDuration(400).withEndAction(() -> {
+                    wanted = false;
                     setVisibility(GONE);
                     stop();
                     invalidateWithMirrors();
                 }).start();
             } else {
+                wanted = false;
                 setAlpha(0f);
                 setVisibility(GONE);
                 stop();
@@ -233,9 +248,12 @@ public class NebulaBackgroundView extends View {
     }
 
     private void start() {
-        if (running) return;
+        if (running || !wanted || !aggregatedVisible) return;
         running = true;
-        startNanos = System.nanoTime();
+        // Keep the orbit clock across stop/start (window hidden and shown
+        // again) so the blobs do not jump back to their initial positions.
+        if (startNanos == 0L) startNanos = System.nanoTime();
+        lastFrameNanos = 0L;
         Choreographer.getInstance().postFrameCallback(frameCb);
     }
 
@@ -244,9 +262,16 @@ public class NebulaBackgroundView extends View {
         Choreographer.getInstance().removeFrameCallback(frameCb);
     }
 
-    @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        if (getVisibility() == VISIBLE) start();
+    /** Enabled by the user (the frame loop also needs the view on screen). */
+    private boolean wanted = false;
+    private boolean aggregatedVisible = false;
+
+    /** Own visibility, every ancestor and the window: the loop stops while
+     *  the player is in the background or the screen is off. */
+    @Override public void onVisibilityAggregated(boolean isVisible) {
+        super.onVisibilityAggregated(isVisible);
+        aggregatedVisible = isVisible;
+        if (isVisible) start(); else stop();
     }
 
     @Override protected void onDetachedFromWindow() {
