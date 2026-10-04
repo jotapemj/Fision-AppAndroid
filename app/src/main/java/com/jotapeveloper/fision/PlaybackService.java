@@ -855,9 +855,17 @@ public class PlaybackService extends Service {
                 }
                 return;
             }
+            // Notification progress ~1x per second, only while the screen is
+            // on (nobody sees it otherwise).
+            if (++notificationTicks >= 2) {
+                notificationTicks = 0;
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                if (pm == null || pm.isInteractive()) refreshNotificationProgress();
+            }
             mainHandler.postDelayed(this, 500);
         }
     };
+    private int notificationTicks = 0;
 
     /** Single source of truth for the end-of-song transition, shared by the
      *  service watcher and PlayerActivity's fast UI timer. Encodes the combined
@@ -1086,8 +1094,8 @@ public class PlaybackService extends Service {
         }
     }
 
-    /** Refreshes the progress in the notification. The UI calls it every ~1s. */
-    public void refreshNotificationProgress() {
+    /** Refreshes the progress in the notification (end-of-song watcher, ~1s). */
+    private void refreshNotificationProgress() {
         if (builder == null || notificationManager == null || engine == null) return;
         builder.setProgress((int) songDurationMs, (int) engine.getCurrentPositionMs(), false);
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)

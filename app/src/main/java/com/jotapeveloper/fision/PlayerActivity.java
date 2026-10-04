@@ -165,6 +165,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private android.widget.ProgressBar pb_stemsLoading;
 
     private Timer UpdateProgressBar;
+    // The song wants the UI timer (set once loaded) vs. the Activity is started.
+    private boolean progressTimerWanted = false;
+    private boolean uiStarted = false;
+    private volatile boolean resyncOnNextTick = false;
     boolean relocating = false;
     boolean movingChords = false;
     boolean chordsActive = true;
@@ -351,6 +355,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        uiStarted = true;
+        // Back on screen: the first tick resyncs bar, clock and beat at once.
+        resyncOnNextTick = true;
+        startProgressTimer(0);
         // Pick up an accent change performed while the player was in the
         // background; recreate re-inflates layouts with the new palette.
         com.jotapeveloper.fision.design.AccentColorManager.get(this)
@@ -713,13 +721,33 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void setupTimers(){
+        progressTimerWanted = true;
+        startProgressTimer(500);
+    }
+
+    /** Runs the UI timer only while the Activity is started: the tick only
+     *  drives visuals. End of song and the notification belong to the
+     *  service; downbeat clicks are queued in the engine ahead of time. */
+    private void startProgressTimer(long delayMs) {
+        if (!uiStarted || !progressTimerWanted || UpdateProgressBar != null) return;
         UpdateProgressBar = new Timer();
         // 30 ms period keeps the beat-crossing detection tight enough that the
         // nebula pulse and its optional haptic feel locked to the audio (jitter
-        // within musical perception threshold ≈ 30 ms). Cost is negligible: the
-        // tick reads the engine position, compares against beatCells, and only
-        // scrolls the chords recycler when the beat index actually changes.
-        UpdateProgressBar.scheduleAtFixedRate(new UpdateProgressBarTask(), 500, 30);
+        // within musical perception threshold ≈ 30 ms).
+        UpdateProgressBar.scheduleAtFixedRate(new UpdateProgressBarTask(), delayMs, 30);
+    }
+
+    private void cancelProgressTimer() {
+        if (UpdateProgressBar != null) {
+            UpdateProgressBar.cancel();
+            UpdateProgressBar.purge();
+            UpdateProgressBar = null;
+        }
+    }
+
+    private void stopProgressTimer() {
+        progressTimerWanted = false;
+        cancelProgressTimer();
     }
     private void setupRecyclerViews() {
         // Dynamic: the list reflects the stems really loaded in the engine
@@ -2331,7 +2359,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         curtainResolves = true;               // a real load: the curtain resolves
 
         // 1) Stop timer to avoid callbacks with mixed state
-        if (UpdateProgressBar != null) { UpdateProgressBar.cancel(); UpdateProgressBar = null; }
+        stopProgressTimer();
 
         // 2) Reset song fields
         SongFolder = newFolder;
@@ -2609,14 +2637,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         rvChords.scrollToPosition(0);
     }
 
-    private static final int NOTIFICATION_TICK_THRESHOLD = 10; // 10 * 100ms = ~1s
-    private int notificationTickCounter = 0;
-
     private class UpdateProgressBarTask extends TimerTask {
         @Override
         public void run() {
             if (isDestroyed) return;
-            if(!paused) {
+            // One tick even while paused after coming back on screen: the
+            // position may have changed in the background (notification,
+            // end of song, seek from the mini-player).
+            if (!paused || resyncOnNextTick) {
+                resyncOnNextTick = false;
                 executeFunction();
             }
         }
@@ -2660,7 +2689,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // End of song: delegate to the service so repeat + playlist logic
             // stays in one place. The service returns what happened and the UI
             // updates accordingly (loop → reset counters only; stop → full fade).
-            if (songDuration > 0 && CurrentPos >= songDuration - 250) {
+            if (!paused && songDuration > 0 && CurrentPos >= songDuration - 250) {
                 PlaybackService.EndOfSongResult result =
                         playbackService != null
                                 ? playbackService.handleSongEnded()
@@ -2687,15 +2716,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 // (onSongLooped / SkipRequestHandler) so no work is needed here.
                 return;
             }
-
-            // Notification: the service refreshes it ~1x per second
-            notificationTickCounter++;
-            if (notificationTickCounter >= NOTIFICATION_TICK_THRESHOLD) {
-                notificationTickCounter = 0;
-                if (playbackService != null) playbackService.refreshNotificationProgress();
-            }
-
-
 
             final int UiPos = PerceivedPos;
             final int tickGeneration = seekGeneration;
@@ -3013,12 +3033,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Only releases the Activity's local resources. The service keeps running. */
     private void DestroyPlayers() {
         isDestroyed = true;
-
-        if (UpdateProgressBar != null) {
-            UpdateProgressBar.cancel();
-            UpdateProgressBar.purge();
-            UpdateProgressBar = null;
-        }
+        stopProgressTimer();
     }
 
     public void enableMetronome(
@@ -3786,8 +3801,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     protected void onStop() {
         super.onStop();
-        // The engine keeps its independent click queue; no need to clear it when
-        // go to background — the click keeps sounding in sync with the song.
+        // Nothing on screen to update. The engine keeps its independent click
+        // queue, so the click keeps sounding in sync with the song.
+        uiStarted = false;
+        cancelProgressTimer();
     }
 
     protected void onRestart() {
