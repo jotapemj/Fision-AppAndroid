@@ -76,7 +76,7 @@
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="@font/yugothic_ui_regular"
-                    android:marqueeRepeatLimit="marquee_forever"
+                    android:marqueeRepeatLimit="3"
                     android:scrollHorizontally="true"
                     android:singleLine="true"
                     android:text=""

@@ -1047,7 +1047,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         tv_duration = findViewById(R.id.tv_duration);
         tv_currentPos = findViewById(R.id.tv_currentPos);
         tv_SongTitle = findViewById(R.id.tv_SongTitle);
-        tv_SongTitle.setSelected(true);
+        tv_SongTitle.setMarqueeRepeatLimit(TITLE_MARQUEE_PASSES);
+        restartTitleMarquee();
         tv_bpm = findViewById(R.id.tv_bpm);
 
         // Popup menu setup
@@ -2903,6 +2904,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         FolderName = shown;
         tv_SongTitle.setText(FolderName);
+        restartTitleMarquee();
         // 3D scene song card: mirror the same title/artist on the back
         // wall screen. Static, refreshed only when metadata changes.
         pushSongCardToScene(title, artist);
@@ -3797,6 +3799,45 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void seekToBeat(int beatIdx) {
         if (beatIdx < 0 || beatIdx >= beatCells.size()) return;
         seekToMs(Math.round(beatCells.get(beatIdx).time * 1000f));
+    }
+
+    // === Title marquee ===
+    // A running marquee redraws every vsync, so it scrolls a few passes and
+    // rests; any touch on the player starts it again once it has stopped.
+    private static final int TITLE_MARQUEE_PASSES = 3;
+    private long titleMarqueeBusyUntil = 0L;
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        if (ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN
+                && android.os.SystemClock.uptimeMillis() > titleMarqueeBusyUntil) {
+            restartTitleMarquee();
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private void restartTitleMarquee() {
+        if (tv_SongTitle == null) return;
+        tv_SongTitle.setSelected(false);
+        tv_SongTitle.setSelected(true);
+        tv_SongTitle.post(() -> titleMarqueeBusyUntil =
+                android.os.SystemClock.uptimeMillis() + estimateTitleMarqueeMs());
+    }
+
+    /** Duration of the passes, mirroring the framework marquee: 1.2 s start
+     *  delay, 30 dp/s, each pass scrolls text width + a third of the view
+     *  width, 1.2 s rest between passes. Errs long, so a touch never restarts
+     *  a marquee still running (the text would jump back). 0 = text fits. */
+    private long estimateTitleMarqueeMs() {
+        int viewW = tv_SongTitle.getWidth() - tv_SongTitle.getTotalPaddingLeft()
+                - tv_SongTitle.getTotalPaddingRight();
+        CharSequence text = tv_SongTitle.getText();
+        if (viewW <= 0 || text == null) return 0L;
+        float textW = tv_SongTitle.getPaint().measureText(text, 0, text.length());
+        if (textW <= viewW) return 0L;
+        float pxPerSec = 30f * getResources().getDisplayMetrics().density;
+        long passMs = (long) ((textW + viewW / 3f) / pxPerSec * 1000f) + 1200L;
+        return 1200L + TITLE_MARQUEE_PASSES * passMs + 500L;
     }
 
     protected void onStop() {
