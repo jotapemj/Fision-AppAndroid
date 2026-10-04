@@ -784,7 +784,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // No item animator: avoids the grey flicker on notifyItemChanged
         rvChords.setItemAnimator(null);
         helper.attachToRecyclerView(rvChords);
-
         // Asymmetric padding: the active tile (snap) sits skewed to the left
         // (~30% of the free space on the left, ~70% on the right).
         // Item width = 44dp + 14dp marginStart + 2dp marginEnd = 60dp
@@ -2739,8 +2738,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                         }
                     }
 
+                    // The clock changes once per second: setText rebuilds the
+                    // text layout, so skip the ticks that would not change it.
                     String tvNewCurrentPos = getTime(shownPos);
-                    tv_currentPos.setText(tvNewCurrentPos);
+                    if (!tvNewCurrentPos.contentEquals(tv_currentPos.getText())) {
+                        tv_currentPos.setText(tvNewCurrentPos);
+                    }
 
                     // Current beat: find the last beat whose time <= shownPos
                     // Keeps running while the carousel is browsed (highlight,
@@ -2781,7 +2784,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                                 triggerBeatHaptic(beatIntensity);
                             }
                             final int targetIdx = idx;
-                            if (!browsingChords) rvChords.smoothScrollToPosition(targetIdx);
+                            if (!browsingChords) scrollChordsTo(targetIdx);
                             // Delay the highlight so the tile lights up once it has already
                             // scrolled to the center. Cancel the previous one if still alive.
                             if (pendingTileHighlight != null) {
@@ -2976,6 +2979,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         set.addTransition(bounds);
         set.addTransition(fade);
         set.setOrdering(androidx.transition.TransitionSet.ORDERING_TOGETHER);
+        // The tiles fade with their container, not one by one: on show the
+        // recycler lays them out at the current beat, and per-tile fades would
+        // cross-fade the old and new tiles on top of each other.
+        if (rvChords != null) set.excludeChildren(rvChords, true);
         androidx.transition.TransitionManager.beginDelayedTransition(parent, set);
 
         if (chordsActive){
@@ -3699,6 +3706,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         tv_bpm.setText("BPM: " + bpm);
     }
 
+    // Carousel hidden: no smooth scroll (on a hidden recycler it keeps
+    // animating every frame). The target is left as the layout manager's
+    // pending position instead, so the first layout once shown already
+    // places the current beat in the active slot (offset 0 = start padding).
+    private void scrollChordsTo(int idx) {
+        if (rvChords == null) return;
+        if (rvChords.isShown()) {
+            rvChords.smoothScrollToPosition(idx);
+        } else if (rvChords.getLayoutManager() instanceof LinearLayoutManager) {
+            ((LinearLayoutManager) rvChords.getLayoutManager())
+                    .scrollToPositionWithOffset(Math.max(0, idx), 0);
+        }
+    }
+
     public void relocateChords(int pos, List<ChordsFile> chordList ){
         relocating = true;
         // Position the visualizer at the beat matching pos (ms)
@@ -3709,8 +3730,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             else break;
         }
         int show = Math.max(0, idx);
-        if (rvChords != null) rvChords.smoothScrollToPosition(show);
         currentBeatIdx = idx;
+        scrollChordsTo(show);
         // Cancel the timer's pending callback so it does not overwrite the seek highlight
         if (pendingTileHighlight != null && rvChords != null) {
             rvChords.removeCallbacks(pendingTileHighlight);

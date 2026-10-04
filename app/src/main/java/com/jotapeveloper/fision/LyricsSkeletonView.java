@@ -57,19 +57,16 @@ public class LyricsSkeletonView extends View {
         shimmerPaint.setColor(Color.WHITE);
     }
 
-    @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        start();
-    }
-
     @Override protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         stop();
     }
 
-    @Override protected void onVisibilityChanged(View changedView, int visibility) {
-        super.onVisibilityChanged(changedView, visibility);
-        if (visibility == VISIBLE) start(); else stop();
+    /** Animates only while really visible: own visibility, every ancestor
+     *  and the window. A hidden lyrics overlay leaves it idle. */
+    @Override public void onVisibilityAggregated(boolean isVisible) {
+        super.onVisibilityAggregated(isVisible);
+        if (isVisible) start(); else stop();
     }
 
     private void start() {
