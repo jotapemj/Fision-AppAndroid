@@ -17,9 +17,19 @@
     android:clickable="true"
     android:focusable="true">
 
-    <!-- 1) Filament-backed 3D scene: head model + stem sprites live here. -->
-    <io.github.sceneview.SceneView
-        android:id="@+id/v_3d_scene"
+    <!-- 1) Filament-backed 3D scene: head model + stem sprites live here.
+             Inflated as a build step (engine start), after the chrome. -->
+    <ViewStub
+        android:id="@+id/stub_3d_sceneView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:inflatedId="@+id/v_3d_scene"
+        android:layout="@layout/player_3d_scene_view" />
+
+    <!-- Loading panel slot: the embedded spinner surface is added here while
+         the scene builds (under the controls, over the scene surface). -->
+    <FrameLayout
+        android:id="@+id/fl_3d_sceneLoading"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Filament-backed 3D scene (head model + stem sprites). Inflated from
+     stub_3d_sceneView as one build step: creating it starts the engine. -->
+<com.jotapeveloper.fision.audio3d.FisionSceneView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/v_3d_scene"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />

@@ -164,7 +164,15 @@
             <!-- Overlaid 3D view: covers the whole central area from toolbar
                  to bottomLayout, including the chords_container height. -->
             <include layout="@layout/player_3d_view" />
-            <include layout="@layout/player_3d_scene" />
+            <!-- Filament scene, inflated on first use (PlayerActivity.
+                 ensureSceneInflated): a SurfaceView in the tree costs work
+                 on every frame even while hidden, and the engine is heavy. -->
+            <ViewStub
+                android:id="@+id/stub_3d_scene"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:inflatedId="@+id/view3DScene_root"
+                android:layout="@layout/player_3d_scene" />
 
             <!-- Overlaid lyrics view: same coverage as the ITD view above. -->
             <include layout="@layout/player_lyrics_view" />

@@ -345,7 +345,49 @@ class Audio3DSceneController(
     // the tint is baked into the texture and the "rough" read comes from
     // albedo variation (cork granules, carpet loops).
     /** Deviation fields per pattern, generated on first use. */
-    private val patternFields = HashMap<SurfacePattern, FloatArray>()
+    // Filled on the bake thread; the debug pattern picker reads it on main.
+    private val patternFields = java.util.concurrent.ConcurrentHashMap<SurfacePattern, FloatArray>()
+
+    // --- Off-main baking --------------------------------------------------
+    // Procedural textures, the song card and the TV backlight are pure CPU
+    // work on bitmaps: they are computed on a single background thread and
+    // only the upload to Filament runs on the main thread. Opening the scene
+    // or switching songs no longer blocks the UI on them. Until a bake lands
+    // the surfaces show a flat placeholder of the same size (a Filament
+    // texture keeps the size it was built with); the scene counts as warm
+    // only once every pending bake is applied (see checkWarm).
+    private val bakeExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "SceneBake").apply { priority = Thread.NORM_PRIORITY - 1 }
+    }
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var released = false
+    private var bakesInFlight = 0
+    private var roomBakeGen = 0
+    private var cardBakeGen = 0
+
+    /** Runs [work] on the bake thread and [apply] with its result on the
+     *  main thread (dropped once the controller is released). */
+    private fun <T> bakeAsync(work: () -> T, apply: (T) -> Unit) {
+        if (released) return
+        bakesInFlight++
+        try {
+            bakeExecutor.execute {
+                val result = runCatching(work)
+                mainHandler.post {
+                    bakesInFlight--
+                    if (released) return@post
+                    result.onSuccess(apply).onFailure { Log.w(TAG, "scene bake failed", it) }
+                    // Two frames for the upload to reach the screen.
+                    bakeVisibleAtFrame = framesRendered + 2
+                    wake()
+                    checkWarm()
+                    checkFrameWaiters()
+                }
+            }
+        } catch (t: java.util.concurrent.RejectedExecutionException) {
+            bakesInFlight--
+        }
+    }
     private var wallTexture: com.google.android.filament.Texture? = null
     private var ceilingTexture: com.google.android.filament.Texture? = null
     private var floorTexture: com.google.android.filament.Texture? = null
@@ -465,28 +507,51 @@ class Audio3DSceneController(
         }
     }
 
-    /** Re-bakes wall, ceiling and floor textures from the cached fields
-     *  with the current accent and tuning. */
-    private fun rebakeRoomTextures() {
-        val engine = sceneView.engine
-        val accent = roomAccent
-        runCatching {
-            fun rebake(tex: com.google.android.filament.Texture?, field: FloatArray?,
-                       tint: Int, contrast: Float) {
-                if (tex == null || field == null) return
-                tex.setBitmap(engine, bakeSurface(field, tint, contrast))
-                tex.generateMipmaps(engine)
-            }
-            val wf = surfaceField(tuning.wallPattern, floor = false)
-            rebake(wallTexture, wf, wallTintFor(accent), tuning.wallContrast)
-            rebake(ceilingTexture, wf, ceilingTintFor(accent), tuning.wallContrast)
-            rebake(floorTexture, surfaceField(tuning.floorPattern, floor = true),
-                floorTintFor(accent), tuning.floorContrast)
+    /** Baked room surfaces, ready to upload. */
+    private class RoomBitmaps(
+        val wall: Bitmap, val ceiling: Bitmap, val floor: Bitmap,
+        val panel: Bitmap, val trap: Bitmap
+    )
+
+    /** Pure bitmap work (bake thread): every room surface for [accent]. */
+    private fun bakeRoomBitmaps(accent: Int): RoomBitmaps {
+        val wf = surfaceField(tuning.wallPattern, floor = false)
+        return RoomBitmaps(
+            wall = bakeSurface(wf, wallTintFor(accent), tuning.wallContrast),
+            ceiling = bakeSurface(wf, ceilingTintFor(accent), tuning.wallContrast),
+            floor = bakeSurface(surfaceField(tuning.floorPattern, floor = true),
+                floorTintFor(accent), tuning.floorContrast),
             // Panels and traps keep their own colors (no accent).
-            panelTexture?.let { it.setBitmap(engine, bakePanelSurface()); it.generateMipmaps(engine) }
-            trapTexture?.let { it.setBitmap(engine, bakeTrapSurface()); it.generateMipmaps(engine) }
-        }.onFailure { Log.w(TAG, "room re-tint failed", it) }
+            panel = bakePanelSurface(),
+            trap = bakeTrapSurface()
+        )
     }
+
+    /** Re-bakes wall, ceiling, floor, panel and trap textures from the
+     *  cached fields with the current accent and tuning, off the main
+     *  thread; the latest request wins. */
+    private fun rebakeRoomTextures() {
+        val gen = ++roomBakeGen
+        val accent = roomAccent
+        bakeAsync({ bakeRoomBitmaps(accent) }) { b ->
+            if (gen != roomBakeGen) return@bakeAsync
+            val engine = sceneView.engine
+            runCatching {
+                for ((tex, bmp) in listOf(wallTexture to b.wall, ceilingTexture to b.ceiling,
+                        floorTexture to b.floor, panelTexture to b.panel, trapTexture to b.trap)) {
+                    if (tex == null) continue
+                    tex.setBitmap(engine, bmp)
+                    tex.generateMipmaps(engine)
+                }
+            }.onFailure { Log.w(TAG, "room re-tint failed", it) }
+        }
+    }
+
+    /** Flat [tint] surface the size of a baked one: placeholder texture
+     *  until the bake lands (a texture keeps its build size). */
+    private fun flatSurface(tint: Int, repeatY: Int = 1): Bitmap =
+        Bitmap.createBitmap(SURFACE_TEX_SIZE, SURFACE_TEX_SIZE * repeatY, Bitmap.Config.ARGB_8888)
+            .apply { eraseColor(tint) }
 
     /** Surfaces with a selectable pattern. Panels and traps use the wall
      *  catalogue; the floor its own. */
@@ -586,7 +651,7 @@ class Audio3DSceneController(
     /** Reflection streaks over the control-room window. */
     private var glassStreakBitmap: Bitmap? = null
     private var backWallRef: PlaneNode? = null
-    private var pendingCover: Bitmap? = null
+    private var pendingCover: java.io.File? = null
     private var pendingTitle: String = ""
     private var pendingArtist: String = ""
 
@@ -729,6 +794,7 @@ class Audio3DSceneController(
      *  re-apply, so the reveal never shows a brightness jump. Immediate when
      *  already warm. */
     fun runWhenWarm(action: Runnable) {
+        wake()
         warmWaiters.add(action)
         checkWarm()
     }
@@ -745,11 +811,17 @@ class Audio3DSceneController(
      *  freshly swapped textures and geometry reach the screen before a
      *  cover is lifted. Only fires while the frame loop runs (resumed). */
     fun runAfterFrames(frames: Int, action: Runnable) {
+        wake()
         frameWaiters.add(Pair(framesRendered + frames, action))
     }
 
+    /** Frame count by which the last applied bake is on screen. */
+    private var bakeVisibleAtFrame = 0
+
     private fun checkFrameWaiters() {
         if (frameWaiters.isEmpty()) return
+        // Covers stay up while a bake is pending or not yet drawn.
+        if (bakesInFlight > 0 || framesRendered < bakeVisibleAtFrame) return
         val due = frameWaiters.filter { framesRendered >= it.first }
         if (due.isEmpty()) return
         frameWaiters.removeAll(due)
@@ -759,13 +831,36 @@ class Audio3DSceneController(
     private fun checkWarm() {
         if (warmWaiters.isEmpty()) return
         if (framesRendered < WARM_MIN_FRAMES) return
+        if (bakesInFlight > 0 || framesRendered < bakeVisibleAtFrame) return
         if (SystemClock.uptimeMillis() - setupAtMs < WARM_MIN_MS) return
         val pending = warmWaiters.toList()
         warmWaiters.clear()
         pending.forEach { it.run() }
     }
 
+    /** Builds the whole scene at once (callers already behind a cover). */
     fun setup() {
+        setupSteps().forEach { it.run() }
+    }
+
+    /** The scene construction split into short main-thread steps, in
+     *  order. The host can run them one per frame so the UI and the
+     *  playback controls stay responsive while the scene builds. Every step
+     *  is required and must run in this order. */
+    fun setupSteps(): List<Runnable> = listOf(
+        Runnable { beginSetup() },
+        Runnable { addRoomShell() },
+        Runnable { addRoomPanels(0) },
+        Runnable { addRoomPanels(1) },
+        Runnable { addRoomPanels(2) },
+        Runnable { addRoomScreen() },
+        Runnable { addRoomFrontWall() },
+        Runnable { addRoomTraps() },
+        Runnable { loadHead() },
+        Runnable { finishSetup() }
+    )
+
+    private fun beginSetup() {
         setupAtMs = SystemClock.uptimeMillis()
         // Stored by the node and re-applied on every viewport resize.
         runCatching { sceneView.cameraNode.focalLength = CAMERA_FOCAL_MM }
@@ -775,8 +870,9 @@ class Audio3DSceneController(
         doubleTapRadiusPx = (DOUBLE_TAP_RADIUS_DP * activity.resources.displayMetrics.density).toInt()
         prepareBitmaps()
         installTouchListener()
-        addRoom()
-        loadHead()
+    }
+
+    private fun finishSetup() {
         // Apply any song-card values that arrived before setup(): the
         // host may push metadata as soon as the controller exists.
         if (pendingTitle.isNotEmpty() || pendingArtist.isNotEmpty() || pendingCover != null) {
@@ -903,11 +999,14 @@ class Audio3DSceneController(
         }
         danceLastNs = System.nanoTime()
         danceActive = true
+        (sceneView as? FisionSceneView)?.continuousActive = true
         ensureBillboardFrameListener()
     }
 
     fun stopDance() {
         danceActive = false
+        (sceneView as? FisionSceneView)?.continuousActive = false
+        wake()
         danceStemIds = emptySet()
         danceSineIds = emptySet()
         danceOscPhase.clear()
@@ -955,7 +1054,12 @@ class Audio3DSceneController(
 
     // --- Cubicle ---------------------------------------------------------
 
-    /** The cubicle walls as six independent inward-facing planes (4 walls
+    /** Walls (front z-, back z+, right x+, left x-) and ceiling, in that order. */
+    private var roomPlanes: List<PlaneNode> = emptyList()
+    private var panelMaterialInstance: MaterialInstance? = null
+
+    /** Room stage 1: textures, materials, walls, ceiling and floor.
+     *  The cubicle walls as six independent inward-facing planes (4 walls
      *  + ceiling + bottom under the floor slab). SceneView's Plane only
      *  generates two orientations — XY planes whose front face points +Z
      *  and XZ planes whose front face points +Y (any other axis layout
@@ -967,7 +1071,7 @@ class Audio3DSceneController(
      *  rendered glitched (per-face shading splits); exact shared corner
      *  coordinates keep the seams closed. The planes share one material
      *  instance. */
-    private fun addRoom() {
+    private fun addRoomShell() {
         try {
             val width  = 2f * ROOM_HALF_X
             val depth  = 2f * ROOM_HALF_Z
@@ -978,17 +1082,15 @@ class Audio3DSceneController(
             // accent (picked accent, or the song's when the player adopts
             // artwork colors) over dark neutral bases; see *TintFor. The
             // ceiling reuses the wall field with a darker tint.
+            // Textures start flat in their tint; the patterned bake follows
+            // from the bake thread (rebakeRoomTextures at the end).
             val accent = roomAccent
             val engine = sceneView.engine
-            val wf = surfaceField(tuning.wallPattern, floor = false)
-            val ff = surfaceField(tuning.floorPattern, floor = true)
-            fun texture(field: FloatArray, tint: Int, contrast: Float) =
-                io.github.sceneview.texture.ImageTexture.Builder()
-                    .bitmap(bakeSurface(field, tint, contrast))
-                    .build(engine)
-            val wallTex = texture(wf, wallTintFor(accent), tuning.wallContrast).also { wallTexture = it }
-            val ceilTex = texture(wf, ceilingTintFor(accent), tuning.wallContrast).also { ceilingTexture = it }
-            val floorTex = texture(ff, floorTintFor(accent), tuning.floorContrast).also { floorTexture = it }
+            fun texture(bmp: Bitmap) =
+                io.github.sceneview.texture.ImageTexture.Builder().bitmap(bmp).build(engine)
+            val wallTex = texture(flatSurface(wallTintFor(accent))).also { wallTexture = it }
+            val ceilTex = texture(flatSurface(ceilingTintFor(accent))).also { ceilingTexture = it }
+            val floorTex = texture(flatSurface(floorTintFor(accent))).also { floorTexture = it }
             roomMaterial = sceneView.materialLoader.createTextureInstance(
                 wallTex, true, 0f, 0.9f, 0.02f
             )
@@ -1099,27 +1201,40 @@ class Audio3DSceneController(
             sceneView.addChildNode(floorSurface)
             wallNodes.add(floorSurface)
             for (tp in tiledPlanes) applyPlaneUv(tp)
+            roomPlanes = created
+        } catch (t: Throwable) {
+            Log.w(TAG, "Room not added", t)
+        }
+    }
 
+    /** Room stage 2 (one call per wall, [index] 0..2 = back, right, left). */
+    private fun addRoomPanels(index: Int) {
+        if (roomPlanes.size < 5) return
+        try {
+            val engine = sceneView.engine
             // Studio furniture. Panels read as studio foam: matte, darker
             // than the walls, no accent so they never compete with the
             // sprites. Each panel is a child of its wall plane — the wall's
             // local +Z points into the room, so the same local offsets work
             // for every wall, and the dollhouse visibility toggle (which
             // flips the wall node) hides the panels along with it.
-            val panelTex = io.github.sceneview.texture.ImageTexture.Builder()
-                .bitmap(bakePanelSurface()).build(engine).also { panelTexture = it }
-            val panelMaterial = sceneView.materialLoader.createTextureInstance(
-                panelTex, true, 0f, 0.95f, 0.02f
-            )
+            val panelMaterial = panelMaterialInstance ?: run {
+                val panelTex = io.github.sceneview.texture.ImageTexture.Builder()
+                    .bitmap(flatSurface(PANEL_COLOR)).build(engine).also { panelTexture = it }
+                sceneView.materialLoader.createTextureInstance(
+                    panelTex, true, 0f, 0.95f, 0.02f
+                ).also { panelMaterialInstance = it }
+            }
             // Side and back walls only: the front wall is hidden by the
             // dollhouse for most of the session, so its panels would be
             // wasted geometry.
-            val backWall = created[1]
+            val backWall = roomPlanes[1]
             backWallRef = backWall
-            val panelWalls = listOf(backWall, created[2], created[3])
+            val panelWalls = listOf(backWall, roomPlanes[2], roomPlanes[3])
             val startX = -(PANEL_COLS - 1) * PANEL_COL_SPACING_X * 0.5f
             val startY = -(PANEL_ROWS - 1) * PANEL_ROW_SPACING_Y * 0.5f
-            for (w in panelWalls) {
+            run {
+                val w = panelWalls[index]
                 val isBack = (w === backWall)
                 for (col in 0 until PANEL_COLS) {
                     for (row in 0 until PANEL_ROWS) {
@@ -1144,6 +1259,15 @@ class Audio3DSceneController(
                     }
                 }
             }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Room panels not added", t)
+        }
+    }
+
+    /** Room stage 3: song-card screen, bezel and TV backlight. */
+    private fun addRoomScreen() {
+        val backWall = roomPlanes.getOrNull(1) ?: return
+        try {
             // Song-card screen: bezel + square image plane. Parented under
             // the back wall so the dollhouse toggle hides them together.
             // Bezel sits at the same protrusion as the acoustic panels;
@@ -1168,7 +1292,9 @@ class Audio3DSceneController(
             try {
                 val glow = ImageNode(
                     materialLoader = sceneView.materialLoader,
-                    bitmap = buildBacklightBitmap(null),
+                    // Transparent until the first card bake lands.
+                    bitmap = Bitmap.createBitmap(BACKLIGHT_BITMAP, BACKLIGHT_BITMAP,
+                        Bitmap.Config.ARGB_8888),
                     size = Size(BACKLIGHT_SIZE, BACKLIGHT_SIZE, 0f)
                 ).apply {
                     position = Position(0f, SCREEN_LOCAL_Y, BACKLIGHT_Z)
@@ -1192,19 +1318,33 @@ class Audio3DSceneController(
             }
             backWall.addChildNode(image)
             screenImage = image
-            // Front wall (behind the listener): control-room window + door.
-            try {
-                addStudioFrontWall(created[0])
-            } catch (t: Throwable) {
-                Log.e(TAG, "studio front wall failed", t)
-            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Room screen not added", t)
+        }
+    }
+
+    /** Room stage 4: front wall (behind the listener), control-room window + door. */
+    private fun addRoomFrontWall() {
+        val front = roomPlanes.getOrNull(0) ?: return
+        try {
+            addStudioFrontWall(front)
+        } catch (t: Throwable) {
+            Log.e(TAG, "studio front wall failed", t)
+        }
+    }
+
+    /** Room stage 5: corner bass traps, then the patterned texture bake. */
+    private fun addRoomTraps() {
+        if (roomPlanes.isEmpty()) return
+        try {
+            val engine = sceneView.engine
             // Bass traps: one vertical cylinder per corner, floor to
             // ceiling. Inset from the walls by their radius so they sit in
             // the corner without z-fighting either face. The (sx, sz)
             // signs identify the corner so updateRoomVisibility can hide
             // the trap when either adjacent wall goes.
             val trapTex = io.github.sceneview.texture.ImageTexture.Builder()
-                .bitmap(bakeTrapSurface()).build(engine).also { trapTexture = it }
+                .bitmap(flatSurface(TRAP_COLOR, trapRepeats())).build(engine).also { trapTexture = it }
             val trapMaterial = sceneView.materialLoader.createTextureInstance(
                 trapTex, true, 0f, 0.95f, 0.02f
             )
@@ -1228,8 +1368,9 @@ class Audio3DSceneController(
                 }
             }
         } catch (t: Throwable) {
-            Log.w(TAG, "Room not added", t)
+            Log.w(TAG, "Room traps not added", t)
         }
+        rebakeRoomTextures()
     }
 
     // --- Sprites: shadow disc + selection ring bitmaps -------------------
@@ -1709,9 +1850,12 @@ class Audio3DSceneController(
      *  side, so the tile is repeated vertically to match the side's aspect
      *  (circumference : height) and keep the pattern undistorted. */
     private fun bakeTrapSurface(): Bitmap = tuning.trapPattern.let {
+        bakeSurface(surfaceField(it, floor = false), TRAP_COLOR, it.wallContrast, trapRepeats())
+    }
+
+    private fun trapRepeats(): Int {
         val circumference = 2f * Math.PI.toFloat() * TRAP_RADIUS
-        val reps = kotlin.math.round((ROOM_CEIL_Y - ROOM_FLOOR_Y) / circumference).toInt().coerceAtLeast(1)
-        bakeSurface(surfaceField(it, floor = false), TRAP_COLOR, it.wallContrast, reps)
+        return kotlin.math.round((ROOM_CEIL_Y - ROOM_FLOOR_Y) / circumference).toInt().coerceAtLeast(1)
     }
 
     /** Soft radial disc used for ground shadows. [alphas] are the black
@@ -2000,7 +2144,13 @@ class Audio3DSceneController(
 
     /** Convenience for the switch: fade illumination between on/off with
      *  a short animator running on the UI thread. */
+    /** Full frame rate for a while (the view idles at a low rate). */
+    private fun wake(ms: Long = 1_500L) {
+        (sceneView as? FisionSceneView)?.keepActive(ms)
+    }
+
     fun animateLights(on: Boolean, durationMs: Long = 260L) {
+        wake(durationMs + 300L)
         val start = currentLightIntensity
         val end = if (on) LIGHT_INTENSITY_ON else LIGHT_INTENSITY_OFF
         val anim = android.animation.ValueAnimator.ofFloat(start, end).apply {
@@ -2014,6 +2164,11 @@ class Audio3DSceneController(
 
     fun setStems(items: List<StemPose>) {
         clearSprites()
+        // New nodes start unrotated (facing +Z, i.e. seen from behind by the
+        // default camera): force the next billboard pass even if the camera
+        // has not moved since the previous stem set.
+        lastCamX = Float.NaN
+        wake()
         items.forEach { p ->
             try {
                 val node = ImageNode(
@@ -2157,6 +2312,7 @@ class Audio3DSceneController(
     }
 
     private fun applySpritePose(s: StemSprite) {
+        wake()
         // Cylindrical pose: distance is the horizontal radius (XY plane),
         // heightM is the linear offset from the head centre.
         val sx = s.distance * sin(s.azimuthRad)
@@ -2623,31 +2779,58 @@ class Audio3DSceneController(
      *  own, so an idle scene costs nothing beyond the constant textured
      *  quad. Safe to call before setup(): the values are cached and applied
      *  when the screen node exists. */
-    fun setSongCard(cover: Bitmap?, title: String, artist: String) {
-        pendingCover = cover
+    fun setSongCard(coverFile: java.io.File?, title: String, artist: String) {
+        pendingCover = coverFile
         pendingTitle = title
         pendingArtist = artist
-        val img = screenImage ?: return
-        val bmp = buildSongCardBitmap(cover, title, artist)
-        screenBitmap = bmp
-        // ImageNode's bitmap setter re-uploads only mip level 0; the texture
-        // is built with a full mip chain, so the lower levels (the ones
-        // sampled at room distance) would keep showing the placeholder.
-        // Regenerate the chain after the swap. The previous bitmap is not
-        // recycled here: the upload is asynchronous and may still read it.
-        try {
-            img.bitmap = bmp
-            img.texture.generateMipmaps(sceneView.engine)
-        } catch (t: Throwable) {
-            Log.w(TAG, "setSongCard bitmap swap failed", t)
+        if (screenImage == null) return
+        // Cover decode, card and backlight run on the bake thread; the
+        // latest request wins.
+        val gen = ++cardBakeGen
+        val fallback = roomAccent
+        bakeAsync({
+            val cover = decodeCover(coverFile)
+            Triple(buildSongCardBitmap(cover, title, artist),
+                buildBacklightBitmap(cover, fallback), cover)
+        }) { (card, glowBmp, cover) ->
+            if (gen != cardBakeGen) return@bakeAsync
+            val img = screenImage ?: return@bakeAsync
+            screenBitmap = card
+            // ImageNode's bitmap setter re-uploads only mip level 0; the
+            // texture is built with a full mip chain, so the lower levels
+            // (the ones sampled at room distance) would keep showing the
+            // placeholder. Regenerate the chain after the swap. The previous
+            // bitmap is not recycled here: the upload is asynchronous and
+            // may still read it.
+            try {
+                img.bitmap = card
+                img.texture.generateMipmaps(sceneView.engine)
+            } catch (t: Throwable) {
+                Log.w(TAG, "setSongCard bitmap swap failed", t)
+            }
+            backlightCover = cover
+            backlightNode?.let { glow ->
+                runCatching {
+                    glow.bitmap = glowBmp
+                    glow.texture.generateMipmaps(sceneView.engine)
+                }.onFailure { Log.w(TAG, "backlight swap failed", it) }
+            }
         }
-        backlightCover = cover
-        backlightNode?.let { glow ->
-            runCatching {
-                glow.bitmap = buildBacklightBitmap(cover)
-                glow.texture.generateMipmaps(sceneView.engine)
-            }.onFailure { Log.w(TAG, "backlight swap failed", it) }
-        }
+    }
+
+    /** Decodes the artwork, subsampling HD covers down to the card size
+     *  instead of decoding them whole. Null when missing or unreadable. */
+    private fun decodeCover(file: java.io.File?): Bitmap? {
+        if (file == null || !file.exists()) return null
+        return runCatching {
+            val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath, o)
+            var sample = 1
+            while (minOf(o.outWidth, o.outHeight) / (sample * 2) >= SCREEN_BITMAP_SIZE) sample *= 2
+            o.inJustDecodeBounds = false
+            o.inSampleSize = sample
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath, o)
+        }.getOrNull()
     }
 
     /** Average color of a rectangle of [src] (sampled on a coarse grid). */
@@ -2682,7 +2865,7 @@ class Audio3DSceneController(
      *  + side middles; room accent without artwork), blended by angle
      *  around the TV, with alpha fading out with the distance beyond the
      *  bezel. The area behind the bezel is fully lit (hidden anyway). */
-    private fun buildBacklightBitmap(cover: Bitmap?): Bitmap {
+    private fun buildBacklightBitmap(cover: Bitmap?, fallback: Int = roomAccent): Bitmap {
         val colors = IntArray(8)
         if (cover != null && !cover.isRecycled && cover.width >= 8 && cover.height >= 8) {
             val w = cover.width; val h = cover.height
@@ -2700,7 +2883,7 @@ class Audio3DSceneController(
             colors[6] = averageColor(cover, third, h - bh, 2 * third, h)
             colors[7] = averageColor(cover, w - bw, h - bh, w, h)
         } else {
-            colors.fill(roomAccent)
+            colors.fill(fallback)
         }
         for (i in colors.indices) colors[i] = asLightColor(colors[i])
 
@@ -2894,6 +3077,9 @@ class Audio3DSceneController(
     }
 
     fun release() {
+        released = true
+        bakeExecutor.shutdownNow()
+        mainHandler.removeCallbacksAndMessages(null)
         pause()
         patternFields.clear()
         panelTexture = null
@@ -2927,6 +3113,8 @@ class Audio3DSceneController(
         backlightNode = null
         backlightCover = null
         tiledPlanes.clear()
+        roomPlanes = emptyList()
+        panelMaterialInstance = null
         backWallRef = null
         screenBitmap?.let { runCatching { it.recycle() } }
         screenBitmap = null

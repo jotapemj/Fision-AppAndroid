@@ -1244,11 +1244,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             nebulaView.resetPaletteFade();
             nebulaView.setNebulaEnabled(nebulaEnabled, false);
         }
-        // 3D scene backdrop views repaint the nebula over the opaque SceneView surface.
-        for (int id : new int[] { R.id.v_3d_sceneCover, R.id.v_3d_sceneFadeTop, R.id.v_3d_sceneFadeBottom }) {
-            NebulaBackdropView backdrop = findViewById(id);
-            if (backdrop != null) backdrop.setSource(nebulaView);
-        }
         bindNebulaSwitch();
         refreshSongPalette();
 
@@ -2929,24 +2924,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (audio3DScene == null) return;
         String t = title != null ? title : (SongName != null ? SongName : "");
         String a = artist != null ? artist : "";
-        android.graphics.Bitmap cover = null;
-        try {
-            if (SongFolder != null) {
-                java.io.File cf = new java.io.File(SongFolder, "artcover.png");
-                if (cf.exists()) {
-                    // The card is 1024 px square: subsample HD covers down
-                    // to at least that size instead of decoding them whole.
-                    android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
-                    o.inJustDecodeBounds = true;
-                    android.graphics.BitmapFactory.decodeFile(cf.getAbsolutePath(), o);
-                    int sample = 1;
-                    while (Math.min(o.outWidth, o.outHeight) / (sample * 2) >= 1024) sample *= 2;
-                    o.inJustDecodeBounds = false;
-                    o.inSampleSize = sample;
-                    cover = android.graphics.BitmapFactory.decodeFile(cf.getAbsolutePath(), o);
-                }
-            }
-        } catch (Throwable ignored) {}
+        // The scene decodes the artwork off the main thread.
+        java.io.File cover = SongFolder != null ? new java.io.File(SongFolder, "artcover.png") : null;
         audio3DScene.setSongCard(cover, t, a);
     }
 
@@ -3885,6 +3864,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onDestroy() {
         if (loadingCurtain != null) { loadingCurtain.dismissNow(); loadingCurtain = null; }
+        android.view.Choreographer.getInstance().removeFrameCallback(sceneStepCallback);
+        sceneBuildSteps.clear();
+        dismissSceneSpinner();
         if (chordModePill != null) chordModePill.dismissNow();
         DestroyPlayers();
         releaseLyrics();
@@ -4364,42 +4346,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void ensure3DRefs() {
         if (view3DRoot == null) {
             view3DRoot        = findViewById(R.id.view3D_root);
-            view3DSceneRoot   = findViewById(R.id.view3DScene_root);
-            // Kick off the Filament scene once, when the pref selects it.
-            if (audio3DScene == null
-                    && com.jotapeveloper.fision.audio3d.PerformancePrefs
-                            .isAudio3DSceneEnabled(this)
-                    && view3DSceneRoot != null) {
-                io.github.sceneview.SceneView sv = findViewById(R.id.v_3d_scene);
-                if (sv != null) {
-                    audio3DScene = new com.jotapeveloper.fision.audio3d
-                            .Audio3DSceneController(this, sv);
-                    audio3DScene.setup();
-                    maybeInstallSceneTuningPanel();
-                    // If the song has 3D audio stored as OFF the scene opens
-                    // inert from the start (no orbit, no sprite drag).
-                    audio3DScene.setInteractionEnabled(is3DEnabled);
-                    // Push the current song's card to the scene now that
-                    // the controller exists — a fresh scene built after
-                    // PrepareControls() already ran would otherwise show
-                    // the empty placeholder until the next metadata event.
-                    SongMetadata sm =
-                            playbackService != null ? playbackService.getCurrentMetadata() : null;
-                    pushSongCardToScene(
-                            sm != null ? sm.displayTitle : null,
-                            sm != null ? sm.artist : null);
-                }
-                // Debug-only: tap the info button in the scene header to
-                // dump the current camera pose. Lets JP orbit to a nice
-                // default and read the exact az/pitch/dist to hardcode.
-                View infoScene = findViewById(R.id.b_3d_infoScene);
-                if (infoScene != null) {
-                    infoScene.setOnClickListener(v -> {
-                        if (audio3DScene != null) audio3DScene.logCameraPose();
-                        show3DInfoDialog();
-                    });
-                }
-            }
             fl3DStemContainer = findViewById(R.id.fl_3d_stemContainer);
             iv3DHead          = findViewById(R.id.iv_3d_head);
             sw3DEnabled       = findViewById(R.id.sw_3d_enabled);
@@ -4422,11 +4368,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     }
                 });
             }
-            // Scene layout has its own switch; wire it too so the toggle
-            // works whichever variant of the header is on screen.
-            com.google.android.material.switchmaterial.SwitchMaterial swScene =
-                    findViewById(R.id.sw_3d_enabledScene);
-            wireSceneEnabledSwitch(swScene);
             if (sb3DElevation != null) {
                 sb3DElevation.setRange(-30f, 70f);
                 sb3DElevation.setStep(1f);
@@ -4439,24 +4380,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     apply3DPositionForStem(selected3DStem);
                     showElevationTooltip((int) val);
                     // Elevation changed → show reset button
-                    showResetButton();
-                });
-            }
-            // Scene mode: same vertical slider slot repurposed as
-            // stem-to-listener distance (range 0.3..3.0 metres, neutral 1.5).
-            sb3DDistanceScene = findViewById(R.id.sb_3d_elevationScene);
-            tv3DDistanceScene = findViewById(R.id.tv_3d_elevationScene);
-            if (sb3DDistanceScene != null) {
-                sb3DDistanceScene.setRange(0.3f, 3.0f);
-                sb3DDistanceScene.setStep(0.05f);
-                sb3DDistanceScene.setValue(1.5f);
-                sb3DDistanceScene.setOnChangeListener((sl, val, fromUser) -> {
-                    if (!fromUser || selected3DStem == null) return;
-                    StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, selected3DStem);
-                    s.distance3D = val;
-                    persistStemSettings();
-                    if (audio3DScene != null) audio3DScene.updateStemDistance(selected3DStem, val);
-                    showDistanceTooltip(val);
                     showResetButton();
                 });
             }
@@ -4488,23 +4411,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     showStemsDanceDialog();
                 }
             });
-            // Scene layout has its own dance button (different id) — same
-            // behaviour as the flat one when scene is active.
-            b3DDanceScene = findViewById(R.id.b_3d_danceScene);
-            if (b3DDanceScene != null) b3DDanceScene.setOnClickListener(v -> {
-                if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
-                    audio3DScene.stopDance();
-                    b3DDanceScene.setIconResource(R.raw.ic_play);
-                    setSceneDanceSlidersVisible(false);
-                } else {
-                    showStemsDanceDialog();
-                }
-            });
-            // Scene-mode reset button: glides every sprite back to the
-            // default frontal semicircle (accelerate/decelerate).
-            com.google.android.material.button.MaterialButton bResetScene =
-                    findViewById(R.id.b_3d_resetScene);
-            if (bResetScene != null) bResetScene.setOnClickListener(v -> reset3DPositions());
             // Inline dance sliders (speed + distance) — visible only while the dance is active
             View danceSlidersContainer = findViewById(R.id.ll_3d_danceSliders);
             com.google.android.material.slider.Slider slSpeedInline = findViewById(R.id.sl_3d_danceSpeed);
@@ -4521,57 +4427,242 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     if (fromUser) danceDistance = val;
                 });
             }
-            // If scene mode is up, the inline sliders live in the scene
-            // layout instead of the flat one. Prefer scene refs when the
-            // flat ones are hidden.
-            View danceSlidersContainerScene = findViewById(R.id.ll_3d_danceSlidersScene);
-            com.google.android.material.slider.Slider slSpeedInlineScene =
-                    findViewById(R.id.sl_3d_danceSpeedScene);
-            com.google.android.material.slider.Slider slDistInlineScene =
-                    findViewById(R.id.sl_3d_danceDistanceScene);
-            if (slSpeedInlineScene != null) {
-                slSpeedInlineScene.setValue(danceSpeed);
-                slSpeedInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                    if (!fromUser) return;
-                    danceSpeed = val;
-                    if (audio3DScene != null) audio3DScene.setDanceSpeed(val);
-                });
-            }
-            if (slDistInlineScene != null) {
-                slDistInlineScene.setValue(danceDistance);
-                slDistInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                    if (!fromUser) return;
-                    danceDistance = val;
-                    if (audio3DScene != null) audio3DScene.setDanceDistance(val);
-                });
-            }
-            // Wave speed slider: per-stem sine-wave oscillation speed for
-            // the currently selected stem (stems marked with the wave icon
-            // in the dance dialog).
-            com.google.android.material.slider.Slider slOscInlineScene =
-                    findViewById(R.id.sl_3d_danceOscScene);
-            if (slOscInlineScene != null) {
-                slOscInlineScene.setValue(0.5f);
-                slOscInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                    if (!fromUser) return;
-                    if (selected3DStem == null) return;
-                    danceOscSpeeds.put(selected3DStem, val);
-                    if (audio3DScene != null) audio3DScene.setStemOscSpeed(selected3DStem, val);
-                });
-            }
             // Initial control state: greyed out when 3D audio starts off.
             setSceneControlsEnabled(is3DEnabled);
-            refreshWaveSliderVisibility();
-            if (isAudio3DScene()) {
-                danceInlineSlidersContainer = danceSlidersContainerScene;
-                danceInlineSlSpeed          = slSpeedInlineScene;
-                danceInlineSlDistance       = slDistInlineScene;
-            } else {
-                danceInlineSlidersContainer = danceSlidersContainer;
-                danceInlineSlSpeed          = slSpeedInline;
-                danceInlineSlDistance       = slDistInline;
-            }
+            danceInlineSlidersContainer = danceSlidersContainer;
+            danceInlineSlSpeed          = slSpeedInline;
+            danceInlineSlDistance       = slDistInline;
         }
+    }
+
+    // === Scene build ===
+    // The Filament scene is kept out of the view tree until first needed: a
+    // SurfaceView costs work on every frame of the player even while hidden,
+    // and the engine is heavy. Building it blocks the main thread, so it is
+    // split into short steps run one per frame (sceneBuildSteps): between
+    // steps the UI and the playback controls stay responsive. The chrome
+    // (header, sliders, buttons, fades) is inflated first and shown at once
+    // with its controls disabled, over an embedded spinner panel.
+    private static final int SCENE_NONE = 0, SCENE_BUILDING = 1, SCENE_READY = 2;
+    private int sceneBuildState = SCENE_NONE;
+    private final java.util.ArrayDeque<Runnable> sceneBuildSteps = new java.util.ArrayDeque<>();
+    private boolean sceneStepScheduled = false;
+    private final android.view.Choreographer.FrameCallback sceneStepCallback = t -> runNextSceneStep();
+    /** Embedded spinner shown in the scene area while it builds. */
+    @androidx.annotation.Nullable private com.jotapeveloper.fision.brand.FisionLoadingSurface sceneSpinner;
+    private static final float SCENE_SPINNER_DP = 48f;
+    private static final float SCENE_SPINNER_FADE_MS = 200f;
+
+    private boolean isSceneReady() { return sceneBuildState == SCENE_READY; }
+
+    /** Makes the scene fully built right now (synchronous). For callers
+     *  already behind a cover, e.g. a song stored with 3D on opening under
+     *  the loading curtain. Finishes a staged build in progress. */
+    private void ensureSceneInflated() {
+        inflateSceneChrome();
+        if (view3DSceneRoot == null) return;
+        if (sceneBuildState == SCENE_NONE) queueSceneBuild();
+        drainSceneBuild();
+    }
+
+    /** Queues the build steps: engine (SceneView inflation) + controller,
+     *  the controller's own setup steps, then the song data. */
+    private void queueSceneBuild() {
+        sceneBuildState = SCENE_BUILDING;
+        sceneBuildSteps.clear();
+        sceneBuildSteps.add(() -> {
+            android.view.ViewStub svStub = findViewById(R.id.stub_3d_sceneView);
+            if (svStub != null) svStub.inflate();
+            io.github.sceneview.SceneView sv = findViewById(R.id.v_3d_scene);
+            if (sv == null) return;
+            audio3DScene = new com.jotapeveloper.fision.audio3d
+                    .Audio3DSceneController(this, sv);
+            // The controller's construction steps run next, in order.
+            java.util.List<Runnable> steps = audio3DScene.setupSteps();
+            for (int i = steps.size() - 1; i >= 0; i--) sceneBuildSteps.addFirst(steps.get(i));
+        });
+        sceneBuildSteps.add(() -> {
+            if (audio3DScene == null) return;
+            maybeInstallSceneTuningPanel();
+            // If the song has 3D audio stored as OFF the scene opens
+            // inert from the start (no orbit, no sprite drag).
+            audio3DScene.setInteractionEnabled(is3DEnabled);
+            // Push the current song's card to the scene now that the
+            // controller exists.
+            SongMetadata sm =
+                    playbackService != null ? playbackService.getCurrentMetadata() : null;
+            pushSongCardToScene(
+                    sm != null ? sm.displayTitle : null,
+                    sm != null ? sm.artist : null);
+        });
+        sceneBuildSteps.add(this::ensureSceneSprites);
+        sceneBuildSteps.add(this::onSceneBuilt);
+    }
+
+    /** Runs the remaining build steps one per frame. */
+    private void scheduleSceneSteps() {
+        if (sceneStepScheduled || sceneBuildSteps.isEmpty()) return;
+        sceneStepScheduled = true;
+        android.view.Choreographer.getInstance().postFrameCallback(sceneStepCallback);
+    }
+
+    private void runNextSceneStep() {
+        sceneStepScheduled = false;
+        if (isDestroyed) { sceneBuildSteps.clear(); return; }
+        Runnable step = sceneBuildSteps.pollFirst();
+        if (step != null) step.run();
+        scheduleSceneSteps();
+    }
+
+    /** Runs every remaining build step now. */
+    private void drainSceneBuild() {
+        if (sceneStepScheduled) {
+            android.view.Choreographer.getInstance().removeFrameCallback(sceneStepCallback);
+            sceneStepScheduled = false;
+        }
+        Runnable step;
+        while (!isDestroyed && (step = sceneBuildSteps.pollFirst()) != null) step.run();
+    }
+
+    /** Last build step: controls on, and the spinner lifts once the scene
+     *  is warm if it is on screen. */
+    private void onSceneBuilt() {
+        sceneBuildState = SCENE_READY;
+        setSceneControlsEnabled(is3DEnabled);
+        if (is3DViewShown && audio3DScene != null) {
+            audio3DScene.resume();
+            audio3DScene.setLightIntensity(is3DEnabled ? 1f : 0.20f);
+            audio3DScene.runWhenWarm(this::hideSceneSpinner);
+            if (view3DSceneRoot != null) {
+                view3DSceneRoot.postDelayed(this::hideSceneSpinner, SCENE_REVEAL_FALLBACK_MS);
+            }
+        } else {
+            hideSceneSpinner();
+        }
+    }
+
+    /** Embedded spinner over the scene area (under the controls). Starts the
+     *  queued build steps once it has faded in. */
+    private void showSceneSpinner() {
+        android.widget.FrameLayout slot = findViewById(R.id.fl_3d_sceneLoading);
+        if (slot == null) { scheduleSceneSteps(); return; }
+        if (sceneSpinner != null) { scheduleSceneSteps(); return; }
+        float d = getResources().getDisplayMetrics().density;
+        sceneSpinner = new com.jotapeveloper.fision.brand.FisionLoadingSurface(
+                this, SCENE_SPINNER_DP * d, SCENE_SPINNER_FADE_MS,
+                this::scheduleSceneSteps, true);
+        slot.addView(sceneSpinner, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+    }
+
+    /** Quick fade of the spinner panel, then it is removed. */
+    private void hideSceneSpinner() {
+        final com.jotapeveloper.fision.brand.FisionLoadingSurface sp = sceneSpinner;
+        if (sp == null) return;
+        sceneSpinner = null;
+        sp.finish(null, () -> {
+            if (sp.getParent() instanceof ViewGroup) ((ViewGroup) sp.getParent()).removeView(sp);
+        }, false);
+    }
+
+    /** Inflates the scene chrome (no engine yet) and wires its controls,
+     *  disabled until the build completes. */
+    private void inflateSceneChrome() {
+        if (view3DSceneRoot != null) return;
+        if (!com.jotapeveloper.fision.audio3d.PerformancePrefs.isAudio3DSceneEnabled(this)) return;
+        android.view.ViewStub stub = findViewById(R.id.stub_3d_scene);
+        if (stub == null) return;
+        view3DSceneRoot = stub.inflate();
+
+        View infoScene = findViewById(R.id.b_3d_infoScene);
+        if (infoScene != null) {
+            infoScene.setOnClickListener(v -> {
+                if (audio3DScene != null) audio3DScene.logCameraPose();
+                show3DInfoDialog();
+            });
+        }
+        // Backdrop views repaint the nebula over the opaque SceneView surface.
+        for (int id : new int[] { R.id.v_3d_sceneCover, R.id.v_3d_sceneFadeTop, R.id.v_3d_sceneFadeBottom }) {
+            NebulaBackdropView backdrop = findViewById(id);
+            if (backdrop != null) backdrop.setSource(nebulaView);
+        }
+        // Scene header switch, kept in sync with the flat one.
+        wireSceneEnabledSwitch(findViewById(R.id.sw_3d_enabledScene));
+        // Vertical slider slot repurposed as stem-to-listener distance
+        // (range 0.3..3.0 metres, neutral 1.5).
+        sb3DDistanceScene = findViewById(R.id.sb_3d_elevationScene);
+        tv3DDistanceScene = findViewById(R.id.tv_3d_elevationScene);
+        if (sb3DDistanceScene != null) {
+            sb3DDistanceScene.setRange(0.3f, 3.0f);
+            sb3DDistanceScene.setStep(0.05f);
+            sb3DDistanceScene.setValue(1.5f);
+            sb3DDistanceScene.setOnChangeListener((sl, val, fromUser) -> {
+                if (!fromUser || selected3DStem == null) return;
+                StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, selected3DStem);
+                s.distance3D = val;
+                persistStemSettings();
+                if (audio3DScene != null) audio3DScene.updateStemDistance(selected3DStem, val);
+                showDistanceTooltip(val);
+                showResetButton();
+            });
+        }
+        b3DDanceScene = findViewById(R.id.b_3d_danceScene);
+        if (b3DDanceScene != null) b3DDanceScene.setOnClickListener(v -> {
+            if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
+                audio3DScene.stopDance();
+                b3DDanceScene.setIconResource(R.raw.ic_play);
+                setSceneDanceSlidersVisible(false);
+            } else {
+                showStemsDanceDialog();
+            }
+        });
+        // Reset: glides every sprite back to the default frontal semicircle.
+        com.google.android.material.button.MaterialButton bResetScene =
+                findViewById(R.id.b_3d_resetScene);
+        if (bResetScene != null) bResetScene.setOnClickListener(v -> reset3DPositions());
+        // Inline dance sliders of the scene (speed + distance).
+        View danceSlidersContainerScene = findViewById(R.id.ll_3d_danceSlidersScene);
+        com.google.android.material.slider.Slider slSpeedInlineScene =
+                findViewById(R.id.sl_3d_danceSpeedScene);
+        com.google.android.material.slider.Slider slDistInlineScene =
+                findViewById(R.id.sl_3d_danceDistanceScene);
+        if (slSpeedInlineScene != null) {
+            slSpeedInlineScene.setValue(danceSpeed);
+            slSpeedInlineScene.addOnChangeListener((s, val, fromUser) -> {
+                if (!fromUser) return;
+                danceSpeed = val;
+                if (audio3DScene != null) audio3DScene.setDanceSpeed(val);
+            });
+        }
+        if (slDistInlineScene != null) {
+            slDistInlineScene.setValue(danceDistance);
+            slDistInlineScene.addOnChangeListener((s, val, fromUser) -> {
+                if (!fromUser) return;
+                danceDistance = val;
+                if (audio3DScene != null) audio3DScene.setDanceDistance(val);
+            });
+        }
+        // Wave speed slider: per-stem sine-wave oscillation speed for the
+        // selected stem (stems marked with the wave in the dance dialog).
+        com.google.android.material.slider.Slider slOscInlineScene =
+                findViewById(R.id.sl_3d_danceOscScene);
+        if (slOscInlineScene != null) {
+            slOscInlineScene.setValue(0.5f);
+            slOscInlineScene.addOnChangeListener((s, val, fromUser) -> {
+                if (!fromUser) return;
+                if (selected3DStem == null) return;
+                danceOscSpeeds.put(selected3DStem, val);
+                if (audio3DScene != null) audio3DScene.setStemOscSpeed(selected3DStem, val);
+            });
+        }
+        danceInlineSlidersContainer = danceSlidersContainerScene;
+        danceInlineSlSpeed          = slSpeedInlineScene;
+        danceInlineSlDistance       = slDistInlineScene;
+        setSceneControlsEnabled(is3DEnabled);
+        refreshWaveSliderVisibility();
+        // Fresh views carry the theme accent: bring them to the song's.
+        recolorToPlayerAccent(view3DSceneRoot);
     }
 
     /** Updates the tint of the `b_3d` icon: green if the effect is active. */
@@ -4594,11 +4685,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         // Never overlap with the lyrics overlay.
         if (isLyricsViewShown) return;
+        // A song load is behind the curtain: ignore the toggle.
+        if (loadingCurtain != null) return;
+        // First opening of the scene: the chrome appears at once and the
+        // engine builds step by step behind it (see transitionIntoScene).
+        if (!is3DViewShown) {
+            inflateSceneChrome();
+            if (view3DSceneRoot != null && sceneBuildState == SCENE_NONE) queueSceneBuild();
+        }
         is3DViewShown = !is3DViewShown;
         View chordsContainer = findViewById(R.id.chords_container);
         if (is3DViewShown) transitionInto3D(chordsContainer);
         else               transitionOutOf3D(chordsContainer);
     }
+
 
     /** Shows the 3D view without animation. Used when loading a song whose state
      *  `is3DEnabled=true`: goes straight to ITD mode without showing the stems view. */
@@ -4660,6 +4760,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (!is3DViewShown) return;
         is3DViewShown = false;
         if (danceActive) stopDance();
+        dismissSceneSpinner();
         View root = active3DRoot();
         if (root != null) {
             root.animate().cancel();
@@ -4695,6 +4796,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void refresh3DForCurrentSong() {
         ensure3DRefs();
         boolean want = is3DEnabled;
+        // A song stored with 3D on opens straight into the 3D view.
+        if (want) ensureSceneInflated();
         // New song → new stem catalog and poses; scene sprites must be rebuilt.
         sceneSpritesStale = true;
 
@@ -4831,10 +4934,55 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         cancelPendingSceneEntry();
         sceneEnterRunnable = () -> {
             sceneEnterRunnable = null;
-            showSceneCovered();
-            scheduleSceneReveal(inDur);
+            if (isSceneReady()) {
+                showSceneCovered();
+                scheduleSceneReveal(inDur);
+            } else {
+                showSceneLoading(inDur);
+            }
         };
         root.postDelayed(sceneEnterRunnable, outDur);
+    }
+
+    /** Entry while the scene is still building: the chrome zooms in at once
+     *  (controls disabled) over the embedded spinner panel, and the build
+     *  steps run behind it. onSceneBuilt lifts the spinner. */
+    private void showSceneLoading(long inDur) {
+        View root   = view3DSceneRoot;
+        View cover  = findViewById(R.id.v_3d_sceneCover);
+        View chrome = findViewById(R.id.fl_3d_sceneChrome);
+        if (root == null || chrome == null) return;
+        root.animate().cancel();
+        root.setAlpha(1f);
+        root.setScaleX(1f);
+        root.setScaleY(1f);
+        if (cover != null) {
+            cover.animate().cancel();
+            cover.setAlpha(0f);
+            cover.setVisibility(View.GONE);
+        }
+        applyToolbarCompactForScene(true);
+        chrome.animate().cancel();
+        chrome.setAlpha(0f);
+        chrome.setScaleX(0.94f);
+        chrome.setScaleY(0.94f);
+        root.setVisibility(View.VISIBLE);
+        chrome.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .withLayer()
+                .setDuration(inDur)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+        setSceneControlsEnabled(is3DEnabled);
+        showSceneSpinner();
+    }
+
+    /** Removes the spinner panel at once (scene closed while building). */
+    private void dismissSceneSpinner() {
+        final com.jotapeveloper.fision.brand.FisionLoadingSurface sp = sceneSpinner;
+        sceneSpinner = null;
+        if (sp != null && sp.getParent() instanceof ViewGroup) {
+            ((ViewGroup) sp.getParent()).removeView(sp);
+        }
     }
 
     /** Makes the scene root visible under the opaque cover, chrome hidden,
@@ -4912,8 +5060,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         View cover  = findViewById(R.id.v_3d_sceneCover);
         View chrome = findViewById(R.id.fl_3d_sceneChrome);
         if (root == null || cover == null || chrome == null) return;
-        if (sceneEnterRunnable != null || sceneRevealPending) {
-            // Exit before the reveal ran: the scene was never uncovered.
+        if (sceneEnterRunnable != null || sceneRevealPending || sceneSpinner != null) {
+            // Exit before the reveal ran: the scene was never uncovered (the
+            // build, if still running, goes on and the next entry resumes it).
+            dismissSceneSpinner();
             root.setVisibility(View.GONE);
             resetSceneTransitionViews();
             if (audio3DScene != null) audio3DScene.pause();
@@ -5708,6 +5858,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Enables or greys out the scene-mode per-stem controls when the 3D
      *  audio switch is off. */
     private void setSceneControlsEnabled(boolean enabled) {
+        // Everything of the scene stays disabled while it builds; the 3D
+        // switch only then (it does not depend on the 3D state).
+        boolean ready = isSceneReady();
+        enabled = enabled && ready;
+        View swScene = findViewById(R.id.sw_3d_enabledScene);
+        if (swScene != null) {
+            swScene.setEnabled(ready);
+            swScene.setAlpha(ready ? 1f : 0.35f);
+        }
         float alpha = enabled ? 1f : 0.35f;
         if (sb3DDistanceScene != null) {
             sb3DDistanceScene.setEnabled(enabled);

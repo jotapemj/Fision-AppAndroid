@@ -67,12 +67,24 @@ public class FisionLoadingSurface extends SurfaceView implements SurfaceHolder.C
      */
     public FisionLoadingSurface(Context c, float nucleusPx, float fadeInMs,
                                 @Nullable Runnable covered) {
+        this(c, nucleusPx, fadeInMs, covered, false);
+    }
+
+    /**
+     * @param embedded false: composited over the whole window (curtain).
+     *                 true: composited under the window, above other
+     *                 SurfaceViews, so the views drawn after it (controls,
+     *                 fades) stay on top: a loading panel behind the UI.
+     */
+    public FisionLoadingSurface(Context c, float nucleusPx, float fadeInMs,
+                                @Nullable Runnable covered, boolean embedded) {
         super(c);
         this.nucleusPx = nucleusPx;
         this.fadeInMs = fadeInMs;
         this.onCovered = covered;
         coveredFired = covered == null;
-        setZOrderOnTop(true);
+        if (embedded) setZOrderMediaOverlay(true);
+        else setZOrderOnTop(true);
         getHolder().setFormat(PixelFormat.TRANSLUCENT);
         getHolder().addCallback(this);
         curtain.setColor(Color.BLACK);
