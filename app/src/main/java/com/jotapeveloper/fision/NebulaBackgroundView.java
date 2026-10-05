@@ -286,6 +286,50 @@ public class NebulaBackgroundView extends View {
 
     /** Paints the nebula in this view's coordinate space. Stateless per call,
      *  so mirrors can reuse it on their own canvas (translated accordingly). */
+    // Unit gradients (centre 0,0, radius 1, opaque core), built once per
+    // colour and placed each frame through the local matrix; the pulse alpha
+    // goes on the paint. A new shader per frame made the renderer rebuild the
+    // gradient on every draw.
+    private final RadialGradient[] blobShaders = new RadialGradient[BLOB_COUNT];
+    private final int[] blobShaderColors = new int[BLOB_COUNT];
+    private RadialGradient anchorShaderCached;
+    private int anchorShaderColor;
+    private final android.graphics.Matrix shaderMatrix = new android.graphics.Matrix();
+
+    private RadialGradient blobShader(int i) {
+        int rgb = palette[i] & 0x00FFFFFF;
+        if (blobShaders[i] == null || blobShaderColors[i] != rgb) {
+            // Plateau to 20% of the radius, then fade to transparent.
+            blobShaders[i] = new RadialGradient(0f, 0f, 1f,
+                    new int[] { 0xFF000000 | rgb, 0xFF000000 | rgb, rgb },
+                    new float[] { 0f, 0.20f, 1f },
+                    Shader.TileMode.CLAMP);
+            blobShaderColors[i] = rgb;
+        }
+        return blobShaders[i];
+    }
+
+    private RadialGradient anchorShader() {
+        int rgb = anchorColor & 0x00FFFFFF;
+        if (anchorShaderCached == null || anchorShaderColor != rgb) {
+            // Long-fade profile: no plateau, colour eases from core to edge in
+            // one smooth curve so the footlight blooms with a soft halo.
+            anchorShaderCached = new RadialGradient(0f, 0f, 1f,
+                    new int[] { 0xFF000000 | rgb, rgb },
+                    new float[] { 0f, 1f },
+                    Shader.TileMode.CLAMP);
+            anchorShaderColor = rgb;
+        }
+        return anchorShaderCached;
+    }
+
+    private RadialGradient placeShader(RadialGradient g, float cx, float cy, float r) {
+        shaderMatrix.setScale(r, r);
+        shaderMatrix.postTranslate(cx, cy);
+        g.setLocalMatrix(shaderMatrix);
+        return g;
+    }
+
     public void drawNebula(Canvas canvas) {
         int w = getWidth();
         int h = getHeight();
@@ -328,16 +372,8 @@ public class NebulaBackgroundView extends View {
             if (alpha > 230) alpha = 230;
             alpha = Math.round(alpha * orbitAlpha);
 
-            int col  = palette[i];
-            int core = (col & 0x00FFFFFF) | (alpha << 24);
-            int edge =  col & 0x00FFFFFF;
-
-            RadialGradient rg = new RadialGradient(
-                    cx, cy, baseR,
-                    new int[] { core, core, edge },
-                    new float[] { 0f, 0.20f, 1f },
-                    Shader.TileMode.CLAMP);
-            blobPaint.setShader(rg);
+            blobPaint.setShader(placeShader(blobShader(i), cx, cy, baseR));
+            blobPaint.setAlpha(alpha);
             canvas.drawCircle(cx, cy, baseR, blobPaint);
         }
 
@@ -350,17 +386,8 @@ public class NebulaBackgroundView extends View {
             float radius = w * ANCHOR_WIDTH_FRAC * (1f + pulse * 0.15f);
             int aAlpha = (int) (160 + pulse * 80);
             if (aAlpha > 240) aAlpha = 240;
-            int aCore = (anchorColor & 0x00FFFFFF) | (aAlpha << 24);
-            int aEdge =  anchorColor & 0x00FFFFFF;
-
-            // Long-fade profile: no plateau, colour eases from core to edge in
-            // one smooth curve so the footlight blooms with a soft halo.
-            RadialGradient ag = new RadialGradient(
-                    ax, ay, radius,
-                    new int[] { aCore, aEdge },
-                    new float[] { 0f, 1f },
-                    Shader.TileMode.CLAMP);
-            blobPaint.setShader(ag);
+            blobPaint.setShader(placeShader(anchorShader(), ax, ay, radius));
+            blobPaint.setAlpha(aAlpha);
             // Squash vertically to draw a horizontal ellipse without switching
             // shader math. Scaling is applied around (ax, ay) so the light
             // stays anchored to the bottom row.
@@ -371,6 +398,7 @@ public class NebulaBackgroundView extends View {
         }
 
         canvas.restoreToCount(layer);
+        blobPaint.setAlpha(255);
 
         // Frosted-dark tint over the whole nebula. Softens saturation so the
         // UI on top always stays readable; also gives that "smoked glass" look.
