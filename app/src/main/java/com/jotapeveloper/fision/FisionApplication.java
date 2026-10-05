@@ -10,7 +10,9 @@ import android.util.Log;
  * already been disposed, producing an NPE in DisplayHelper.updateDisplayInfo.
  * The event only refreshes the display refresh-rate of a dead renderer, so
  * dropping it is safe. Every other exception is delegated to the previous
- * handler untouched.
+ * handler untouched. On the main thread (where the display listener runs)
+ * the drop happens in a guard around the message loop, so the app keeps
+ * running instead of being left with a dead main thread.
  *
  * The upstream null-guard fix only landed in Filament 1.72.0, which is binary
  * incompatible with every released SceneView (Utils.init() became @JvmStatic),
@@ -36,6 +38,7 @@ public class FisionApplication extends Application {
     public void onCreate() {
         super.onCreate();
         installCrashFilter();
+        installMainLoopGuard();
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityStarted(android.app.Activity a) {
                 if (++startedActivities == 1 && foregroundListener != null) {
@@ -63,12 +66,39 @@ public class FisionApplication extends Application {
     public static void installCrashFilter() {
         Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-            if (isFilamentDisplayHelperNpe(throwable)) {
+            // Only for background threads: on the main thread the exception
+            // has already ended the message loop, and dropping it here would
+            // leave a frozen process. The main thread is covered by
+            // installMainLoopGuard instead.
+            if (thread != android.os.Looper.getMainLooper().getThread()
+                    && isFilamentDisplayHelperNpe(throwable)) {
                 Log.w(TAG, "Dropped known Filament DisplayHelper race (filament#9352)", throwable);
                 return;
             }
             if (previous != null) {
                 previous.uncaughtException(thread, throwable);
+            }
+        });
+    }
+
+    /** Runs the main message loop nested inside a guard: when the known
+     *  DisplayHelper NPE escapes a message (the display listener runs on the
+     *  main looper), it is logged and the loop resumes. Any other throwable
+     *  is rethrown and crashes the app as usual. */
+    private static void installMainLoopGuard() {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            while (true) {
+                try {
+                    android.os.Looper.loop();
+                    return;
+                } catch (Throwable t) {
+                    if (!isFilamentDisplayHelperNpe(t)) {
+                        if (t instanceof RuntimeException) throw (RuntimeException) t;
+                        if (t instanceof Error) throw (Error) t;
+                        throw new RuntimeException(t);
+                    }
+                    Log.w(TAG, "Dropped known Filament DisplayHelper race (filament#9352)", t);
+                }
             }
         });
     }
