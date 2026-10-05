@@ -2683,6 +2683,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                         ? (int) ((barPos * 10000L) / songDuration) : 0;
                 if (posPermille < 0) posPermille = 0;
                 if (posPermille > 10000) posPermille = 10000;
+                // Quantised to whole pixels of the track: an unchanged value
+                // is ignored by the bar, so it only redraws when the thumb
+                // actually moves (a few times per second, not every tick).
+                int trackPx = sb_progressBar.getWidth() - sb_progressBar.getPaddingLeft()
+                        - sb_progressBar.getPaddingRight();
+                if (trackPx > 0) {
+                    posPermille = (int) ((long) Math.round(posPermille * trackPx / 10000f)
+                            * 10000L / trackPx);
+                }
                 sb_progressBar.setProgress(posPermille);
             }
 
