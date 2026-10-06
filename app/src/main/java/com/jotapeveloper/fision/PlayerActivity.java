@@ -799,7 +799,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             rvChords.setPadding(leftPad, 0, rightPad, 0);
         });
 
-        rvChords.addOnScrollListener(new RecyclerView.OnScrollListener() {
+        // setupRecyclerViews runs again on every song switch: same recycler,
+        // so the listener is registered only once.
+        if (!chordsScrollListenerAdded) rvChords.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
@@ -822,7 +824,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 }
             }
         });
+        chordsScrollListenerAdded = true;
     }
+
+    private boolean chordsScrollListenerAdded = false;
 
     /**
      * Builds the BeatCell list from beatsList + chordList + downbeats.txt.
