@@ -688,6 +688,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // animateInitial is already on since setupRecyclerViews — the bind left the
         // sliders at 0. Here only the per-delay animations are launched.
         int delay = 150;
+        // The cascade runs untouched: full refresh until its last slider lands.
+        boostRefreshFor((long) delay * order.size() + 300L + 300L);
         for(int i = 0; i < order.size(); i++) {
             final String stem = order.get(i);
             new Handler().postDelayed(() -> {
@@ -2331,6 +2333,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 return;
             }
             loadingCurtain = null;
+            // Ring closing + fission run untouched (the curtain surface follows
+            // the panel rate too); startPlayerReveal extends it for the sliders.
+            boostRefreshFor(CURTAIN_REVEAL_BOOST_MS);
             curtain.reveal(this::startPlayerReveal, curtainResolves);
             curtainResolves = true;
         };
@@ -3843,6 +3848,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Finger on the screen: the refresh stays high until it lifts. */
     private boolean touchActive = false;
+    /** Loading curtain reveal: ring closing + fission + hold + fade (~2 s). */
+    private static final long CURTAIN_REVEAL_BOOST_MS = 2500L;
     /** Chord diagram transition length (ChordStageView.ADVANCE_MS) + margin. */
     private static final long DIAGRAM_ANIM_BOOST_MS = 380L + 250L;
 
