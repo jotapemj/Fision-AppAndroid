@@ -3818,11 +3818,86 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN
+        int action = ev.getActionMasked();
+        if (action == android.view.MotionEvent.ACTION_DOWN
                 && android.os.SystemClock.uptimeMillis() > titleMarqueeBusyUntil) {
             restartTitleMarquee();
         }
+        if (action == android.view.MotionEvent.ACTION_UP
+                || action == android.view.MotionEvent.ACTION_CANCEL) {
+            scheduleRefreshLower();
+        } else {
+            boostRefresh();
+        }
         return super.dispatchTouchEvent(ev);
+    }
+
+    // === Display refresh policy ===
+    // With nothing touched the player asks for 60 Hz: the carousel and the
+    // other light animations then fit their frame budget at the low clocks
+    // of an idle device (at 120 Hz frames of 13-19 ms missed their vsync and
+    // stuttered) and the panel draws less power. A touch restores the
+    // system default (high refresh) until REFRESH_BOOST_MS after the finger
+    // lifts, so dragging stays at full rate.
+    private static final long REFRESH_BOOST_MS = 2000L;
+    private static final float LOW_REFRESH_HZ = 60f;
+    private int lowRefreshModeId = -1;      // -1 unknown, 0 none available
+    private boolean refreshLowered = false;
+    private final Handler refreshHandler = new Handler(android.os.Looper.getMainLooper());
+    private final Runnable lowerRefreshRunnable = () -> setRefreshLowered(true);
+
+    private void boostRefresh() {
+        refreshHandler.removeCallbacks(lowerRefreshRunnable);
+        setRefreshLowered(false);
+    }
+
+    private void scheduleRefreshLower() {
+        refreshHandler.removeCallbacks(lowerRefreshRunnable);
+        refreshHandler.postDelayed(lowerRefreshRunnable, REFRESH_BOOST_MS);
+    }
+
+    private void setRefreshLowered(boolean low) {
+        if (low == refreshLowered) return;
+        int modeId = low ? findLowRefreshModeId() : 0;
+        if (low && modeId <= 0) return;
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.preferredDisplayModeId = modeId;
+        getWindow().setAttributes(lp);
+        refreshLowered = low;
+    }
+
+    /** Display mode at [LOW_REFRESH_HZ] with the current resolution (a mode
+     *  switch within the same resolution is seamless); 0 when the panel has
+     *  none (fixed 60 Hz panels need nothing). */
+    @SuppressWarnings("deprecation")
+    private int findLowRefreshModeId() {
+        if (lowRefreshModeId >= 0) return lowRefreshModeId;
+        lowRefreshModeId = 0;
+        android.view.Display d = getWindowManager().getDefaultDisplay();
+        android.view.Display.Mode cur = d.getMode();
+        if (cur.getRefreshRate() <= LOW_REFRESH_HZ + 1f) return 0;
+        for (android.view.Display.Mode m : d.getSupportedModes()) {
+            if (m.getPhysicalWidth() == cur.getPhysicalWidth()
+                    && m.getPhysicalHeight() == cur.getPhysicalHeight()
+                    && Math.abs(m.getRefreshRate() - LOW_REFRESH_HZ) < 1f) {
+                lowRefreshModeId = m.getModeId();
+                break;
+            }
+        }
+        return lowRefreshModeId;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        scheduleRefreshLower();
+    }
+
+    @Override
+    protected void onPause() {
+        refreshHandler.removeCallbacks(lowerRefreshRunnable);
+        setRefreshLowered(false);
+        super.onPause();
     }
 
     private void restartTitleMarquee() {
