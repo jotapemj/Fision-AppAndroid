@@ -155,6 +155,17 @@ public final class ChordDiagramController {
         stage.show(card(idx), card(idx + 1));
     }
 
+    /** True when a chord change starts exactly at [beatIdx] (a transition
+     *  will animate then). */
+    public boolean changesAt(int beatIdx) {
+        for (int i = 0; i < changes.size(); i++) {
+            int b = changes.get(i).beat;
+            if (b == beatIdx) return true;
+            if (b > beatIdx) return false;
+        }
+        return false;
+    }
+
     private int changeAt(int beatIdx) {
         int idx = -1;
         for (int i = 0; i < changes.size(); i++) {

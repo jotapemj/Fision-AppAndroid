@@ -803,6 +803,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) carouselSettledForRefresh();
                 // Dragging browses the chords without seeking (a tap on a cell
                 // seeks). While browsing the carousel stops following the song;
                 // on release a magnet brings it back to the current beat.
@@ -2789,6 +2790,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             }
                             final int targetIdx = idx;
                             if (!browsingChords) scrollChordsTo(targetIdx);
+                            maybeBoostForDiagramChange(idx);
                             // Delay the highlight so the tile lights up once it has already
                             // scrolled to the center. Cancel the previous one if still alive.
                             if (pendingTileHighlight != null) {
@@ -3825,11 +3827,56 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         if (action == android.view.MotionEvent.ACTION_UP
                 || action == android.view.MotionEvent.ACTION_CANCEL) {
+            touchActive = false;
             scheduleRefreshLower();
         } else {
+            touchActive = true;
             boostRefresh();
         }
         return super.dispatchTouchEvent(ev);
+    }
+
+    /** Finger on the screen: the refresh stays high until it lifts. */
+    private boolean touchActive = false;
+    /** Chord diagram transition length (ChordStageView.ADVANCE_MS) + margin. */
+    private static final long DIAGRAM_ANIM_BOOST_MS = 380L + 250L;
+
+    /** The chord diagrams slide on chord changes without any touch, so at
+     *  60 Hz their 380 ms move looked choppy. On the beat right before a
+     *  change, the refresh goes high until the slide has finished: the
+     *  panel is already at full rate when the animation starts. */
+    private void maybeBoostForDiagramChange(int beatIdx) {
+        if (!isChordDiagramShown || chordDiagrams == null) return;
+        long ms;
+        if (beatIdx + 1 < beatCells.size() && chordDiagrams.changesAt(beatIdx + 1)) {
+            float gap = beatCells.get(beatIdx + 1).time - beatCells.get(beatIdx).time;
+            ms = (long) (gap * 1000f) + DIAGRAM_ANIM_BOOST_MS;
+        } else if (chordDiagrams.changesAt(beatIdx)) {
+            ms = DIAGRAM_ANIM_BOOST_MS;   // change without the beat-ahead window (seek, start)
+        } else {
+            return;
+        }
+        boostRefreshFor(ms);
+    }
+
+    /** High refresh for [ms], then back to the idle rate (unless a finger
+     *  is down: the lift schedules it). */
+    private void boostRefreshFor(long ms) {
+        setRefreshLowered(false);
+        if (touchActive) return;
+        scheduleRefreshLowerAt(android.os.SystemClock.uptimeMillis() + ms, false);
+    }
+
+    /** Uptime at which the refresh goes back to idle (0 = none pending). */
+    private long refreshLowerAt = 0L;
+
+    /** Arms the drop to idle at [at]; with [force] false it only extends
+     *  a later pending drop, never shortens it. */
+    private void scheduleRefreshLowerAt(long at, boolean force) {
+        if (!force && refreshLowerAt > at) return;
+        refreshLowerAt = at;
+        refreshHandler.removeCallbacks(lowerRefreshRunnable);
+        refreshHandler.postAtTime(lowerRefreshRunnable, at);
     }
 
     // === Display refresh policy ===
@@ -3844,16 +3891,37 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private int lowRefreshModeId = -1;      // -1 unknown, 0 none available
     private boolean refreshLowered = false;
     private final Handler refreshHandler = new Handler(android.os.Looper.getMainLooper());
-    private final Runnable lowerRefreshRunnable = () -> setRefreshLowered(true);
+    private final Runnable lowerRefreshRunnable = () -> {
+        refreshLowerAt = 0L;
+        if (touchActive) return;
+        // A mode switch can cost a frame: never drop while the carousel is
+        // sliding, wait for it to settle (see carouselSettledForRefresh).
+        if (rvChords != null && rvChords.isShown()
+                && rvChords.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
+            refreshLowerOnSettle = true;
+            return;
+        }
+        setRefreshLowered(true);
+    };
+    /** A drop to idle is waiting for the carousel to stop sliding. */
+    private boolean refreshLowerOnSettle = false;
+
+    /** Carousel scroll listener hook: performs a deferred drop to idle. */
+    private void carouselSettledForRefresh() {
+        if (!refreshLowerOnSettle) return;
+        refreshLowerOnSettle = false;
+        if (!touchActive && refreshLowerAt == 0L) setRefreshLowered(true);
+    }
 
     private void boostRefresh() {
         refreshHandler.removeCallbacks(lowerRefreshRunnable);
+        refreshLowerAt = 0L;
+        refreshLowerOnSettle = false;
         setRefreshLowered(false);
     }
 
     private void scheduleRefreshLower() {
-        refreshHandler.removeCallbacks(lowerRefreshRunnable);
-        refreshHandler.postDelayed(lowerRefreshRunnable, REFRESH_BOOST_MS);
+        scheduleRefreshLowerAt(android.os.SystemClock.uptimeMillis() + REFRESH_BOOST_MS, true);
     }
 
     private void setRefreshLowered(boolean low) {
