@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/ImportActivity"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -37,12 +38,14 @@
                 app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
 
             <TextView
+                android:id="@+id/tv_import_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/import_title"
                 android:textColor="@color/AppWhite"
                 android:textSize="20sp"
                 android:fontFamily="@font/yugothic_ui_regular"
+                android:includeFontPadding="false"
                 android:layout_marginStart="12dp"
                 app:layout_constraintStart_toEndOf="@+id/b_import_back"
                 app:layout_constraintTop_toTopOf="parent"
@@ -51,325 +54,268 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- Sticky header with cover + title/artist of the selected song.
-         Shown when the user picks a file with readable metadata. -->
-    <LinearLayout
-        android:id="@+id/ll_import_header"
+    <!-- Hero card of the selected song: blurred cover behind, cover, title,
+         artist and file details, plus the button to choose another song. -->
+    <!-- The background layers are pinned to the content row so the bitmap
+         never drives the card height. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/fl_import_hero"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:background="#000000"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/import_hero_bg"
+        android:clipToOutline="true"
         app:layout_constraintTop_toBottomOf="@+id/import_toolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <FrameLayout
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:background="@drawable/cover_clip_bg"
-            android:clipToOutline="true">
-            <ImageView
-                android:id="@+id/iv_import_cover"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@raw/artcover_generic" />
-        </FrameLayout>
+        <ImageView
+            android:id="@+id/iv_import_heroBg"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@+id/ll_import_heroContent"
+            app:layout_constraintBottom_toBottomOf="@+id/ll_import_heroContent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:ignore="ContentDescription" />
+
+        <View
+            android:id="@+id/v_import_heroScrim"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/import_hero_scrim"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@+id/ll_import_heroContent"
+            app:layout_constraintBottom_toBottomOf="@+id/ll_import_heroContent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <View
+            android:id="@+id/v_import_heroCorner"
+            android:layout_width="104dp"
+            android:layout_height="104dp"
+            android:background="@drawable/import_hero_corner"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <LinearLayout
+            android:id="@+id/ll_import_heroContent"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="14dp"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="14dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <FrameLayout
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:background="@drawable/cover_clip_bg"
+                android:clipToOutline="true">
+                <ImageView
+                    android:id="@+id/iv_import_cover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@raw/artcover_generic"
+                    tools:ignore="ContentDescription" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_import_headerTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    tools:text="Bohemian Rhapsody" />
+
+                <TextView
+                    android:id="@+id/tv_import_headerArtist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    tools:text="Queen"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/tv_import_headerMeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:singleLine="true"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:text="5:55 · FLAC · 41.0 MB"
+                    tools:visibility="visible" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/b_import_changeSong"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="top"
+                android:layout_marginStart="6dp"
+                android:layout_marginTop="-6dp"
+                android:layout_marginEnd="-6dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/import_change_song"
+                android:src="@drawable/ic_library_music"
+                app:tint="@color/AppWhite" />
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Fixed block under the hero: GPU warning, section label and mode segment. -->
+    <LinearLayout
+        android:id="@+id/ll_import_modeBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        app:layout_constraintTop_toBottomOf="@+id/fl_import_hero"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- GPU-missing warning: only visible when ServerInfo says gpu=false. -->
+        <LinearLayout
+            android:id="@+id/ll_import_gpuWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/import_gpu_warning_bg"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_warning"
+                app:tint="@color/gpu_warning_accent"
+                android:contentDescription="warning" />
 
             <TextView
-                android:id="@+id/tv_import_headerTitle"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:fontFamily="@font/yugothic_ui_regular"
-                android:textColor="@color/AppWhite"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:text="@string/import_selected_header_placeholder" />
-
-            <TextView
-                android:id="@+id/tv_import_headerArtist"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:fontFamily="@font/yugothic_ui_regular"
-                android:textColor="#B3FFFFFF"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:text="@string/import_gpu_warning"
+                android:textColor="@color/gpu_warning_text"
                 android:textSize="13sp"
-                android:visibility="gone" />
+                android:fontFamily="@font/yugothic_ui_regular" />
         </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/b_import_pickFile"
-            style="@style/Widget.MaterialComponents.Button.IconOnly"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:backgroundTint="?attr/colorPrimary"
-            android:contentDescription="@string/import_pick_audio"
-            app:icon="@drawable/ic_edit"
-            app:iconSize="20dp"
-            app:iconTint="@color/AppWhite"
-            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle" />
+        <TextView style="@style/ImportSectionLabel"
+            android:textSize="18sp"
+            android:text="@string/import_section_separation" />
+
+        <!-- Mode: the two classic presets (Demucs) or a custom stem set. -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/seg_sep_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/b_mode_4stem"
+                style="@style/ImportSegmentButton"
+                android:text="@string/import_mode_4stem" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/b_mode_2stem"
+                style="@style/ImportSegmentButton"
+                android:text="@string/import_mode_2stem" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/b_mode_custom"
+                style="@style/ImportSegmentButton"
+                android:text="@string/import_personalized" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
     </LinearLayout>
 
-    <View
-        android:id="@+id/v_import_headerSep"
+    <!-- Stem rows: the only scrolling area. Side padding 15dp + the rows'
+         own 5dp margins align them with the 20dp content gutter. -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_import_stems"
         android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:background="#22FFFFFF"
-        app:layout_constraintTop_toBottomOf="@+id/ll_import_header"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:paddingStart="15dp"
+        android:paddingEnd="15dp"
+        android:clipToPadding="false"
+        android:scrollbars="none"
+        android:overScrollMode="never"
+        android:layout_marginBottom="14dp"
+        app:layout_constraintTop_toBottomOf="@+id/ll_import_modeBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/b_import_send" />
+
+    <!-- Edge fades over the list, shown only while content remains beyond
+         that edge (ImportActivity.updateListFades). -->
+    <View
+        android:id="@+id/v_import_fadeTop"
+        android:layout_width="0dp"
+        android:layout_height="28dp"
+        android:background="@drawable/import_fade_top"
+        android:visibility="invisible"
+        app:layout_constraintTop_toTopOf="@+id/rv_import_stems"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <ScrollView
-        android:id="@+id/import_scroll"
+    <View
+        android:id="@+id/v_import_fadeBottom"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        android:scrollbars="none"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="20dp"
-        app:layout_constraintTop_toBottomOf="@+id/v_import_headerSep"
+        android:layout_height="28dp"
+        android:background="@drawable/import_fade_bottom"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="@+id/rv_import_stems"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/b_import_send">
-
-        <LinearLayout
-            android:id="@+id/ll_import_root"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:animateLayoutChanges="true">
-
-            <!-- Hidden filename field (compat, no longer visible in the UI). The real name
-                 is shown in the sticky header. -->
-            <TextView
-                android:id="@+id/tv_import_filename"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:visibility="gone" />
-
-            <!-- GPU-missing warning: only visible when ServerInfo says gpu=false. -->
-            <LinearLayout
-                android:id="@+id/ll_import_gpuWarning"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="12dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/import_gpu_warning_bg"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:src="@drawable/ic_warning"
-                    app:tint="@color/gpu_warning_accent"
-                    android:contentDescription="warning" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="10dp"
-                    android:text="@string/import_gpu_warning"
-                    android:textColor="@color/gpu_warning_text"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/yugothic_ui_regular" />
-            </LinearLayout>
-
-            <!-- ====== Separation ====== -->
-            <TextView style="@style/ImportSectionLabel"
-                android:text="@string/import_section_separation" />
-
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/seg_sep_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                app:singleSelection="true"
-                app:selectionRequired="true">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/b_sep_classic"
-                    style="@style/ImportSegmentButton"
-                    android:text="@string/import_classic" />
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/b_sep_personalized"
-                    style="@style/ImportSegmentButton"
-                    android:text="@string/import_personalized" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-
-            <!-- Panel Classic -->
-            <LinearLayout
-                android:id="@+id/panel_classic"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="10dp">
-
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/seg_classic_preset"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                        app:singleSelection="true"
-                    app:selectionRequired="true">
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/b_classic_4stem"
-                        style="@style/ImportSegmentButton"
-                        android:text="@string/import_classic_4stem" />
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/b_classic_2stem"
-                        style="@style/ImportSegmentButton"
-                        android:text="@string/import_classic_2stem" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
-            </LinearLayout>
-
-            <!-- Personalized panel (collapsible via animateLayoutChanges) -->
-            <LinearLayout
-                android:id="@+id/panel_personalized"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="10dp"
-                android:visibility="gone">
-
-                <TextView style="@style/ImportSubLabel"
-                    android:text="@string/import_vocals_always" />
-
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/seg_vocals_variant"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                        app:singleSelection="true"
-                    app:selectionRequired="true">
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/b_vocals_single"
-                        style="@style/ImportSegmentButton"
-                        android:text="@string/import_vocals_single" />
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/b_vocals_split"
-                        style="@style/ImportSegmentButton"
-                        android:text="@string/import_vocals_split" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_stem_guitar"
-                    style="@style/ImportStemCheck"
-                    android:text="@string/import_stem_guitar" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_stem_bass"
-                    style="@style/ImportStemCheck"
-                    android:text="@string/import_stem_bass" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_stem_drums"
-                    style="@style/ImportStemCheck"
-                    android:text="@string/import_stem_drums"
-                    android:checked="true" />
-
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/seg_drums_variant"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:layout_marginTop="6dp"
-                        app:singleSelection="true"
-                    app:selectionRequired="true">
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/b_drums_full"
-                        style="@style/ImportSegmentButton"
-                        android:text="@string/import_drums_full" />
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/b_drums_split"
-                        style="@style/ImportSegmentButton"
-                        android:text="@string/import_drums_split" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                <!-- Notice about split drums: only visible when that option is selected.
-                     No info icon (purely informative, not the same kind as the general hint). -->
-                <TextView
-                    android:id="@+id/tv_import_drumsSplitHint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/import_hint_drums_split"
-                    android:textColor="#B3FFFFFF"
-                    android:textSize="12sp"
-                    android:fontFamily="@font/yugothic_ui_regular"
-                    android:visibility="gone" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_stem_piano"
-                    style="@style/ImportStemCheck"
-                    android:text="@string/import_stem_piano" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_stem_brass"
-                    style="@style/ImportStemCheck"
-                    android:text="@string/import_stem_brass" />
-
-                <!-- General hint with info icon on the left -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="top"
-                    android:layout_marginTop="12dp">
-
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_marginTop="1dp"
-                        android:src="@drawable/ic_info"
-                        app:tint="?attr/colorPrimary"
-                        android:contentDescription="info" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:text="@string/import_hint_other"
-                        android:textColor="#CCFFFFFF"
-                        android:textSize="12sp"
-                        android:fontFamily="@font/yugothic_ui_regular" />
-                </LinearLayout>
-            </LinearLayout>
-
-        </LinearLayout>
-    </ScrollView>
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/b_import_send"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="20dp"
+        android:minHeight="42dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
         android:backgroundTint="?attr/colorPrimary"
         android:textColor="@color/AppWhite"
         android:text="@string/import_send_short"
-        android:textSize="15sp"
+        android:textSize="17sp"
+        android:textStyle="bold"
         android:fontFamily="@font/yugothic_ui_regular"
-        app:cornerRadius="20dp"
+        app:cornerRadius="21dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />

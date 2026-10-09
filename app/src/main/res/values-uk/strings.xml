@@ -5,7 +5,7 @@
     <string name="tv_title">Пісні</string>
     <string name="tv_title_search">Пошук пісні</string>
     <string name="te_find">Знайти в бібліотеці</string>
-    <string name="b_add">+ Додати</string>
+    <string name="b_add">Додати</string>
     <string name="no_results">Немає результатів</string>
     <string name="tv_SongsCount">25 пісень</string>
     <string name="results">результати</string>
@@ -361,6 +361,13 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="import_hint_other">Решта інструментів буде змішана в один стем</string>
     <string name="import_hint_drums_split">Виявлена ​​барабанна установка буде розділена на основні компоненти: бочка, малий барабан, томи, хет, тарілка та райд. Решту перкусії може бути відкинуто.</string>
     <string name="import_send_short">Завантажити</string>
+    <string name="import_mode_4stem">4 стеми</string>
+    <string name="import_mode_2stem">2 стеми</string>
+    <string name="import_change_song">Вибрати іншу пісню</string>
+    <string name="import_tile_vocals_single">Вокал</string>
+    <string name="import_tile_vocals_split">Соло + бек</string>
+    <string name="import_tile_drums_full">Загальна</string>
+    <string name="import_tile_drums_split">Барабани</string>
     <string name="import_selected_header_placeholder">Оберіть аудіофайл</string>
     <string name="import_no_server">Спочатку налаштуй URL сервера в Налаштуваннях</string>
     <string name="import_uploading">Завантаження…</string>

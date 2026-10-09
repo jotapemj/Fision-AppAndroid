@@ -596,13 +596,30 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     refreshToolbarAvatar();
                     refreshCloudStatusIcon();
                     CloudRepository.get(MainActivity.this).notifyConfigChanged();
-                    startActivity(new Intent(MainActivity.this, ImportActivity.class));
+                    songPicker.launch(new String[]{"audio/*"});
                 }
             });
             return;
         }
-        startActivity(new Intent(this, ImportActivity.class));
+        songPicker.launch(new String[]{"audio/*"});
     }
+
+    /** Add flow: the picker opens first; the import screen only appears with
+     *  a song chosen. Cancelling leaves the list untouched. */
+    private final androidx.activity.result.ActivityResultLauncher<String[]> songPicker =
+            registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+                    uri -> {
+                        if (uri == null) return;
+                        try {
+                            getContentResolver().takePersistableUriPermission(uri,
+                                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        } catch (Throwable ignored) {}
+                        Intent i = new Intent(this, ImportActivity.class);
+                        i.setData(uri);
+                        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(i);
+                    });
 
     /**
      * Builds a SongListData with optional metadata from metadata.txt and artcover.png.

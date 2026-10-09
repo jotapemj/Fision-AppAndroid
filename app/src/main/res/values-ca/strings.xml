@@ -5,7 +5,7 @@
     <string name="tv_title">Cançons</string>
     <string name="tv_title_search">Cerca cançó</string>
     <string name="te_find">Troba a la biblioteca</string>
-    <string name="b_add">+ Afegir</string>
+    <string name="b_add">Afegir</string>
     <string name="no_results">Cap resultat</string>
     <string name="tv_SongsCount">25 cançons</string>
     <string name="results">resultats</string>
@@ -361,6 +361,13 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="import_hint_other">La resta d\'instruments es barrejaran en un sol stem</string>
     <string name="import_hint_drums_split">La bateria identificada a la cançó es separarà en els seus components principals: bombo, caixa, toms, hi-hat, plat i ride. La resta de percussió podria ser descartada.</string>
     <string name="import_send_short">Pujar</string>
+    <string name="import_mode_4stem">4 stems</string>
+    <string name="import_mode_2stem">2 stems</string>
+    <string name="import_change_song">Triar una altra cançó</string>
+    <string name="import_tile_vocals_single">Vocals</string>
+    <string name="import_tile_vocals_split">Principal + cors</string>
+    <string name="import_tile_drums_full">General</string>
+    <string name="import_tile_drums_split">Bateria</string>
     <string name="import_selected_header_placeholder">Selecciona un fitxer d\'àudio</string>
     <string name="import_no_server">Configura primer la URL del servidor a Ajustaments</string>
     <string name="import_uploading">Pujant…</string>

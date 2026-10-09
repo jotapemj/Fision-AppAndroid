@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark radial patch in the hero's top-right corner: keeps the change-song
+     button readable over light covers. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="radial"
+        android:centerX="1"
+        android:centerY="0"
+        android:gradientRadius="104dp"
+        android:startColor="#B3000000"
+        android:centerColor="#66000000"
+        android:endColor="#00000000" />
+</shape>

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Tags for animateExpandCollapse (ImportActivity) -->
-    <item name="tag_expand_state" type="id" />
-    <item name="tag_expand_anim"  type="id" />
+    <!-- Icon resource bound to an import stem tile (cross-fade on change) -->
+    <item name="tag_import_icon_res" type="id" />
     <!-- Records the accent id applied to an Activity theme so we can detect
          stale themes on the next onResume and trigger recreate. -->
     <item name="accent_applied_tag" type="id" />

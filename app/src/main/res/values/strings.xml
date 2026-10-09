@@ -4,7 +4,7 @@
     <string name="tv_title">Songs</string>
     <string name="tv_title_search">Search song</string>
     <string name="te_find">Find in library</string>
-    <string name="b_add">+ Add</string>
+    <string name="b_add">Add</string>
     <string name="no_results">No results</string>
     <string name="tv_SongsCount">25 songs</string>
     <string name="results">results</string>
@@ -382,6 +382,13 @@ HTTP client and server API bindings.]]></string>
     <string name="import_hint_other">The rest of instruments will be mixed into a single stem</string>
     <string name="import_hint_drums_split">The identified drum kit will be split into its main components: kick, snare, toms, hi-hat, cymbal and ride. Other percussion may be discarded.</string>
     <string name="import_send_short">Upload</string>
+    <string name="import_mode_4stem">4 stems</string>
+    <string name="import_mode_2stem">2 stems</string>
+    <string name="import_change_song">Choose another song</string>
+    <string name="import_tile_vocals_single">Vocals</string>
+    <string name="import_tile_vocals_split">Lead + choir</string>
+    <string name="import_tile_drums_full">General</string>
+    <string name="import_tile_drums_split">Drum kit</string>
     <string name="import_selected_header_placeholder">Select an audio file</string>
     <string name="import_no_server">Set the server URL in Settings first</string>
     <string name="import_uploading">Uploading…</string>

@@ -23,10 +23,11 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
-import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.gson.Gson;
 import com.jotapeveloper.fision.cloud.ApiClient;
 import com.jotapeveloper.fision.cloud.CloudRepository;
@@ -36,9 +37,12 @@ import com.jotapeveloper.fision.cloud.JobSubmitResponse;
 import com.jotapeveloper.fision.cloud.ProgressRequestBody;
 import com.jotapeveloper.fision.cloud.ServerPrefs;
 
-import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -48,34 +52,48 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
- * Wizard to submit audio to the self-hosted server. Mirror of the Python GUI:
- *   - Classic (4stem/2stem) vs Personalized (vocals + per-stem checks).
- *   - Device CPU/CUDA. Chords always BTC (chordino deprecated).
+ * Submits audio to the self-hosted server.
+ *   - The song arrives already picked (intent data); the hero card shows it
+ *     and offers choosing another one.
+ *   - Separation: the two classic Demucs presets (4 / 2 stems) or a custom
+ *     stem set chosen on a tile grid. Editing any tile switches to custom.
  *   - Sends POST /jobs multipart with config_json ("rich" format
  *     {sep, device, chords} understood by headless_fision_CLI._load_config).
  */
-public class ImportActivity extends AppCompatActivity {
+public class ImportActivity extends AppCompatActivity implements ImportStemTileAdapter.Host {
 
     /** Optional extra: hash of an already-uploaded song. When present, the activity
      *  starts in REPROCESS mode: no file picker, prefills the current config, "Reprocess"
      *  button and calls POST /library/{hash}/reprocess. */
     public static final String EXTRA_REPROCESS_HASH = "reprocessHash";
 
+    /** Row order of the stem list. "winds" maps to the server key "brass";
+     *  "other" is the rest of the mix, not a server stem. */
+    private static final List<String> TILE_STEMS =
+            Arrays.asList("vocals", "guitar", "bass", "drums", "piano", "winds",
+                    ImportStemTileAdapter.REST_STEM);
+    /** Stems isolated by the classic 4-stem preset (besides the rest of the mix). */
+    private static final Set<String> PRESET_4STEM =
+            new HashSet<>(Arrays.asList("vocals", "bass", "drums"));
+    private static final Set<String> PRESET_2STEM =
+            new HashSet<>(Arrays.asList("vocals"));
+
     private Uri selectedUri = null;
     private String selectedFilename = null;
     private String reprocessHash = null;    // != null while in reprocess mode
 
-    private TextView tvFilename;
     private MaterialButton bSend;
-    // Sticky header with cover + title + artist
-    private android.widget.ImageView ivHeaderCover;
-    private TextView tvHeaderTitle, tvHeaderArtist;
-    private View tvDrumsSplitHint;
+    // Hero card: cover + title + artist + file details
+    private android.widget.ImageView ivHeaderCover, ivHeroBg;
+    private View vHeroScrim, vHeroCorner;
+    private TextView tvHeaderTitle, tvHeaderArtist, tvHeaderMeta;
 
-    private MaterialButtonToggleGroup segSepGroup, segClassicPreset, segVocalsVar,
-            segDrumsVar;
-    private View panelClassic, panelPersonalized, segDrumsVarBar;
-    private MaterialCheckBox cbGuitar, cbBass, cbDrums, cbPiano, cbBrass;
+    // Separation state. The custom set survives switching to a preset and back.
+    private MaterialButtonToggleGroup segSepMode;
+    private ImportStemTileAdapter tileAdapter;
+    private final Set<String> customSelected = new HashSet<>(PRESET_4STEM);
+    private boolean customVocalsSplit = false;
+    private boolean customDrumsSplit = false;
 
     // GPU-aware submission: banner shown when the server has no GPU + blocking
     // overlay while ServerInfo is still being fetched.
@@ -94,16 +112,16 @@ public class ImportActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<String[]> filePicker =
             registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
-                if (uri == null) return;
+                if (uri == null) {
+                    // Cancelled with nothing chosen yet: nothing to show here.
+                    if (selectedUri == null) finish();
+                    return;
+                }
                 try {
                     getContentResolver().takePersistableUriPermission(uri,
                             Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 } catch (Throwable ignored) {}
-                selectedUri = uri;
-                selectedFilename = queryDisplayName(uri);
-                tvFilename.setText(selectedFilename != null
-                        ? selectedFilename : getString(R.string.import_no_file));
-                refreshHeaderFromSelectedUri();
+                setSelectedUri(uri);
             });
 
     @Override
@@ -124,90 +142,63 @@ public class ImportActivity extends AppCompatActivity {
         // toolbar back
         findViewById(R.id.b_import_back).setOnClickListener(v -> finish());
 
-        tvFilename = findViewById(R.id.tv_import_filename);
-        bSend      = findViewById(R.id.b_import_send);
+        bSend          = findViewById(R.id.b_import_send);
         ivHeaderCover  = findViewById(R.id.iv_import_cover);
+        ivHeroBg       = findViewById(R.id.iv_import_heroBg);
+        vHeroScrim     = findViewById(R.id.v_import_heroScrim);
+        vHeroCorner    = findViewById(R.id.v_import_heroCorner);
         tvHeaderTitle  = findViewById(R.id.tv_import_headerTitle);
         tvHeaderArtist = findViewById(R.id.tv_import_headerArtist);
-        tvDrumsSplitHint = findViewById(R.id.tv_import_drumsSplitHint);
+        tvHeaderMeta   = findViewById(R.id.tv_import_headerMeta);
+        gpuWarningBanner = findViewById(R.id.ll_import_gpuWarning);
+        loadingOverlay   = findViewById(R.id.fl_import_loading);
 
-        // The header and the edit (pencil) button open the file picker
-        View pickBtn = findViewById(R.id.b_import_pickFile);
-        View header  = findViewById(R.id.ll_import_header);
-        View.OnClickListener openPicker = v -> filePicker.launch(new String[]{"audio/*"});
-        if (pickBtn != null) pickBtn.setOnClickListener(openPicker);
-        if (header  != null) header.setOnClickListener(openPicker);
+        findViewById(R.id.b_import_changeSong).setOnClickListener(
+                v -> filePicker.launch(new String[]{"audio/*"}));
 
-        // segments
-        segSepGroup       = findViewById(R.id.seg_sep_group);
-        segClassicPreset  = findViewById(R.id.seg_classic_preset);
-        segVocalsVar      = findViewById(R.id.seg_vocals_variant);
-        segDrumsVar       = findViewById(R.id.seg_drums_variant);
-        panelClassic      = findViewById(R.id.panel_classic);
-        panelPersonalized = findViewById(R.id.panel_personalized);
-        segDrumsVarBar    = findViewById(R.id.seg_drums_variant);
-        gpuWarningBanner  = findViewById(R.id.ll_import_gpuWarning);
-        loadingOverlay    = findViewById(R.id.fl_import_loading);
+        // Separation: mode segment + tile grid
+        segSepMode = findViewById(R.id.seg_sep_mode);
+        segSepMode.check(R.id.b_mode_4stem);
+        segSepMode.addOnButtonCheckedListener((g, id, checked) -> {
+            if (checked) refreshSeparationUi();
+        });
+        attachSegmentTint(segSepMode);
 
-        cbGuitar = findViewById(R.id.cb_stem_guitar);
-        cbBass   = findViewById(R.id.cb_stem_bass);
-        cbDrums  = findViewById(R.id.cb_stem_drums);
-        cbPiano  = findViewById(R.id.cb_stem_piano);
-        cbBrass  = findViewById(R.id.cb_stem_brass);
+        RecyclerView rvStems = findViewById(R.id.rv_import_stems);
+        rvStems.setLayoutManager(new LinearLayoutManager(this));
+        // The default animator interpolates bounds on every rebind.
+        rvStems.setItemAnimator(null);
+        tileAdapter = new ImportStemTileAdapter(TILE_STEMS, this);
+        rvStems.setAdapter(tileAdapter);
 
-        // defaults
-        segSepGroup.check(R.id.b_sep_classic);
-        segClassicPreset.check(R.id.b_classic_4stem);
-        segVocalsVar.check(R.id.b_vocals_single);
-        segDrumsVar.check(R.id.b_drums_full);
-
-        // Separation mode change: animate the transition with TransitionManager so the
-        // panel_personalized expands / collapses smoothly (fade + reflow).
-        segSepGroup.addOnButtonCheckedListener((g, id, checked) -> {
-            if (!checked) return;
-            android.view.ViewGroup root = findViewById(R.id.ll_import_root);
-            if (root != null) {
-                androidx.transition.TransitionSet set = new androidx.transition.TransitionSet();
-                set.addTransition(new androidx.transition.Fade());
-                set.addTransition(new androidx.transition.ChangeBounds());
-                set.setDuration(260);
-                set.setInterpolator(new android.view.animation.DecelerateInterpolator());
-                androidx.transition.TransitionManager.beginDelayedTransition(root, set);
+        // Edge fades: each one shows only while content remains beyond its edge.
+        fadeTop = findViewById(R.id.v_import_fadeTop);
+        fadeBottom = findViewById(R.id.v_import_fadeBottom);
+        rvStems.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@androidx.annotation.NonNull RecyclerView rv,
+                                             int dx, int dy) {
+                updateListFades(rv);
             }
-            boolean classic = id == R.id.b_sep_classic;
-            panelClassic.setVisibility(classic ? View.VISIBLE : View.GONE);
-            panelPersonalized.setVisibility(classic ? View.GONE : View.VISIBLE);
         });
-        // Initial state without animation (the listener animates later changes).
-        segDrumsVarBar.setVisibility(cbDrums.isChecked() ? View.VISIBLE : View.GONE);
-        // Seed the initial tag so the first toggle already animates.
-        segDrumsVarBar.setTag(R.id.tag_expand_state, cbDrums.isChecked());
-
-        // "Split drums" hint: only visible when that option is selected and the
-        // personalized panel has drums active.
-        segDrumsVar.addOnButtonCheckedListener((g, id, checked) -> refreshDrumsSplitHint());
-        cbDrums.setOnCheckedChangeListener((b, checked) -> {
-            animateExpandCollapse(segDrumsVarBar, checked);
-            refreshDrumsSplitHint();
-        });
-        // Seed the hint tag too (initially invisible).
-        tvDrumsSplitHint.setTag(R.id.tag_expand_state,
-                cbDrums.isChecked() && segDrumsVar.getCheckedButtonId() == R.id.b_drums_split);
-        refreshDrumsSplitHint();
-
-        // Dynamic tint of the toggle groups: the active button becomes colorPrimary with
-        // white text; the rest stay with translucent grey stroke. Chip-style, same as
-        // in the order_by and single_choice dialogs.
-        attachSegmentTint(segSepGroup);
-        attachSegmentTint(segClassicPreset);
-        attachSegmentTint(segVocalsVar);
-        attachSegmentTint(segDrumsVar);
+        rvStems.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
+                updateListFades(rvStems));
 
         bSend.setOnClickListener(v -> onSendClicked());
 
         // Reprocess mode: hash passed via intent extra
         reprocessHash = getIntent().getStringExtra(EXTRA_REPROCESS_HASH);
-        if (reprocessHash != null) applyReprocessMode();
+        if (reprocessHash != null) {
+            applyReprocessMode();
+        } else if (savedInstanceState != null
+                && savedInstanceState.getParcelable(STATE_URI) != null) {
+            setSelectedUri(savedInstanceState.getParcelable(STATE_URI));
+        } else if (getIntent().getData() != null) {
+            setSelectedUri(getIntent().getData());
+        } else if (savedInstanceState == null) {
+            // Opened without a song: go straight to the picker.
+            filePicker.launch(new String[]{"audio/*"});
+        }
+        refreshSeparationUi();
 
         // Gate the UI on the ServerInfo cache. If it is missing (fresh login
         // that skipped the hook, first launch after a legacy migration, or a
@@ -217,6 +208,15 @@ public class ImportActivity extends AppCompatActivity {
                 com.jotapeveloper.fision.cloud.ServerInfoManager.get(this);
         applyServerInfoState();
         if (!infoMgr.isLoaded()) infoMgr.refresh();
+    }
+
+    /** Keeps the chosen song across recreation (e.g. an accent change). */
+    private static final String STATE_URI = "selectedUri";
+
+    @Override
+    protected void onSaveInstanceState(@androidx.annotation.NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (selectedUri != null) outState.putParcelable(STATE_URI, selectedUri);
     }
 
     @Override
@@ -251,7 +251,7 @@ public class ImportActivity extends AppCompatActivity {
         if (bSend != null) bSend.setEnabled(ready);
     }
 
-    /** Configures the activity in reprocess mode: no picker, header from the
+    /** Configures the activity in reprocess mode: no picker, hero from the
      *  CloudItem, "Reprocess" button and UI prefill from the current config. */
     private void applyReprocessMode() {
         com.jotapeveloper.fision.cloud.CloudItem ci =
@@ -262,58 +262,27 @@ public class ImportActivity extends AppCompatActivity {
             return;
         }
 
-        // Toolbar title and main button
-        TextView tvToolbarTitle = null;
-        // The title TextView lives inside the toolbar without an id; located by scanning
-        androidx.appcompat.widget.Toolbar tb = findViewById(R.id.import_toolbar);
-        if (tb != null) {
-            for (int i = 0; i < tb.getChildCount(); i++) {
-                View child = tb.getChildAt(i);
-                if (child instanceof android.view.ViewGroup) {
-                    android.view.ViewGroup vg = (android.view.ViewGroup) child;
-                    for (int j = 0; j < vg.getChildCount(); j++) {
-                        View sub = vg.getChildAt(j);
-                        if (sub instanceof TextView) { tvToolbarTitle = (TextView) sub; break; }
-                    }
-                }
-                if (tvToolbarTitle != null) break;
-            }
-        }
-        if (tvToolbarTitle != null) tvToolbarTitle.setText(R.string.import_reprocess_title);
+        TextView tvToolbarTitle = findViewById(R.id.tv_import_title);
+        tvToolbarTitle.setText(R.string.import_reprocess_title);
         bSend.setText(R.string.import_reprocess_short);
 
-        // Hide the edit (pencil) button and make the header non-clickable
-        View pickBtn = findViewById(R.id.b_import_pickFile);
-        if (pickBtn != null) pickBtn.setVisibility(View.GONE);
-        View header = findViewById(R.id.ll_import_header);
-        if (header != null) {
-            header.setOnClickListener(null);
-            header.setClickable(false);
-        }
+        // The input already lives on the server: no other song can be chosen.
+        findViewById(R.id.b_import_changeSong).setVisibility(View.GONE);
 
-        // Header: title, artist and cover pulled from the CloudItem
         String title = (ci.displayName != null && !ci.displayName.isEmpty())
                 ? ci.displayName : reprocessHash;
-        tvHeaderTitle.setText(title);
-        if (ci.artist != null && !ci.artist.isEmpty()) {
-            tvHeaderArtist.setText(ci.artist);
-            tvHeaderArtist.setVisibility(View.VISIBLE);
-        } else {
-            tvHeaderArtist.setVisibility(View.GONE);
-        }
-        if (ci.coverPath != null) {
-            android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(ci.coverPath);
-            if (bm != null) ivHeaderCover.setImageBitmap(bm);
-        }
+        android.graphics.Bitmap bm = ci.coverPath != null
+                ? android.graphics.BitmapFactory.decodeFile(ci.coverPath) : null;
+        bindHero(title, ci.artist, null, bm);
 
         // Prefill UI from the current server config
         if (ci.config != null) prefillFromConfig(ci.config);
     }
 
-    /** Applies UI checks/segments from a previous server config
+    /** Applies the separation UI from a previous server config
      *  ("rich" format: {sep:{mode, preset|vocals+stems}, device, chords}). Missing or
      *  unknown fields keep the default already selected in onCreate. The device
-     *  field is ignored: the app now decides between cuda and cpu automatically
+     *  field is ignored: the app decides between cuda and cpu automatically
      *  based on the cached ServerInfo. */
     private void prefillFromConfig(Map<String, Object> cfg) {
         // Server "chords": BTC only in the current version. The field is ignored
@@ -326,41 +295,28 @@ public class ImportActivity extends AppCompatActivity {
         String mode = String.valueOf(sep.get("mode"));
 
         if ("classic".equals(mode)) {
-            segSepGroup.check(R.id.b_sep_classic);
-            panelClassic.setVisibility(View.VISIBLE);
-            panelPersonalized.setVisibility(View.GONE);
             String preset = String.valueOf(sep.get("preset"));
             Object smObj = sep.get("sep_mode");
             int sepMode = (smObj instanceof Number) ? ((Number) smObj).intValue() : -1;
             boolean fourStem = "4stem".equals(preset) || sepMode == 4;
-            segClassicPreset.check(fourStem ? R.id.b_classic_4stem : R.id.b_classic_2stem);
+            segSepMode.check(fourStem ? R.id.b_mode_4stem : R.id.b_mode_2stem);
         } else if ("personalized".equals(mode)) {
-            segSepGroup.check(R.id.b_sep_personalized);
-            panelClassic.setVisibility(View.GONE);
-            panelPersonalized.setVisibility(View.VISIBLE);
-            segVocalsVar.check("split".equals(sep.get("vocals"))
-                    ? R.id.b_vocals_split : R.id.b_vocals_single);
-
+            customVocalsSplit = "split".equals(sep.get("vocals"));
+            customSelected.clear();
+            customSelected.add(ImportStemTileAdapter.LOCKED_STEM);
             Object stemsObj = sep.get("stems");
             if (stemsObj instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> stems = (Map<String, Object>) stemsObj;
-                cbGuitar.setChecked(isStemEnabled(stems, "guitar"));
-                cbBass.setChecked  (isStemEnabled(stems, "bass"));
-                cbDrums.setChecked (isStemEnabled(stems, "drums"));
-                cbPiano.setChecked (isStemEnabled(stems, "piano"));
-                cbBrass.setChecked (isStemEnabled(stems, "brass"));
-                segDrumsVar.check("split".equals(stemVariant(stems, "drums"))
-                        ? R.id.b_drums_split : R.id.b_drums_full);
-                // sync visibility + tags of the drums variant row and the hint
-                boolean drums = cbDrums.isChecked();
-                segDrumsVarBar.setVisibility(drums ? View.VISIBLE : View.GONE);
-                segDrumsVarBar.setTag(R.id.tag_expand_state, drums);
-                boolean split = drums && segDrumsVar.getCheckedButtonId() == R.id.b_drums_split;
-                tvDrumsSplitHint.setVisibility(split ? View.VISIBLE : View.GONE);
-                tvDrumsSplitHint.setTag(R.id.tag_expand_state, split);
+                for (String stem : TILE_STEMS) {
+                    if (ImportStemTileAdapter.REST_STEM.equals(stem)) continue;
+                    if (isStemEnabled(stems, serverKey(stem))) customSelected.add(stem);
+                }
+                customDrumsSplit = "split".equals(stemVariant(stems, "drums"));
             }
+            segSepMode.check(R.id.b_mode_custom);
         }
+        refreshSeparationUi();
     }
 
     private static boolean isStemEnabled(Map<String, Object> stems, String key) {
@@ -374,6 +330,82 @@ public class ImportActivity extends AppCompatActivity {
         if (!(o instanceof Map)) return null;
         Object v = ((Map<?, ?>) o).get("variant");
         return v != null ? v.toString() : null;
+    }
+
+    // ---------------------------------------------------------------
+    // Separation: presets + custom tile grid
+    // ---------------------------------------------------------------
+    private boolean isPreset4() { return segSepMode.getCheckedButtonId() == R.id.b_mode_4stem; }
+    private boolean isPreset2() { return segSepMode.getCheckedButtonId() == R.id.b_mode_2stem; }
+
+    private boolean isCustomMode() {
+        return segSepMode.getCheckedButtonId() == R.id.b_mode_custom;
+    }
+
+    @Override public boolean isSelected(String stem) {
+        if (ImportStemTileAdapter.REST_STEM.equals(stem)) return true;
+        if (isPreset4()) return PRESET_4STEM.contains(stem);
+        if (isPreset2()) return PRESET_2STEM.contains(stem);
+        return customSelected.contains(stem);
+    }
+
+    // Presets have no variants: the classic separation is fixed.
+    @Override public boolean isVocalsSplit() { return isCustomMode() && customVocalsSplit; }
+    @Override public boolean isDrumsSplit()  { return isCustomMode() && customDrumsSplit; }
+
+    @Override public int restNameResource() {
+        return isPreset2() ? R.string.title_accompaniment : R.string.title_other;
+    }
+
+    @Override public void onTileTapped(String stem) {
+        if (ImportStemTileAdapter.LOCKED_STEM.equals(stem)
+                || ImportStemTileAdapter.REST_STEM.equals(stem)) return;
+        enterCustomFromCurrent();
+        if (!customSelected.remove(stem)) customSelected.add(stem);
+        refreshSeparationUi();
+    }
+
+    /** Picking a variant also selects the stem. Picking the one already shown
+     *  on a selected stem changes nothing (a preset stays a preset). */
+    @Override public void onVariantTapped(String stem, boolean split) {
+        boolean current = "vocals".equals(stem) ? isVocalsSplit() : isDrumsSplit();
+        if (current == split && isSelected(stem)) return;
+        enterCustomFromCurrent();
+        if ("vocals".equals(stem)) customVocalsSplit = split;
+        else customDrumsSplit = split;
+        customSelected.add(stem);
+        refreshSeparationUi();
+    }
+
+    /** Editing a tile while a preset is active starts the custom set from
+     *  that preset's stems, so the grid does not jump. */
+    private void enterCustomFromCurrent() {
+        if (isCustomMode()) return;
+        Set<String> base = isPreset2() ? PRESET_2STEM : PRESET_4STEM;
+        customSelected.clear();
+        customSelected.addAll(base);
+        customVocalsSplit = false;
+        customDrumsSplit = false;
+        segSepMode.check(R.id.b_mode_custom);
+    }
+
+    private View fadeTop, fadeBottom;
+
+    private void updateListFades(RecyclerView rv) {
+        fadeTop.setVisibility(rv.canScrollVertically(-1) ? View.VISIBLE : View.INVISIBLE);
+        fadeBottom.setVisibility(rv.canScrollVertically(1) ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    /** Rebinds the stem rows. */
+    private void refreshSeparationUi() {
+        if (tileAdapter == null) return;
+        // Range change keeps each holder on its stem (no reshuffle as with
+        // notifyDataSetChanged), so icon cross-fades only on real variant changes.
+        tileAdapter.notifyItemRangeChanged(0, tileAdapter.getItemCount());
+    }
+
+    private static String serverKey(String stem) {
+        return "winds".equals(stem) ? "brass" : stem;
     }
 
     /** Keeps the visual coherence of the MaterialButtonToggleGroups: the selected
@@ -401,95 +433,27 @@ public class ImportActivity extends AppCompatActivity {
         group.post(apply);
     }
 
-    private void refreshDrumsSplitHint() {
-        if (tvDrumsSplitHint == null) return;
-        boolean visible = cbDrums.isChecked()
-                && segDrumsVar.getCheckedButtonId() == R.id.b_drums_split;
-        animateExpandCollapse(tvDrumsSplitHint, visible);
+    // ---------------------------------------------------------------
+    // Hero card
+    // ---------------------------------------------------------------
+    private void setSelectedUri(Uri uri) {
+        selectedUri = uri;
+        selectedFilename = queryDisplayName(uri);
+        refreshHeroFromSelectedUri();
     }
 
-    /** Height + alpha expand/collapse animation. Idempotent for repeated calls with
-     *  the same state (avoids restarting the animator when visibility already matches). */
-    private void animateExpandCollapse(final View v, final boolean expand) {
-        if (v == null) return;
-        Object tag = v.getTag(R.id.tag_expand_state);
-        Boolean current = (tag instanceof Boolean) ? (Boolean) tag : null;
-        if (current != null && current == expand) return;
-        // First call (no tag): set the state without animating. Prevents a dirty
-        // animation from firing when the activity is inflated.
-        if (current == null) {
-            v.setTag(R.id.tag_expand_state, expand);
-            v.setVisibility(expand ? View.VISIBLE : View.GONE);
-            v.setAlpha(1f);
-            return;
-        }
-        v.setTag(R.id.tag_expand_state, expand);
-
-        Object prev = v.getTag(R.id.tag_expand_anim);
-        if (prev instanceof android.animation.ValueAnimator) {
-            ((android.animation.ValueAnimator) prev).cancel();
-        }
-
-        final android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
-        if (expand) {
-            v.setVisibility(View.VISIBLE);
-            // Measure at wrap_content to know the target height.
-            int wSpec = View.MeasureSpec.makeMeasureSpec(
-                    ((View) v.getParent()).getWidth(), View.MeasureSpec.AT_MOST);
-            int hSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-            v.measure(wSpec, hSpec);
-            final int target = v.getMeasuredHeight();
-            android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(0, target);
-            anim.setDuration(220);
-            anim.setInterpolator(new android.view.animation.DecelerateInterpolator());
-            anim.addUpdateListener(a -> {
-                lp.height = (int) a.getAnimatedValue();
-                v.setLayoutParams(lp);
-                v.setAlpha(a.getAnimatedFraction());
-            });
-            anim.addListener(new android.animation.AnimatorListenerAdapter() {
-                @Override public void onAnimationEnd(android.animation.Animator a) {
-                    lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
-                    v.setLayoutParams(lp);
-                    v.setAlpha(1f);
-                }
-            });
-            v.setTag(R.id.tag_expand_anim, anim);
-            anim.start();
-        } else {
-            final int start = v.getHeight() > 0 ? v.getHeight() : v.getMeasuredHeight();
-            android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(start, 0);
-            anim.setDuration(200);
-            anim.setInterpolator(new android.view.animation.AccelerateInterpolator());
-            anim.addUpdateListener(a -> {
-                lp.height = (int) a.getAnimatedValue();
-                v.setLayoutParams(lp);
-                v.setAlpha(1f - a.getAnimatedFraction());
-            });
-            anim.addListener(new android.animation.AnimatorListenerAdapter() {
-                @Override public void onAnimationEnd(android.animation.Animator a) {
-                    v.setVisibility(View.GONE);
-                    lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
-                    v.setLayoutParams(lp);
-                    v.setAlpha(1f);
-                }
-            });
-            v.setTag(R.id.tag_expand_anim, anim);
-            anim.start();
-        }
-    }
-
-    /** Extracts local metadata from the selected audio (title/artist/cover) via
-     *  MediaMetadataRetriever and drops it into the sticky header. Fallback cover = generic. */
-    private void refreshHeaderFromSelectedUri() {
+    /** Extracts local metadata from the selected audio (title/artist/cover/duration)
+     *  via MediaMetadataRetriever and drops it into the hero card. */
+    private void refreshHeroFromSelectedUri() {
         if (selectedUri == null) return;
-        String title = null, artist = null;
+        String title = null, artist = null, duration = null;
         android.graphics.Bitmap cover = null;
         android.media.MediaMetadataRetriever mmr = new android.media.MediaMetadataRetriever();
         try {
             mmr.setDataSource(this, selectedUri);
             title  = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE);
             artist = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST);
+            duration = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
             byte[] art = mmr.getEmbeddedPicture();
             if (art != null && art.length > 0) {
                 cover = android.graphics.BitmapFactory.decodeByteArray(art, 0, art.length);
@@ -499,15 +463,65 @@ public class ImportActivity extends AppCompatActivity {
             try { mmr.release(); } catch (Throwable ignored) {}
         }
         if (title == null || title.isEmpty()) title = stripExtension(selectedFilename);
-        tvHeaderTitle.setText(title);
-        if (artist != null && !artist.isEmpty()) {
-            tvHeaderArtist.setText(artist);
-            tvHeaderArtist.setVisibility(View.VISIBLE);
-        } else {
-            tvHeaderArtist.setVisibility(View.GONE);
+        bindHero(title, artist, buildMetaLine(duration), cover);
+    }
+
+    /** "5:55 · FLAC · 41.0 MB". Missing parts are skipped. */
+    private String buildMetaLine(String durationMs) {
+        List<String> parts = new java.util.ArrayList<>();
+        try {
+            long ms = Long.parseLong(durationMs);
+            long s = ms / 1000;
+            parts.add(String.format(java.util.Locale.US, "%d:%02d", s / 60, s % 60));
+        } catch (Throwable ignored) {}
+        if (selectedFilename != null) {
+            int dot = selectedFilename.lastIndexOf('.');
+            if (dot > 0 && dot < selectedFilename.length() - 1) {
+                parts.add(selectedFilename.substring(dot + 1).toUpperCase(java.util.Locale.ROOT));
+            }
         }
-        if (cover != null) ivHeaderCover.setImageBitmap(cover);
-        else ivHeaderCover.setImageResource(R.raw.artcover_generic);
+        long size = querySize(selectedUri);
+        if (size > 0) parts.add(humanBytes(size));
+        return parts.isEmpty() ? null : TextUtils.join(" · ", parts);
+    }
+
+    /** Fills the hero. A real cover also paints the blurred background;
+     *  without one, the generic cover sits on the plain card. */
+    private void bindHero(String title, String artist, String meta,
+                          android.graphics.Bitmap cover) {
+        tvHeaderTitle.setText(title);
+        setOptionalText(tvHeaderArtist, artist);
+        setOptionalText(tvHeaderMeta, meta);
+        if (cover != null) {
+            ivHeaderCover.setImageBitmap(cover);
+            ivHeroBg.setImageBitmap(cover);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ivHeroBg.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
+                        60f, 60f, android.graphics.Shader.TileMode.CLAMP));
+                ivHeroBg.setAlpha(1f);
+            } else {
+                // No blur available: keep the cover faint behind the scrim.
+                ivHeroBg.setAlpha(0.35f);
+            }
+            ivHeroBg.setVisibility(View.VISIBLE);
+            vHeroScrim.setVisibility(View.VISIBLE);
+            vHeroCorner.setVisibility(View.VISIBLE);
+        } else {
+            ivHeaderCover.setImageResource(R.raw.artcover_generic);
+            ivHeroBg.setImageDrawable(null);
+            ivHeroBg.setVisibility(View.GONE);
+            vHeroScrim.setVisibility(View.GONE);
+            vHeroCorner.setVisibility(View.GONE);
+        }
+    }
+
+    private static void setOptionalText(TextView tv, String text) {
+        if (text != null && !text.isEmpty()) {
+            tv.setText(text);
+            tv.setVisibility(View.VISIBLE);
+        } else {
+            tv.setVisibility(View.GONE);
+        }
     }
 
     // ---------------------------------------------------------------
@@ -751,23 +765,22 @@ public class ImportActivity extends AppCompatActivity {
 
     private Map<String, Object> buildSepConfig() {
         Map<String, Object> sep = new LinkedHashMap<>();
-        if (segSepGroup.getCheckedButtonId() == R.id.b_sep_classic) {
-            boolean fourStem = segClassicPreset.getCheckedButtonId() == R.id.b_classic_4stem;
+        if (!isCustomMode()) {
+            boolean fourStem = isPreset4();
             sep.put("mode", "classic");
             sep.put("preset", fourStem ? "4stem" : "2stem");
             sep.put("sep_mode", fourStem ? 4 : 2);
         } else {
             sep.put("mode", "personalized");
-            sep.put("vocals",
-                    segVocalsVar.getCheckedButtonId() == R.id.b_vocals_split ? "split" : "single");
+            sep.put("vocals", customVocalsSplit ? "split" : "single");
 
             Map<String, Object> stems = new LinkedHashMap<>();
-            stems.put("guitar", stemEntry(cbGuitar.isChecked(), null));
-            stems.put("bass",   stemEntry(cbBass.isChecked(),   null));
-            stems.put("drums",  stemEntry(cbDrums.isChecked(),
-                    segDrumsVar.getCheckedButtonId() == R.id.b_drums_split ? "split" : "full"));
-            stems.put("piano",  stemEntry(cbPiano.isChecked(),  null));
-            stems.put("brass",  stemEntry(cbBrass.isChecked(),  null));
+            for (String stem : TILE_STEMS) {
+                if (ImportStemTileAdapter.LOCKED_STEM.equals(stem)
+                        || ImportStemTileAdapter.REST_STEM.equals(stem)) continue;
+                stems.put(serverKey(stem), stemEntry(customSelected.contains(stem),
+                        "drums".equals(stem) ? (customDrumsSplit ? "split" : "full") : null));
+            }
             sep.put("stems", stems);
         }
         return sep;
@@ -781,7 +794,7 @@ public class ImportActivity extends AppCompatActivity {
     }
 
     // ---------------------------------------------------------------
-    // Util: human name of the Uri
+    // Util: human name and size of the Uri
     // ---------------------------------------------------------------
     private String queryDisplayName(Uri uri) {
         String name = null;
@@ -792,6 +805,17 @@ public class ImportActivity extends AppCompatActivity {
             }
         } catch (Throwable ignored) {}
         return name != null ? name : uri.getLastPathSegment();
+    }
+
+    private long querySize(Uri uri) {
+        if (uri == null) return -1;
+        try (Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int idx = c.getColumnIndex(OpenableColumns.SIZE);
+                if (idx >= 0 && !c.isNull(idx)) return c.getLong(idx);
+            }
+        } catch (Throwable ignored) {}
+        return -1;
     }
 
     // ---------------------------------------------------------------

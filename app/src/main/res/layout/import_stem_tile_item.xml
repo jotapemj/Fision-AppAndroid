@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Row card for the import screen: stem icon on the left, a vertical
+     divider and the stem name. Stems with a variant (vocals, drums) add a
+     row of two option buttons under the name, which makes the card taller.
+     Selection is an overlay ring whose alpha is toggled. -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_import_stem"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
+    app:cardBackgroundColor="#1AFFFFFF"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="64dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="14dp">
+
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp">
+
+            <ImageView
+                android:id="@+id/iv_import_stem_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="4dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription"
+                tools:src="@raw/ic_vocals_split" />
+
+            <!-- Diagonal separator between the lead and choir microphones. -->
+            <View
+                android:id="@+id/v_import_stem_diag"
+                android:layout_width="32dp"
+                android:layout_height="1dp"
+                android:layout_gravity="center"
+                android:rotation="-45"
+                android:background="#4D808080"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </FrameLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="#4D808080" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:id="@+id/tv_import_stem_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:fontFamily="@font/yugothic_ui_regular"
+                android:textColor="@color/AppWhite"
+                android:textSize="16sp"
+                tools:text="Vocals" />
+
+            <!-- Variant options (vocals, drums only). -->
+            <LinearLayout
+                android:id="@+id/ll_import_stem_variant"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/tv_import_stem_variantA"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="5dp"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:maxLines="1"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:textSize="14sp"
+                    app:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeMaxTextSize="14sp"
+                    tools:text="Vocals" />
+
+                <TextView
+                    android:id="@+id/tv_import_stem_variantB"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="5dp"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:maxLines="1"
+                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:textSize="14sp"
+                    app:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeMaxTextSize="14sp"
+                    tools:text="Lead + choir" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Selection ring, drawn on top of the content. Alpha-toggled only, so
+         a selection change never triggers a re-measure. -->
+    <View
+        android:id="@+id/v_import_stem_ring"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</com.google.android.material.card.MaterialCardView>
