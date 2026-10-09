@@ -26,12 +26,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="18dp"
-        app:boxStrokeColor="@color/AppWhite"
-        app:boxStrokeWidth="1dp"
-        app:hintTextColor="@color/AppWhite"
-        android:textColorHint="#9E9E9E"
-        app:cursorColor="?attr/colorPrimary"
-        app:cursorErrorColor="?attr/colorPrimary">
+        style="@style/Widget.Fision.TextInputLayout">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_textInput"

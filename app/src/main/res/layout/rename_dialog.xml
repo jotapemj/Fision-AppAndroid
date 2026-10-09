@@ -37,15 +37,11 @@
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_song_name"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.Fision.TextInputLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:hint="@string/rename_hint_song"
-        app:boxStrokeColor="@color/AppWhite"
-        android:textColorHint="#919191"
-        app:hintTextColor="@color/AppWhite"
-        app:cursorColor="?attr/colorPrimary">
+        android:hint="@string/rename_hint_song">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_song_name"
@@ -63,15 +59,11 @@
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_artist_name"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.Fision.TextInputLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
-        android:hint="@string/rename_hint_artist"
-        app:boxStrokeColor="@color/AppWhite"
-        android:textColorHint="#919191"
-        app:hintTextColor="@color/AppWhite"
-        app:cursorColor="?attr/colorPrimary">
+        android:hint="@string/rename_hint_artist">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_artist_name"

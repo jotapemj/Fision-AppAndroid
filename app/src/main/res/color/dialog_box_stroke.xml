@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Outlined text box stroke in dialogs: white when focused, otherwise the
+     same tone as the dialog separator lines. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/AppWhite" android:state_focused="true" />
+    <item android:color="#22FFFFFF" />
+</selector>

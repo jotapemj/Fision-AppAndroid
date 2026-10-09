@@ -11,7 +11,8 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
+        <!-- Default for every TextInputLayout. -->
+        <item name="textInputStyle">@style/Widget.Fision.TextInputLayout</item>
     </style>
 
     <!-- SplashTheme lives only in values / values-v31 (same in dark mode). -->

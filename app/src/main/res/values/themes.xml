@@ -13,7 +13,8 @@
         <item name="accentSecondary">@color/accent_green_secondary</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
+        <!-- Default for every TextInputLayout. -->
+        <item name="textInputStyle">@style/Widget.Fision.TextInputLayout</item>
     </style>
     <!-- Splash: black window; FisionSplashView draws the animation on top.
          Same in light and dark mode (no values-night copy); values-v31 adds the
@@ -155,6 +156,22 @@
         <item name="android:fontFamily">@font/yugothic_ui_regular</item>
         <item name="android:singleLine">true</item>
         <item name="android:ellipsize">end</item>
+    </style>
+
+    <!-- Single text field style for the whole app: outlined, 12dp corners (in
+         line with the cards), stroke in the separator tone and white when
+         focused. Every TextInputLayout uses it. -->
+    <style name="Widget.Fision.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="boxStrokeColor">@color/dialog_box_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="hintTextColor">@color/AppWhite</item>
+        <item name="android:textColorHint">#9E9E9E</item>
+        <item name="cursorColor">?attr/colorPrimary</item>
+        <item name="cursorErrorColor">?attr/colorPrimary</item>
     </style>
 
     <!-- EditText overlay: forces colorPrimary on the selection handles (drops)

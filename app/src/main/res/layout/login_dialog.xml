@@ -38,12 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:hint="@string/login_hint_url"
-        app:boxStrokeColor="@color/AppWhite"
-        app:boxStrokeWidth="1dp"
-        app:hintTextColor="@color/AppWhite"
-        android:textColorHint="#9E9E9E"
-        app:cursorColor="?attr/colorPrimary"
-        app:cursorErrorColor="?attr/colorPrimary">
+        style="@style/Widget.Fision.TextInputLayout">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_loginUrl"
@@ -62,12 +57,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:hint="@string/login_hint_user"
-        app:boxStrokeColor="@color/AppWhite"
-        app:boxStrokeWidth="1dp"
-        app:hintTextColor="@color/AppWhite"
-        android:textColorHint="#9E9E9E"
-        app:cursorColor="?attr/colorPrimary"
-        app:cursorErrorColor="?attr/colorPrimary">
+        style="@style/Widget.Fision.TextInputLayout">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_loginUser"
@@ -86,12 +76,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:hint="@string/login_hint_pass"
-        app:boxStrokeColor="@color/AppWhite"
-        app:boxStrokeWidth="1dp"
-        app:hintTextColor="@color/AppWhite"
-        android:textColorHint="#9E9E9E"
-        app:cursorColor="?attr/colorPrimary"
-        app:cursorErrorColor="?attr/colorPrimary"
+        style="@style/Widget.Fision.TextInputLayout"
         app:passwordToggleEnabled="true"
         app:passwordToggleTint="@color/AppWhite">
 
