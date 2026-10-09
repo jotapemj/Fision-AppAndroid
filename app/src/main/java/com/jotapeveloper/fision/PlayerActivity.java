@@ -1625,9 +1625,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
                     idx == currentIdx ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
             row.setTextColor(idx == currentIdx ? primary : white);
-            row.setBackgroundResource(idx == currentIdx
-                    ? R.drawable.dialog_option_active
-                    : R.drawable.dialog_option_inactive);
+            if (idx == currentIdx) row.setBackground(activeOptionBackground());
+            else row.setBackgroundResource(R.drawable.dialog_option_inactive);
             // Foreground = ripple over the stroke without losing the background
             android.util.TypedValue tv = new android.util.TypedValue();
             getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
@@ -1928,6 +1927,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         wizardProgressBar.setProgress(0);
     }
 
+    /** Selected option row background: same shape as dialog_option_active,
+     *  but painted with the runtime accent (song colors). The XML drawable
+     *  resolves ?attr/colorPrimary to the theme accent, which the Player
+     *  overrides at runtime. */
+    private android.graphics.drawable.Drawable activeOptionBackground() {
+        int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        float density = getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable bg =
+                new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(20f * density);
+        bg.setStroke(Math.round(2f * density), accent);
+        // Soft accent tint (8%), as accent_translucent_08.
+        bg.setColor((accent & 0x00FFFFFF) | 0x14000000);
+        return bg;
+    }
+
     /** Inserts a clickable chip-style row (same UX as showSingleChoiceBlurDialog). */
     private void addOptionRow(String label, boolean selected, Runnable onClick) {
         int primary = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
@@ -1942,9 +1957,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         row.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
                 selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         row.setTextColor(selected ? primary : white);
-        row.setBackgroundResource(selected
-                ? R.drawable.dialog_option_active
-                : R.drawable.dialog_option_inactive);
+        if (selected) row.setBackground(activeOptionBackground());
+        else row.setBackgroundResource(R.drawable.dialog_option_inactive);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // Ripple with a rounded mask that matches the option-row corners.
             row.setForeground(androidx.core.content.ContextCompat.getDrawable(
