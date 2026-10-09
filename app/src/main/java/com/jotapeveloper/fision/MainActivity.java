@@ -326,6 +326,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         sortOrder = sortPrefs.getInt(PREF_SORT_ORDER, 0);
         b_orderBy.setOnClickListener(v -> showSortDialog());
         rvSongList =(RecyclerView) findViewById(R.id.rv_songList);
+        // No cross-fade on item changes: a cover or title arriving from the
+        // server would otherwise flash the whole row.
+        RecyclerView.ItemAnimator songsAnimator = rvSongList.getItemAnimator();
+        if (songsAnimator instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
+            ((androidx.recyclerview.widget.SimpleItemAnimator) songsAnimator)
+                    .setSupportsChangeAnimations(false);
+        }
         refreshSongList = findViewById(R.id.swipeRefreshLayout);
         refreshSongList.setColorSchemeColors(
                 com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));

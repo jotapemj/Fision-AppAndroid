@@ -31,6 +31,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         this.context = context;
         this.listData = listData;
         this.ParentActivity = ParentActivity;
+        setHasStableIds(true);
     }
 
     /** Payload for partial bind: refreshes overlay+subtitle only, does not touch cover/tvTitle. */
@@ -103,10 +104,25 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                         }).start();
                 holder.lastSubtitleKind = newKind;
             }
-            applyCloudOverlay(holder, it.cloud);
+            applyCloudOverlay(holder, it.cloud, true);
             return;
         }
         onBindViewHolder(holder, position);
+    }
+
+    /** Stable ids per song (folder name or cloud hash): a full refresh keeps each
+     *  holder on its song, so covers and veils are not shuffled between rows. */
+    private static final java.util.Map<String, Long> STABLE_IDS = new java.util.HashMap<>();
+
+    @Override
+    public long getItemId(int position) {
+        String key = listData[position].getTitle();
+        Long id = STABLE_IDS.get(key);
+        if (id == null) {
+            id = (long) STABLE_IDS.size();
+            STABLE_IDS.put(key, id);
+        }
+        return id;
     }
 
     /** Subtitle "kind" used to decide when to animate a fade. Only changes when the
@@ -151,7 +167,11 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         // The wave view uses the same bitmap. When there is no cover, the fill wave stays empty.
         if (holder.vCoverWave != null) holder.vCoverWave.setCover(bm);
 
-        applyCloudOverlay(holder, item.cloud);
+        // The veil only animates when the holder keeps showing the same song
+        // (a real state change). A holder rebound to another song snaps to it.
+        boolean sameSong = item.getTitle().equals(holder.boundKey);
+        holder.boundKey = item.getTitle();
+        applyCloudOverlay(holder, item.cloud, sameSong);
 
         holder.options.setOnClickListener(view ->
                 ParentActivity.showBottomDialog(item));
@@ -181,10 +201,10 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         return item.getArtist() != null ? item.getArtist() : item.getSubtitle();
     }
 
-    private void applyCloudOverlay(ViewHolder h, CloudItem c) {
+    private void applyCloudOverlay(ViewHolder h, CloudItem c, boolean animate) {
         if (c == null || c.state == CloudItem.State.LOCAL_AND_CLOUD
                       || c.state == CloudItem.State.LOCAL_ONLY) {
-            fadeDim(h, false);
+            fadeDim(h, false, animate);
             h.pbSpinner.setVisibility(View.GONE);
             if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
             return;
@@ -192,7 +212,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         switch (c.state) {
             case QUEUED:
             case RUNNING:
-                fadeDim(h, true);
+                fadeDim(h, true, animate);
                 h.pbSpinner.setVisibility(View.VISIBLE);
                 h.pbSpinner.setIndeterminateTintList(
                         android.content.res.ColorStateList.valueOf(
@@ -201,7 +221,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
                 break;
             case WAITING_GPU:
-                fadeDim(h, true);
+                fadeDim(h, true, animate);
                 h.pbSpinner.setVisibility(View.VISIBLE);
                 h.pbSpinner.setIndeterminateTintList(
                         android.content.res.ColorStateList.valueOf(
@@ -210,7 +230,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
                 break;
             case DOWNLOADING:
-                fadeDim(h, false);
+                fadeDim(h, false, animate);
                 h.pbSpinner.setVisibility(View.GONE);
                 if (h.vCoverWave != null) {
                     h.vCoverWave.setVisibility(View.VISIBLE);
@@ -221,16 +241,22 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             case ERROR:
             case CANCELLED:
                 // Smooth fade into the dim (LOCAL_AND_CLOUD → CLOUD_ONLY after a local delete)
-                fadeDim(h, true);
+                fadeDim(h, true, animate);
                 h.pbSpinner.setVisibility(View.GONE);
                 if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
                 break;
         }
     }
 
-    /** Animates the grey veil appearing/disappearing with a smooth fade. */
-    private static void fadeDim(ViewHolder h, boolean visible) {
+    /** Shows/hides the grey veil: smooth fade, or instant when not animating. */
+    private static void fadeDim(ViewHolder h, boolean visible, boolean animate) {
         if (h.vCoverDim == null) return;
+        if (!animate) {
+            h.vCoverDim.animate().cancel();
+            h.vCoverDim.setAlpha(1f);
+            h.vCoverDim.setVisibility(visible ? View.VISIBLE : View.GONE);
+            return;
+        }
         if (visible) {
             if (h.vCoverDim.getVisibility() == View.VISIBLE && h.vCoverDim.getAlpha() >= 0.99f) return;
             h.vCoverDim.animate().cancel();
@@ -255,6 +281,8 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         TextView tvTitle;
         TextView tvSubtitle;
         ImageButton options;
+        /** Song this holder last showed (folder name or cloud hash). */
+        String boundKey;
         ShapeableImageView iv_cover;
         View coverWrap;
         View vCoverDim;
