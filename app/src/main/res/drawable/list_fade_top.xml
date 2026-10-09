@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bottom edge fade of the stem list (transparent to screen black). -->
+<!-- Top edge fade of a scrolling list (screen black to transparent). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="270"
-        android:startColor="#00000000"
-        android:endColor="#E6000000" />
+        android:startColor="#E6000000"
+        android:endColor="#00000000" />
 </shape>

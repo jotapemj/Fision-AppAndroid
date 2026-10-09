@@ -342,6 +342,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             ((androidx.recyclerview.widget.SimpleItemAnimator) songsAnimator)
                     .setSupportsChangeAnimations(false);
         }
+        // Edge fades: each one shows only while songs remain beyond its edge.
+        fadeTop = findViewById(R.id.v_main_fadeTop);
+        fadeBottom = findViewById(R.id.v_main_fadeBottom);
+        rvSongList.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                updateListFades();
+            }
+        });
+        rvSongList.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
+                updateListFades());
         refreshSongList = findViewById(R.id.swipeRefreshLayout);
         refreshSongList.setColorSchemeColors(
                 com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
@@ -538,6 +548,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 .setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator());
         androidx.transition.TransitionManager.beginDelayedTransition(root, set);
         button.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    private View fadeTop, fadeBottom;
+
+    private void updateListFades() {
+        fadeTop.setVisibility(rvSongList.canScrollVertically(-1) ? View.VISIBLE : View.INVISIBLE);
+        fadeBottom.setVisibility(rvSongList.canScrollVertically(1) ? View.VISIBLE : View.INVISIBLE);
     }
 
     private Drawable clearIcon;

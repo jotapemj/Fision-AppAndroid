@@ -249,6 +249,28 @@
             app:fastScrollVerticalTrackDrawable="@drawable/scroll_line"/>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+    <!-- Edge fades over the song list, shown only while songs remain beyond
+         that edge (MainActivity.updateListFades). Drawn under the mini-player. -->
+    <View
+        android:id="@+id/v_main_fadeTop"
+        android:layout_width="0dp"
+        android:layout_height="28dp"
+        android:background="@drawable/list_fade_top"
+        android:visibility="invisible"
+        app:layout_constraintTop_toTopOf="@+id/swipeRefreshLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <View
+        android:id="@+id/v_main_fadeBottom"
+        android:layout_width="0dp"
+        android:layout_height="28dp"
+        android:background="@drawable/list_fade_bottom"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="@+id/swipeRefreshLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Search with no matches. -->
     <TextView
         android:id="@+id/tv_noResults"
