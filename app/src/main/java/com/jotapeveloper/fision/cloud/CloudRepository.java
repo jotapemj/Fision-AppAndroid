@@ -297,6 +297,7 @@ public class CloudRepository {
             it = new CloudItem(r.hash);
             items.put(r.hash, it);
         }
+        it.submittedAt = System.currentTimeMillis();
         if (displayName != null && !displayName.isEmpty()) it.displayName = displayName;
         if (artist != null && !artist.isEmpty()) it.artist = artist;
         if (coverPath != null) it.coverPath = coverPath;
@@ -797,7 +798,8 @@ public class CloudRepository {
         for (CloudItem it : items.values()) {
             if (it.jobId == null) continue;
             if (sb.length() > 0) sb.append(';');
-            sb.append(it.hash).append(':').append(it.jobId);
+            // hash:jobId:submittedAt (the timestamp keeps the in-flight order across restarts)
+            sb.append(it.hash).append(':').append(it.jobId).append(':').append(it.submittedAt);
         }
         prefs.edit().putString(KEY_PENDING_JOBS, sb.toString()).apply();
     }
@@ -806,12 +808,16 @@ public class CloudRepository {
         String s = prefs.getString(KEY_PENDING_JOBS, "");
         if (s == null || s.isEmpty()) return;
         for (String part : s.split(";")) {
-            int idx = part.indexOf(':');
-            if (idx <= 0) continue;
-            String h = part.substring(0, idx);
-            String j = part.substring(idx + 1);
+            // "hash:jobId" (older entries) or "hash:jobId:submittedAt"
+            String[] f = part.split(":");
+            if (f.length < 2 || f[0].isEmpty()) continue;
+            String h = f[0];
+            String j = f[1];
             CloudItem it = new CloudItem(h);
             it.jobId = j;
+            if (f.length > 2) {
+                try { it.submittedAt = Long.parseLong(f[2]); } catch (NumberFormatException ignored) {}
+            }
             it.state = CloudItem.State.QUEUED;
             items.put(h, it);
         }

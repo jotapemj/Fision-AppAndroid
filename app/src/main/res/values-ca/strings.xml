@@ -6,6 +6,7 @@
     <string name="tv_title_search">Cerca cançó</string>
     <string name="te_find">Troba a la biblioteca</string>
     <string name="b_add">+ Afegir</string>
+    <string name="no_results">Cap resultat</string>
     <string name="tv_SongsCount">25 cançons</string>
     <string name="results">resultats</string>
     <string name="songs">cançons</string>

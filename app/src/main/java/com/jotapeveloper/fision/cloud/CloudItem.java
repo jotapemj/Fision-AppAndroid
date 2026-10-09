@@ -44,6 +44,7 @@ public class CloudItem {
     public long   stickyOrderTs;         // if >0, sort this CLOUD_ONLY as if it were local with this lastModified
     public String coverUrl;              // server-relative path to fetch the artcover
     public String serverCreated;         // ISO8601 original upload date (server created_at)
+    public long   submittedAt;           // local time the job was sent; orders in-flight items
     public java.util.Map<String, Object> config;  // current server config (used to prefill the reprocess wizard)
 
     public CloudItem(String hash) { this.hash = hash; }

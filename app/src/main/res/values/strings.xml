@@ -5,6 +5,7 @@
     <string name="tv_title_search">Search song</string>
     <string name="te_find">Find in library</string>
     <string name="b_add">+ Add</string>
+    <string name="no_results">No results</string>
     <string name="tv_SongsCount">25 songs</string>
     <string name="results">results</string>
     <string name="songs">songs</string>

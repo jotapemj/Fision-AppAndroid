@@ -5,6 +5,7 @@
     <string name="tv_title_search">Buscar canción</string>
     <string name="te_find">Buscar en la biblioteca</string>
     <string name="b_add">+ Añadir</string>
+    <string name="no_results">Sin resultados</string>
     <string name="tv_SongsCount">25 canciones</string>
 
     <string name="results">resultados</string>

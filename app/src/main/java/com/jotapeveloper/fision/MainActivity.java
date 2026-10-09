@@ -84,7 +84,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private RecyclerView rvSongList;
     private SwipeRefreshLayout refreshSongList;
 
+    /** Visible list (search matches when a query is active). */
     private SongListData[] Songs;
+    /** Full merged list (local + cloud) from the last rebuild, before the search filter. */
+    private SongListData[] allSongs = new SongListData[0];
+    /** Cloud hashes of the last rebuild (LOCAL_ONLY excluded) and whether each was
+     *  in flight then: detects adds/removes and slot changes without a rebuild. */
+    private final Map<String, Boolean> builtInFlightByHash = new HashMap<>();
 
     // === Mini-player ===
     private View miniPlayer;
@@ -160,23 +166,26 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             if (c.localFolderName != null) byKey.put(c.localFolderName, c);
         }
 
-        // Detect structural changes: item added or removed from the visible set
+        // Structural changes are checked against the full merged list (allSongs),
+        // not the visible one: with a search active, Songs only holds the matches.
         java.util.Set<String> snapHashes = new java.util.HashSet<>();
         for (com.jotapeveloper.fision.cloud.CloudItem c : snap) snapHashes.add(c.hash);
 
-        // 1) server item not present in Songs -> add
-        java.util.Set<String> currentCloudHashes = new java.util.HashSet<>();
-        for (SongListData s : Songs) if (s.cloud != null) currentCloudHashes.add(s.cloud.hash);
+        // 1) server item not in the merged list -> add.
+        //    An item entering or leaving the in-flight state changes its slot
+        //    (in-flight block on top vs date order) -> full rebuild to re-sort.
         for (com.jotapeveloper.fision.cloud.CloudItem c : snap) {
             if (c.state == com.jotapeveloper.fision.cloud.CloudItem.State.LOCAL_ONLY) continue;
-            if (!currentCloudHashes.contains(c.hash)) { refreshSongList(); return; }
+            Boolean wasInFlight = builtInFlightByHash.get(c.hash);
+            if (wasInFlight == null || wasInFlight != c.isInFlight()) {
+                refreshSongList();
+                return;
+            }
         }
 
-        // 2) Songs item with cloud that is no longer on the server -> remove
-        for (SongListData s : Songs) {
-            if (s.cloud == null) continue;
-            if (s.cloud.state == com.jotapeveloper.fision.cloud.CloudItem.State.LOCAL_ONLY) continue;
-            if (!snapHashes.contains(s.cloud.hash)) { refreshSongList(); return; }
+        // 2) merged item with cloud that is no longer on the server -> remove
+        for (String hash : builtInFlightByHash.keySet()) {
+            if (!snapHashes.contains(hash)) { refreshSongList(); return; }
         }
 
         // 3) No adds/removes: refresh only items with real changes
@@ -386,8 +395,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         refreshSongList();
 
         // Listener for searching for song
-        Drawable[] et_find_drawables = et_find.getCompoundDrawables();
-        showClearButton(et_find_drawables, false);
+        // The clear (X) icon stays installed so the text never shifts; only its
+        // alpha changes, with a short fade.
+        clearIcon = et_find.getCompoundDrawables()[2].mutate();
+        clearIcon.setAlpha(0);
         et_find.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean hasFocus) {
@@ -408,35 +419,17 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
                 boolean TextEmpty = TextUtils.isEmpty(charSequence.toString());
-                if (TextEmpty){showClearButton(et_find_drawables, false);}
-                else{showClearButton(et_find_drawables, true);}
+                showClearButton(!TextEmpty);
 
+                // Pull-to-refresh only without a query.
+                refreshSongList.setEnabled(TextEmpty);
                 if (TextEmpty) {
                     // Empty query: rebuild the full merged list (local + cloud +
-                    // sticky order) instead of running filterList("") which only
-                    // sees local folders and re-adds them without the merge, so
-                    // sticky-ordered items ended up in the wrong slot.
+                    // sticky order).
                     refreshSongList();
                 } else {
-                    filterList(charSequence.toString(), SongsInDirectory, rvSongList);
+                    applySearchFilter(charSequence.toString());
                 }
-
-                Animation songsCountAnimation_out = new AlphaAnimation(1.0f, 0.0f);
-                Animation songsCountAnimation_in = new AlphaAnimation(0.0f, 1.0f);
-                songsCountAnimation_out.setDuration(300);
-                songsCountAnimation_in.setDuration(300);
-
-                if (!TextEmpty){
-                    refreshSongList.setEnabled(false);
-                    int itemsFiltered = rvSongList.getAdapter().getItemCount();
-                    tv_SongsCount.startAnimation(songsCountAnimation_out);
-                    String results = itemsFiltered + " " + getString(R.string.results);
-                    tv_SongsCount.setText(results);
-                    tv_SongsCount.startAnimation(songsCountAnimation_in);
-                }
-                else{refreshSongList.setEnabled(true);
-                    String songsCount = SongsInDirectory.size() + " " + getString(R.string.songs);
-                    tv_SongsCount.setText(songsCount);}
             }
 
             @Override
@@ -449,19 +442,29 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         et_find.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
-                final int DRAWABLE_LEFT = 0;
-                final int DRAWABLE_TOP = 1;
-                final int DRAWABLE_RIGHT = 2;
-                final int DRAWABLE_BOTTOM = 3;
-                if(et_find.getCompoundDrawables()[DRAWABLE_RIGHT]==null){return false;}
-                if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                    if(motionEvent.getRawX() >= (et_find.getRight() - et_find.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
+                // Tap on the X (only while it is shown): the icon plus its
+                // end padding, in view coordinates.
+                if (!clearVisible || clearIcon == null) return false;
+                if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                    int hitStart = et_find.getWidth() - et_find.getPaddingEnd()
+                            - clearIcon.getBounds().width() - et_find.getCompoundDrawablePadding();
+                    if (motionEvent.getX() >= hitStart) {
                         et_find.setText("");
                         return true;
                     }
                 }
                 return false;
             }
+        });
+
+        // Keyboard "Search" key: hide the keyboard and leave the results on screen.
+        et_find.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) return false;
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager)
+                            getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+            return true;
         });
 
         // First-run flow: prompt the sign-in dialog on the very first launch. The
@@ -537,13 +540,22 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         button.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
-    private void showClearButton(Drawable[] drawables,boolean option) {
-        if (!option){
-            et_find.setCompoundDrawablesWithIntrinsicBounds(drawables[0],drawables[1],null,drawables[3]);
-        }
-        else{
-            et_find.setCompoundDrawablesWithIntrinsicBounds(drawables[0],drawables[1],drawables[2],drawables[3]);
-        }
+    private Drawable clearIcon;
+    private boolean clearVisible = false;
+    private android.animation.ValueAnimator clearAnim;
+
+    /** Fades the search clear (X) icon in or out. */
+    private void showClearButton(boolean visible) {
+        if (clearIcon == null || clearVisible == visible) return;
+        clearVisible = visible;
+        if (clearAnim != null) clearAnim.cancel();
+        clearAnim = android.animation.ValueAnimator.ofInt(clearIcon.getAlpha(), visible ? 255 : 0);
+        clearAnim.setDuration(visible ? 160 : 120);
+        clearAnim.addUpdateListener(a -> {
+            clearIcon.setAlpha((int) a.getAnimatedValue());
+            et_find.invalidate();
+        });
+        clearAnim.start();
     }
 
     public List<String> getSubdirectories(File Folder, ContentResolver contentResolver){
@@ -566,42 +578,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
 
-    private void filterList(String key,  List<String> inputList, RecyclerView rv){
-        List<String> filteredList = new ArrayList<>();
-        String k = key.toLowerCase(java.util.Locale.ROOT);
-
-        for (String element : inputList){
-            // Match against folder name or metadata (displayTitle + artist)
-            if (element.toLowerCase(java.util.Locale.ROOT).contains(k)) {
-                filteredList.add(element);
-                continue;
-            }
-            SongMetadata meta = SongMetadata.read(new File(SongFolder, element));
-            String t = meta.displayTitle != null ? meta.displayTitle.toLowerCase(java.util.Locale.ROOT) : "";
-            String a = meta.artist       != null ? meta.artist.toLowerCase(java.util.Locale.ROOT)       : "";
-            if (t.contains(k) || a.contains(k)) {
-                filteredList.add(element);
-            }
-        }
-
-        SongListData[] filteredSongListData = new SongListData[filteredList.size()];
-
-        for (int i=0 ; i<filteredList.size(); i++) {
-            String song = filteredList.get(i);
-            filteredSongListData[i] = buildSongListData(song);
-        }
-
-        Animation rv_out = AnimationUtils.loadAnimation(this, R.anim.fade_out);
-        Animation rv_in = AnimationUtils.loadAnimation(this, R.anim.fade_in);
-
-        rv.startAnimation(rv_out);
-
-        SongListAdapter songListAdapter = new SongListAdapter(MainActivity.this, filteredSongListData, this);
-        rv.setHasFixedSize(true);
-        rv.setLayoutManager(new LinearLayoutManager(this));
-        rv.setAdapter(songListAdapter);
-
-        rv.startAnimation(rv_in);
+    /** Search key form: lower case without diacritics, so "cancion" matches
+     *  "Canción" and the other way round. */
+    private static String foldForSearch(String s) {
+        if (s == null) return "";
+        String decomposed = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD);
+        return decomposed.replaceAll("\\p{M}+", "").toLowerCase(java.util.Locale.ROOT);
     }
 
     public void addSong(View view){
@@ -643,9 +625,17 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Notify the repository about local folders (marks LOCAL_AND_CLOUD / LOCAL_ONLY)
         CloudRepository.get(this).mergeLocalFolders(SongsInDirectory);
 
-        // Combined list: in-flight on top, locals in the middle, cloud-only at the bottom
+        // Combined list: in-flight on top, then local + cloud-only by date
         List<SongListData> mixed = buildMergedSongsList(SongsInDirectory);
-        Songs = mixed.toArray(new SongListData[0]);
+        allSongs = mixed.toArray(new SongListData[0]);
+        builtInFlightByHash.clear();
+        for (SongListData s : allSongs) {
+            if (s.cloud == null || s.cloud.state == CloudItem.State.LOCAL_ONLY) continue;
+            builtInFlightByHash.put(s.cloud.hash, s.cloud.isInFlight());
+        }
+        // A rebuild during a search keeps showing only the matches.
+        String query = currentQuery();
+        Songs = filterSongs(allSongs, query);
 
         syncSongsWithDatabase();
 
@@ -659,8 +649,54 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             rvSongList.setAdapter(new SongListAdapter(MainActivity.this, Songs, this));
         }
 
-        String songsCount = SongsInDirectory.size() + " " + getString(R.string.songs);
-        tv_SongsCount.setText(songsCount);
+        updateSearchState(query);
+    }
+
+    /** Count line and "No results" notice for the current query. */
+    private void updateSearchState(String query) {
+        tv_SongsCount.setText(query.isEmpty()
+                ? SongsInDirectory.size() + " " + getString(R.string.songs)
+                : Songs.length + " " + getString(R.string.results));
+        if (tvNoResults == null) tvNoResults = findViewById(R.id.tv_noResults);
+        tvNoResults.setVisibility(!query.isEmpty() && Songs.length == 0
+                ? View.VISIBLE : View.GONE);
+    }
+
+    private TextView tvNoResults;
+
+    private String currentQuery() {
+        return et_find != null ? et_find.getText().toString() : "";
+    }
+
+    /** Search over the merged list (local and cloud items alike): folder name,
+     *  title and artist, ignoring case and diacritics. */
+    private static SongListData[] filterSongs(SongListData[] all, String key) {
+        if (key == null || key.isEmpty()) return all;
+        String k = foldForSearch(key);
+        List<SongListData> out = new ArrayList<>();
+        for (SongListData s : all) {
+            if (foldForSearch(s.getTitle()).contains(k)
+                    || foldForSearch(s.getDisplayTitle()).contains(k)
+                    || foldForSearch(s.getArtist()).contains(k)) {
+                out.add(s);
+            }
+        }
+        return out.toArray(new SongListData[0]);
+    }
+
+    /** Applies a search query to the current merged list (no disk access).
+     *  No animation: it runs on every keystroke. */
+    private void applySearchFilter(String key) {
+        Songs = filterSongs(allSongs, key);
+        RecyclerView.Adapter<?> current = rvSongList.getAdapter();
+        if (current instanceof SongListAdapter) {
+            ((SongListAdapter) current).setData(Songs);
+        } else {
+            rvSongList.setHasFixedSize(true);
+            rvSongList.setLayoutManager(new LinearLayoutManager(this));
+            rvSongList.setAdapter(new SongListAdapter(MainActivity.this, Songs, this));
+        }
+        updateSearchState(key);
     }
 
     /** Merges local songs with server items (queued/processing/cloud-only).
@@ -720,12 +756,17 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             if (c.isInFlight()) inFlight.add(s); else regular.add(s);
         }
 
-        // 3) Final sort by tsForItem — sticky > serverCreated > serverUpdated > lastModified.
-        java.util.Collections.sort(regular, (a, b) -> {
+        // 3) Final sort by tsForItem — sticky > serverCreated > serverUpdated >
+        //    submittedAt > lastModified. The in-flight block follows the same order
+        //    (submission time while the server has no date yet), instead of the
+        //    repository's insertion order.
+        java.util.Comparator<SongListData> byDate = (a, b) -> {
             long ta = tsForItem(a);
             long tb = tsForItem(b);
             return sortOrder == 0 ? Long.compare(tb, ta) : Long.compare(ta, tb);
-        });
+        };
+        java.util.Collections.sort(inFlight, byDate);
+        java.util.Collections.sort(regular, byDate);
 
         List<SongListData> all = new ArrayList<>(inFlight.size() + regular.size());
         all.addAll(inFlight);
@@ -743,6 +784,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             if (sc > 0) return sc;
             long su = parseIsoTs(s.cloud.serverUpdated);
             if (su > 0) return su;
+            if (s.cloud.submittedAt > 0) return s.cloud.submittedAt;
         }
         File f = new File(SongFolder, s.getTitle());
         return f.exists() ? f.lastModified() : 0L;
@@ -1293,10 +1335,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                             lm);
                 }
             }
+        // Keeps the active search: refreshSongList re-applies the query.
         refreshSongList();
-        if (!et_find.getText().toString().isEmpty()) {
-            filterList(et_find.getText().toString(), SongsInDirectory, rvSongList);
-        }
     }
 
     /** "Edit info" dialog: changes displayTitle/artist (metadata.txt).
@@ -1341,9 +1381,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             File folder = new File(SongFolder, folderName);
             if (writeMetadata(folder, newSong, newArtist)) {
                 refreshSongList();
-                if (et_find.getText().toString() != "") {
-                    filterList(et_find.getText().toString(), SongsInDirectory, rvSongList);
-                }
             } else {
                 Toast.makeText(MainActivity.this,
                         "Error writing metadata.txt", Toast.LENGTH_SHORT).show();

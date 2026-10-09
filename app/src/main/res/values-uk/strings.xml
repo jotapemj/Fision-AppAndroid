@@ -6,6 +6,7 @@
     <string name="tv_title_search">Пошук пісні</string>
     <string name="te_find">Знайти в бібліотеці</string>
     <string name="b_add">+ Додати</string>
+    <string name="no_results">Немає результатів</string>
     <string name="tv_SongsCount">25 пісень</string>
     <string name="results">результати</string>
     <string name="tvTitle">Назва пісні тут</string>
