@@ -114,7 +114,7 @@
     <string name="dl_notif_ready">Ready to play</string>
     <string name="drawer_item_reset">Reset to default</string>
     <string name="drawer_reset_dialog_title">Reset</string>
-    <string name="drawer_reset_dialog_body">All stem settings for this song will return to their default values. Continue?</string>
+    <string name="drawer_reset_dialog_body">Every setting of this song (stems, pitch, tempo, metronome, chords and 3D) will return to its default value. Continue?</string>
     <string name="drawer_reset_dialog_cancel">Cancel</string>
     <string name="export_dialog_title">Export</string>
     <string name="export_choice_mixdown">Save current mix</string>

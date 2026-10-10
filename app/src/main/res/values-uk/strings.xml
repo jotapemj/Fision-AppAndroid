@@ -104,7 +104,7 @@
     <string name="dl_notif_ready">Готово до відтворення</string>
     <string name="drawer_item_reset">Скинути до типового</string>
     <string name="drawer_reset_dialog_title">Скинути</string>
-    <string name="drawer_reset_dialog_body">Усі налаштування доріжок цієї пісні повернуться до типових значень. Продовжити?</string>
+    <string name="drawer_reset_dialog_body">Усі налаштування цієї пісні (доріжки, висота, темп, метроном, акорди і 3D) повернуться до типових значень. Продовжити?</string>
     <string name="drawer_reset_dialog_cancel">Скасувати</string>
     <string name="export_dialog_title">Експорт</string>
     <string name="export_choice_mixdown">Зберегти поточний мікс</string>

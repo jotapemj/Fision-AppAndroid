@@ -115,7 +115,7 @@
     <string name="dl_notif_ready">Lista para reproducir</string>
     <string name="drawer_item_reset">Restablecer a default</string>
     <string name="drawer_reset_dialog_title">Restablecer</string>
-    <string name="drawer_reset_dialog_body">Todos los ajustes hechos a los stems de esta canción volverán a su valor por defecto. ¿Continuar?</string>
+    <string name="drawer_reset_dialog_body">Todos los ajustes de esta canción (stems, pitch, tempo, metrónomo, acordes y 3D) volverán a su valor por defecto. ¿Continuar?</string>
     <string name="drawer_reset_dialog_cancel">Cancelar</string>
     <string name="export_dialog_title">Exportar</string>
     <string name="export_choice_mixdown">Guardar mezcla actual</string>

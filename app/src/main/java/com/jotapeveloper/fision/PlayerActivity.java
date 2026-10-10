@@ -1105,15 +1105,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     }
                 }
                 else{
-                    updateDB("metronome", 0);
-                    metronomeEnabled = false;
-                    b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(255,255,255)));
-                    if(selectedMetronome == 0){engine.setVolume(metronomeHalfTrack, 0, 0);}
-                    if(selectedMetronome == 1){engine.setVolume(metronomeTrack, 0, 0);}
-                    if(selectedMetronome == 2){engine.setVolume(metronomeDoubleTrack, 0, 0);}
-                    if (engine != null) engine.setClickEnabled(false);
-                    applyClickDuckTrack();
-                    cancelPendingDownbeats();
+                    turnMetronomeOff();
                 }
                 return true;
             }
@@ -6919,22 +6911,103 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         bYes.setOnClickListener(v -> {
             dlg.dismiss();
             if (drawerLayout != null) drawerLayout.closeDrawer(androidx.core.view.GravityCompat.END);
-            resetStemsToDefault();
+            resetSongToDefault();
         });
         showWithPlayerAccent(dlg);
     }
 
-    /** Resets volumes (75) and pan (0) on every stem. Animates visible sliders. */
+    /** Silences the metronome (and the downbeat click that depends on it). */
+    private void turnMetronomeOff() {
+        updateDB("metronome", 0);
+        metronomeEnabled = false;
+        b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(255,255,255)));
+        if (engine != null) {
+            if (selectedMetronome == 0) engine.setVolume(metronomeHalfTrack, 0, 0);
+            if (selectedMetronome == 1) engine.setVolume(metronomeTrack, 0, 0);
+            if (selectedMetronome == 2) engine.setVolume(metronomeDoubleTrack, 0, 0);
+            engine.setClickEnabled(false);
+        }
+        applyClickDuckTrack();
+        cancelPendingDownbeats();
+    }
+
+    /**
+     * Puts the whole song back to its defaults: every stem at volume 75, pan 0
+     * and default 3D pose (no solo), pitch 0, tempo 1.0x, metronome off with
+     * its default settings, chords shown in advanced mode, 3D audio off.
+     * Engine, UI and Room all follow. Animates visible sliders.
+     */
+    private void resetSongToDefault() {
+        // Metronome: off, then its settings back to default.
+        if (metronomeEnabled) turnMetronomeOff();
+        if (selectedMetronome != 1)    { selectedMetronome = 1;    updateDB("selectedMetronome", 1); }
+        if (metronomeVol != 100)       { metronomeVol = 100;       updateDB("metronomeVolume", 100); }
+        if (metronomePan != 0f)        { metronomePan = 0f;        updateDB("metronomePan", 0f); }
+        if (metronomeHalfVariant != 0) { metronomeHalfVariant = 0; updateDB("metronomeHalfVariant", 0); }
+
+        // Pitch 0 on the pitched stems.
+        selectedPitch = numberPickerData.CENTRAL_PITCH_INDEX;
+        updateDB("pitchIndex", selectedPitch);
+        // Tempo 1.0x on stems and metronomes.
+        selectedTempoMultMilli = 1000;
+        updateDB("tempoMultMilli", 1000);
+        if (playbackService != null && engine != null) {
+            for (String s : playbackService.getStemOrder()) {
+                Integer t = playbackService.getStemTrack(s);
+                if (t == null) continue;
+                engine.setTempo(t, 1f);
+                if (StemSpec.isPitched(s)) engine.setPitch(t, 0f);
+            }
+            if (metronomeTrack >= 0)       engine.setTempo(metronomeTrack, 1f);
+            if (metronomeHalfTrack >= 0)   engine.setTempo(metronomeHalfTrack, 1f);
+            if (metronomeDoubleTrack >= 0) engine.setTempo(metronomeDoubleTrack, 1f);
+        }
+        if (b_pitch != null) b_pitch.setIconTint(ColorStateList.valueOf(Color.rgb(255, 255, 255)));
+        applyDisplayShiftToAdapter();
+
+        // Chords: shown, advanced mode.
+        if (chordsBasicMode) {
+            chordsBasicMode = false;
+            updateDB("chordsBasic", 0);
+            updateChordsDrawerSubtitle();
+            reloadChords();
+        }
+        if (!chordsActive) ShowChords(null);
+
+        // 3D audio off.
+        if (is3DEnabled) apply3DEnabled(false);
+
+        resetStemsToDefault();
+    }
+
+    /** Every stem back to volume 75, pan 0 and its default 3D pose (no
+     *  solo). Animates visible sliders and, with the 3D view open, the icons. */
     private void resetStemsToDefault() {
         java.util.List<String> order = playbackService != null
                 ? playbackService.getStemOrder() : java.util.Collections.emptyList();
         // Exit solo if it was active
         soloedStem = null;
         preSoloVolumes = null;
+        // 3D poses: with the 3D view open its reset animates the icons home and
+        // saves the default poses; otherwise the saved poses are cleared.
+        boolean animate3D = is3DViewShown;
+        if (animate3D) reset3DPositions();
+        else stem3DPositions.clear();
+        StemSetting def = new StemSetting();
         for (String s : order) {
             StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, s);
             ss.volume = 75;
             ss.pan = 0f;
+            ss.mute3D = false;
+            if (!animate3D) {
+                ss.pos3DX = def.pos3DX;
+                ss.pos3DY = def.pos3DY;
+                ss.elevationDeg = def.elevationDeg;
+                ss.distance3D = def.distance3D;
+                ss.omnipresent = def.omnipresent;
+            }
+            Integer t = playbackService != null ? playbackService.getStemTrack(s) : null;
+            if (engine != null && t != null) engine.setTrack3DMuted(t, false);
             stemLastVol.put(s, 75);
             applyStemVolumeToEngine(s);
             // Animate the visible slider if the ViewHolder is bound

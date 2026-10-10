@@ -105,7 +105,7 @@
     <string name="dl_notif_ready">Llest per reproduir</string>
     <string name="drawer_item_reset">Restablir a default</string>
     <string name="drawer_reset_dialog_title">Restablir</string>
-    <string name="drawer_reset_dialog_body">Tots els ajustos fets als stems d\'aquesta cançó tornaran al seu valor per defecte. Continuar?</string>
+    <string name="drawer_reset_dialog_body">Tots els ajustos d\'aquesta cançó (stems, pitch, tempo, metrònom, acords i 3D) tornaran al seu valor per defecte. Continuar?</string>
     <string name="drawer_reset_dialog_cancel">Cancel·lar</string>
     <string name="export_dialog_title">Exportar</string>
     <string name="export_choice_mixdown">Desa mescla actual</string>
