@@ -794,11 +794,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         //    submittedAt > lastModified. The in-flight block follows the same order
         //    (submission time while the server has no date yet), instead of the
         //    repository's insertion order.
-        java.util.Comparator<SongListData> byDate = (a, b) -> {
-            long ta = tsForItem(a);
-            long tb = tsForItem(b);
-            return sortOrder == 0 ? Long.compare(tb, ta) : Long.compare(ta, tb);
-        };
+        java.util.Comparator<SongListData> byDate =
+                (a, b) -> SongOrder.compare(tsForItem(a), tsForItem(b), sortOrder);
         java.util.Collections.sort(inFlight, byDate);
         java.util.Collections.sort(regular, byDate);
 
@@ -812,37 +809,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  sticky if present, otherwise server created_at (stable order, does not change on
      *  reprocess), otherwise updated_at, otherwise the local folder's lastModified. */
     private long tsForItem(SongListData s) {
-        if (s.cloud != null) {
-            if (s.cloud.stickyOrderTs > 0) return s.cloud.stickyOrderTs;
-            long sc = parseIsoTs(s.cloud.serverCreated);
-            if (sc > 0) return sc;
-            long su = parseIsoTs(s.cloud.serverUpdated);
-            if (su > 0) return su;
-            if (s.cloud.submittedAt > 0) return s.cloud.submittedAt;
-        }
-        File f = new File(SongFolder, s.getTitle());
-        return f.exists() ? f.lastModified() : 0L;
-    }
-
-    /** Parses a server ISO8601 date to millis. Accepts several common formats
-     *  ("2026-06-30T12:34:56", "2026-06-30 12:34:56", with or without timezone). Returns 0 on failure. */
-    private static long parseIsoTs(String iso) {
-        if (iso == null || iso.isEmpty()) return 0L;
-        String s = iso.replace('T', ' ');
-        int dot = s.indexOf('.');
-        if (dot > 0) s = s.substring(0, dot);
-        int z = s.indexOf('+');
-        if (z < 0) z = s.indexOf('Z');
-        if (z > 0) s = s.substring(0, z).trim();
-        try {
-            java.text.SimpleDateFormat sdf =
-                    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US);
-            sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-            java.util.Date d = sdf.parse(s);
-            return d != null ? d.getTime() : 0L;
-        } catch (Throwable ignored) {
-            return 0L;
-        }
+        return SongOrder.timestamp(s.cloud, new File(SongFolder, s.getTitle()));
     }
 
     // Reachability tracking for the cloud icon. Offline = red, persistent.

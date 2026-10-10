@@ -2276,27 +2276,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     /** Loads the adjacent song (direction = +1 next, -1 previous) without restarting the
-     *  Activity. Same global ordering as MainActivity. Wrap-around. */
+     *  Activity. Same ordering as the song list (SongOrder). Wrap-around. */
     private void openAdjacentSong(int direction) {
-        if (SongFolder == null) return;
-        File parent = SongFolder.getParentFile();
-        if (parent == null || !parent.isDirectory()) return;
-        File[] subdirs = parent.listFiles(File::isDirectory);
-        if (subdirs == null || subdirs.length < 2) return;
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        final int sortOrder = prefs.getInt("songs_sort_order", 0);
-        java.util.Arrays.sort(subdirs, (a, b) -> sortOrder == 0
-                ? Long.compare(b.lastModified(), a.lastModified())
-                : Long.compare(a.lastModified(), b.lastModified()));
-
-        int idx = -1;
-        for (int i = 0; i < subdirs.length; i++) {
-            if (subdirs[i].getName().equals(SongFolder.getName())) { idx = i; break; }
-        }
-        if (idx < 0) return;
-        int target = ((idx + direction) % subdirs.length + subdirs.length) % subdirs.length;
-        switchToSong(subdirs[target]);
+        File target = SongOrder.adjacent(this, SongFolder, direction);
+        if (target != null) switchToSong(target);
     }
 
     // Song change under the loading curtain: it fades in over the current song,

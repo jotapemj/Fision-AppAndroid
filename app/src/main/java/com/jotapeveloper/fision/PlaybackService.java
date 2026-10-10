@@ -310,35 +310,13 @@ public class PlaybackService extends Service {
         return currentSongPath != null && currentSongPath.equals(path);
     }
 
-    /**
-     * Loads the song. If it is already the current one, no reload happens.
-     * @return true when the song is loaded (or already was).
-     */
-    public boolean loadSong(String songPath, String songName, int songId) {
-        if (isCurrentSong(songPath) && engine != null) {
-            currentSongName = songName;
-            currentSongId   = songId;
-            return true;
-        }
-        // A synchronous load supersedes any asynchronous one still decoding.
-        loadGeneration++;
-        loading = false;
-
-        // Release the previous one
-        releaseInternal();
-
-        DecodedSong song = decodeSong(songPath);
-        if (song == null) return false;
-        commitSong(song, songName, songId);
-        return true;
-    }
-
     /** True while {@link #loadSongAsync} is decoding (engine is still null). */
     public boolean isLoading() { return loading; }
 
     /**
-     * Same as {@link #loadSong} with the decode on a background thread, so the
-     * caller's UI keeps animating. The previous song is released at once; the
+     * Loads the song (no reload when it is already the current one) with the
+     * decode on a background thread, so the caller's UI keeps animating and
+     * the main thread never blocks. The previous song is released at once; the
      * engine stays null until the result is committed on the main thread, so
      * nothing can start playback halfway. [done] runs on the main thread with
      * the result; it is not called when a newer load supersedes this one.
@@ -641,35 +619,27 @@ public class PlaybackService extends Service {
     }
 
     private void skipAdjacent(int delta) {
+        // Skips without a song (or while one is still loading) do nothing.
         if (currentSongPath == null) return;
-        File currentFolder = new File(currentSongPath);
-        File songsRoot     = currentFolder.getParentFile();
-        if (songsRoot == null) return;
-        File[] siblings = songsRoot.listFiles(File::isDirectory);
-        if (siblings == null || siblings.length == 0) return;
-        int sortOrder = getSharedPreferences("prefs_songs", MODE_PRIVATE)
-                .getInt("songs_sort_order", 0);
-        java.util.Arrays.sort(siblings, (a, b) -> sortOrder == 0
-                ? Long.compare(b.lastModified(), a.lastModified())
-                : Long.compare(a.lastModified(), b.lastModified()));
-        int idx = -1;
-        for (int i = 0; i < siblings.length; i++) {
-            if (siblings[i].getName().equals(currentFolder.getName())) { idx = i; break; }
-        }
-        if (idx < 0) return;
-        int nextIdx = (idx + delta + siblings.length) % siblings.length;
-        loadAndPlayWithVolumes(siblings[nextIdx]);
+        File target = SongOrder.adjacent(this, new File(currentSongPath), delta);
+        if (target != null) loadAndPlay(target);
     }
 
-    /** Loads the song, applies its saved mix, then plays. Used by the skips
-     *  when no Activity drives the switch. */
-    private void loadAndPlayWithVolumes(File folder) {
+    /** Loads a song in the background, applies its saved mix, then plays.
+     *  Used by the skips without an Activity and by Android Auto. The session
+     *  reports BUFFERING while the stems decode. */
+    private void loadAndPlay(File folder) {
         final String path = folder.getAbsolutePath();
         final String name = folder.getName();
         final int    id   = name.hashCode();
-        boolean ok = loadSong(path, name, id);
-        if (!ok) return;
-        applySavedSongSettings(id, this::play);
+        updatePlaybackState(PlaybackStateCompat.STATE_BUFFERING);
+        loadSongAsync(path, name, id, ok -> {
+            if (!ok) {
+                updatePlaybackState(PlaybackStateCompat.STATE_ERROR);
+                return;
+            }
+            applySavedSongSettings(id, this::play);
+        });
     }
 
     private final java.util.concurrent.ExecutorService settingsExecutor =
