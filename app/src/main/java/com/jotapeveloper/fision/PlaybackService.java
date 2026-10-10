@@ -16,6 +16,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -24,21 +25,29 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaDescriptionCompat;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.media.MediaBrowserServiceCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import java.io.File;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
  * Foreground service that hosts the audio engine.
  * Survives when activities are destroyed → persistent playback.
+ * Also a media browser for Android Auto: it lists the downloaded songs and
+ * plays them with their saved mix (playback only, 3D off).
  */
-public class PlaybackService extends Service {
+public class PlaybackService extends MediaBrowserServiceCompat {
 
     private static final String TAG = "PlaybackService";
     private static final String CHANNEL_ID = "MEDIA_PLAYBACK_CHANNEL";
@@ -192,14 +201,161 @@ public class PlaybackService extends Service {
 
     @Nullable
     @Override
-    public IBinder onBind(Intent intent) { return binder; }
+    public IBinder onBind(Intent intent) {
+        // Media browser clients (Android Auto) bind with the browser action;
+        // the app's own activities get the local binder.
+        if (intent != null && SERVICE_INTERFACE.equals(intent.getAction())) {
+            return super.onBind(intent);
+        }
+        return binder;
+    }
+
+    // === Media browser (Android Auto) ===
+    private static final String BROWSE_ROOT = "fision_root";
+    private static final String AUTO_PACKAGE = "com.google.android.projection.gearhead";
+
+    @Nullable
+    @Override
+    public BrowserRoot onGetRoot(@NonNull String clientPackageName, int clientUid,
+                                 @Nullable Bundle rootHints) {
+        // No media resumption: the system asks for "recent" media to offer a
+        // resume control, which could restart playback on its own.
+        if (rootHints != null && rootHints.getBoolean(BrowserRoot.EXTRA_RECENT)) return null;
+        if (!getPackageName().equals(clientPackageName)
+                && !AUTO_PACKAGE.equals(clientPackageName)) {
+            Log.i(TAG, "Browser connection refused: " + clientPackageName);
+            return null;
+        }
+        return new BrowserRoot(BROWSE_ROOT, null);
+    }
+
+    @Override
+    public void onLoadChildren(@NonNull String parentId,
+                               @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
+        if (!BROWSE_ROOT.equals(parentId)) {
+            result.sendResult(new java.util.ArrayList<>());
+            return;
+        }
+        // Disk + metadata reads off the main thread.
+        result.detach();
+        settingsExecutor.execute(() -> {
+            List<MediaBrowserCompat.MediaItem> items = buildSongItems();
+            mainHandler.post(() -> result.sendResult(items));
+        });
+    }
+
+    /** Downloaded songs in list order, as playable browser items. */
+    private List<MediaBrowserCompat.MediaItem> buildSongItems() {
+        List<MediaBrowserCompat.MediaItem> items = new java.util.ArrayList<>();
+        for (File folder : SongOrder.sortedSongFolders(this, songsRoot())) {
+            SongMetadata meta = SongMetadata.read(folder);
+            com.jotapeveloper.fision.cloud.CloudItem ci =
+                    com.jotapeveloper.fision.cloud.CloudRepository.get(this).getByHash(folder.getName());
+            String title = meta.displayTitle != null && !meta.displayTitle.isEmpty()
+                    ? meta.displayTitle
+                    : (ci != null && ci.displayName != null && !ci.displayName.isEmpty()
+                            ? ci.displayName : folder.getName());
+            String artist = meta.artist != null && !meta.artist.isEmpty()
+                    ? meta.artist : (ci != null ? ci.artist : null);
+            MediaDescriptionCompat.Builder d = new MediaDescriptionCompat.Builder()
+                    .setMediaId(folder.getName())
+                    .setTitle(title)
+                    .setSubtitle(artist);
+            android.net.Uri cover = coverUriForAuto(folder, meta, ci);
+            if (cover != null) d.setIconUri(cover);
+            items.add(new MediaBrowserCompat.MediaItem(d.build(),
+                    MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+        }
+        return items;
+    }
+
+    private File songsRoot() {
+        return new File(getExternalFilesDir(null), "Songs");
+    }
+
+    /** content:// URI of the song cover (local artcover, cloud cover or the
+     *  generic one), readable by Android Auto. */
+    @Nullable
+    private android.net.Uri coverUriForAuto(File folder, SongMetadata meta,
+                                            @Nullable com.jotapeveloper.fision.cloud.CloudItem ci) {
+        File f = null;
+        if (meta.coverPath != null && new File(meta.coverPath).exists()) f = new File(meta.coverPath);
+        else if (ci != null && ci.coverPath != null && new File(ci.coverPath).exists()) f = new File(ci.coverPath);
+        else f = genericCoverFile();
+        if (f == null) return null;
+        try {
+            android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, getPackageName() + ".covers", f);
+            grantUriPermission(AUTO_PACKAGE, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            return uri;
+        } catch (Throwable t) {
+            Log.w(TAG, "No cover URI for " + folder.getName(), t);
+            return null;
+        }
+    }
+
+    /** The generic cover as a file (copied once from res/raw to the cache). */
+    @Nullable
+    private File genericCoverFile() {
+        File f = new File(getCacheDir(), "auto_generic_cover.png");
+        if (f.exists()) return f;
+        try (java.io.InputStream in = getResources().openRawResource(R.raw.artcover_generic);
+             java.io.FileOutputStream out = new java.io.FileOutputStream(f)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            return f;
+        } catch (Throwable t) {
+            Log.w(TAG, "Generic cover copy failed", t);
+            return null;
+        }
+    }
+
+    /** Plays a song picked in Android Auto. The id is a folder name of the
+     *  library; anything else is ignored. */
+    private void playFromMediaId(String mediaId) {
+        if (mediaId == null || mediaId.contains("/") || mediaId.contains("\\")) return;
+        File folder = new File(songsRoot(), mediaId);
+        if (!folder.isDirectory()) return;
+        ensureStartedService();
+        if (isCurrentSong(folder.getAbsolutePath()) && engine != null) {
+            // Same song (possibly set up by the Player with 3D on): restart it
+            // with the playback-only mix.
+            for (Integer t : stemTracks.values()) {
+                engine.setTrack3DEnabled(t, false);
+                engine.setTrack3DMuted(t, false);
+            }
+            seekTo(0);
+            applySavedSongSettings(folder.getName().hashCode(), this::play);
+            return;
+        }
+        loadAndPlay(folder);
+    }
+
+    // Started (not only bound): Android Auto binds the browser, and a bound-only
+    // service dies when the car disconnects, cutting the audio.
+    private boolean startedByCommand = false;
+
+    private void ensureStartedService() {
+        if (startedByCommand) return;
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(
+                    this, new Intent(this, PlaybackService.class));
+        } catch (Throwable t) {
+            Log.w(TAG, "startForegroundService refused", t);
+        }
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        startedByCommand = true;
         // Android 12+ requires startForeground within 5s of startForegroundService no matter what.
         // When loadSong failed (missing files) it was never called and the app crashed with
         // ForegroundServiceDidNotStartInTimeException. Now the promise is always kept.
-        startForegroundWithNotif(PlaybackStateCompat.STATE_NONE);
+        // The notification reflects the current state (a start request can
+        // arrive after playback already began, e.g. from Android Auto).
+        startForegroundWithNotif(isPlaying ? PlaybackStateCompat.STATE_PLAYING
+                                           : PlaybackStateCompat.STATE_NONE);
         // Media buttons (headset, notification, bluetooth)
         if (intent != null) {
             MediaButtonReceiver.handleIntent(mediaSession, intent);
@@ -707,6 +863,7 @@ public class PlaybackService extends Service {
             audioManager.abandonAudioFocusRequest(focusRequest);
         }
         notifyListeners();
+        startedByCommand = false;
         stopSelf();
     }
 
@@ -746,7 +903,24 @@ public class PlaybackService extends Service {
                     Log.i(TAG, "MediaSession.onPlay ignored: call active");
                     return;
                 }
+                // Nothing loaded: no "resume the last song". A car connecting
+                // (Android Auto included) cannot start playback on its own; a
+                // song only starts from an explicit pick.
+                if (!isSongLoaded()) {
+                    Log.i(TAG, "MediaSession.onPlay ignored: no song loaded");
+                    return;
+                }
+                ensureStartedService();
                 play();
+            }
+            @Override public void onPlayFromMediaId(String mediaId, Bundle extras) {
+                if (isPhoneCallActive()) return;
+                playFromMediaId(mediaId);
+            }
+            @Override public void onSeekTo(long pos) {
+                seekTo(pos);
+                updatePlaybackState(isPlaying ? PlaybackStateCompat.STATE_PLAYING
+                                              : PlaybackStateCompat.STATE_PAUSED);
             }
             @Override public void onPause() { pause(); }
             @Override public void onStop()  { pause(); }
@@ -755,6 +929,7 @@ public class PlaybackService extends Service {
         });
         stateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY
+                        | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
                         | PlaybackStateCompat.ACTION_PAUSE
                         | PlaybackStateCompat.ACTION_STOP
                         | PlaybackStateCompat.ACTION_PLAY_PAUSE
@@ -767,6 +942,8 @@ public class PlaybackService extends Service {
         // either, so the system cannot restart the app with a MEDIA_PLAY key
         // once the service is gone (media button resumption).
         mediaSession.setMediaButtonReceiver(null);
+        // Media browser (Android Auto) talks to this session.
+        setSessionToken(mediaSession.getSessionToken());
     }
 
     private void setupAudioFocus() {
@@ -978,6 +1155,7 @@ public class PlaybackService extends Service {
     private void updateMediaMetadata(String title, long durationMs) {
         if (mediaSession == null) return;
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, currentSongName)
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
                 .putLong  (MediaMetadataCompat.METADATA_KEY_DURATION, durationMs);
         String artist = getResolvedArtist();

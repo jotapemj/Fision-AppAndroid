@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Song covers shared with Android Auto through FileProvider (read-only,
+     granted per URI): local artcovers and cached cloud / generic covers. -->
+<paths>
+    <external-files-path name="songs" path="Songs/" />
+    <cache-path name="cache" path="." />
+</paths>

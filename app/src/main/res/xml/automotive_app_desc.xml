@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto: Fision is a media app (song list + playback). -->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>

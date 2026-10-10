@@ -105,17 +105,39 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
-        <!-- Foreground service: persistent audio engine -->
+        <!-- Foreground service: persistent audio engine. Exported as a media
+             browser for Android Auto; onGetRoot only accepts the app itself
+             and Android Auto. -->
         <service
             android:name=".PlaybackService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
 
         <!-- Foreground service: Fision server downloads (persist when going to background) -->
         <service
             android:name=".cloud.FisionDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Song covers for Android Auto (read access granted per URI). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.covers"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/cover_paths" />
+        </provider>
+
+        <!-- Android Auto: media app. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
 
     </application>
 
