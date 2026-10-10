@@ -13,9 +13,11 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
- * Cache and refresh facade for GET /server/info. The response only changes
- * across server reboots, so the client fetches it once after login and stores
- * the fields in SharedPreferences. Any UI that depends on the GPU flag
+ * Cache and refresh facade for GET /server/info. Most fields only change
+ * across server reboots; the free VRAM changes all the time, so it is
+ * refreshed when Settings opens and when the song list comes to the front
+ * (never polled: each request runs nvidia-smi on the server). The fields are
+ * stored in SharedPreferences. Any UI that depends on the GPU flag
  * (Settings row, Import warning, submitted config_json) reads it from here.
  *
  * A listener bus notifies the toolbar/import/settings as soon as a fresh
@@ -32,6 +34,8 @@ public class ServerInfoManager {
     private static final String KEY_VRAM_MB = "vram_total_mb";
     private static final String KEY_DRIVER  = "driver";
     private static final String KEY_VERSION = "version";
+    private static final String KEY_VRAM_FREE_MB = "vram_free_mb";
+    private static final String KEY_VRAM_MIN_MB  = "vram_min_mb";
 
     public interface Listener { void onServerInfoChanged(); }
 
@@ -77,6 +81,18 @@ public class ServerInfoManager {
         return (v == null || v.isEmpty()) ? null : v;
     }
 
+    /** Free VRAM at the last fetch, in MB; -1 when unknown (server before 1.4.0). */
+    public int getVramFreeMb() { return prefs.getInt(KEY_VRAM_FREE_MB, -1); }
+    /** Minimum free VRAM the server needs for a GPU job, in MB; -1 when unknown. */
+    public int getVramMinMb()  { return prefs.getInt(KEY_VRAM_MIN_MB, -1); }
+
+    /** The server has a GPU but, at the last fetch, less free VRAM than its
+     *  own minimum: GPU jobs would wait or fail. False when unknown. */
+    public boolean isVramLow() {
+        int free = getVramFreeMb(), min = getVramMinMb();
+        return isLoaded() && hasGpu() && free >= 0 && min > 0 && free < min;
+    }
+
     /** Wipes the cache on logout / server switch so the next session refetches. */
     public void clear() {
         prefs.edit().clear().apply();
@@ -108,6 +124,8 @@ public class ServerInfoManager {
                             .putInt(KEY_VRAM_MB, info.vramTotalMb)
                             .putString(KEY_DRIVER, info.driver == null ? "" : info.driver)
                             .putString(KEY_VERSION, info.version == null ? "" : info.version)
+                            .putInt(KEY_VRAM_FREE_MB, info.vramFreeMb == null ? -1 : info.vramFreeMb)
+                            .putInt(KEY_VRAM_MIN_MB, info.vramMinMb == null ? -1 : info.vramMinMb)
                             .apply();
                     notifyChanged();
                 } else {

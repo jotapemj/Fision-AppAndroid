@@ -133,9 +133,14 @@ public class SettingsActivity extends AppCompatActivity
         // Section: Server
         items.add(SettingsItem.section("sec_server",
                 getString(R.string.settings_section_server)));
-        items.add(SettingsItem.card(ID_GPU, R.drawable.ic_gpu,
+        SettingsItem gpuCard = SettingsItem.card(ID_GPU, R.drawable.ic_gpu,
                 getString(R.string.server_gpu_title),
-                gpuSubtitle()));
+                gpuSubtitle());
+        // Less free VRAM than the server's minimum: subtitle in warning orange.
+        if (auth.isLoggedIn() && ServerInfoManager.get(this).isVramLow()) {
+            gpuCard.subtitleColorOverride = R.color.gpu_warning_accent;
+        }
+        items.add(gpuCard);
         // Server version card. Hidden when there is no session (no server to
         // ask) or when the server did not report a version (pre-1.1.0). The
         // card is read-only: no chevron and no click handler in the dispatch.
@@ -198,9 +203,20 @@ public class SettingsActivity extends AppCompatActivity
             int vramGb = Math.max(0, mgr.getVramMb() / 1024);
             String name = mgr.getGpuName();
             if (name == null || name.isEmpty()) name = getString(R.string.server_gpu_ok_short);
-            return getString(R.string.server_gpu_ok_fmt, name, vramGb);
+            String s = getString(R.string.server_gpu_ok_fmt, name, vramGb);
+            String free = vramFreeText(mgr);
+            return free != null ? s + " · " + free : s;
         }
         return getString(R.string.server_gpu_missing);
+    }
+
+    /** "18.2 GB free" from the last fetch, or null when the server does not
+     *  report it (before 1.4.0). */
+    @androidx.annotation.Nullable
+    private String vramFreeText(ServerInfoManager mgr) {
+        int freeMb = mgr.getVramFreeMb();
+        if (freeMb < 0) return null;
+        return getString(R.string.vram_free_fmt, freeMb / 1024f);
     }
 
     private CharSequence currentLanguageLabel() {
@@ -331,7 +347,15 @@ public class SettingsActivity extends AppCompatActivity
             if (name == null || name.isEmpty()) name = getString(R.string.server_gpu_ok_short);
             tvName.setText(name);
             int vramGb = Math.max(0, mgr.getVramMb() / 1024);
-            tvVram.setText(getString(R.string.vram_gb_fmt, vramGb));
+            String vram = getString(R.string.vram_gb_fmt, vramGb);
+            String free = vramFreeText(mgr);
+            tvVram.setText(free != null ? vram + " · " + free : vram);
+            // Orange when the free VRAM is under the server's minimum.
+            if (mgr.isVramLow()) {
+                tvVram.setTextColor(ContextCompat.getColor(this, R.color.gpu_warning_accent));
+            } else {
+                tvVram.setTextColor(tvDriver.getTextColors());
+            }
             String driver = mgr.getDriver();
             tvDriver.setText(driver == null || driver.isEmpty() ? "—" : driver);
             detailsWrap.setVisibility(View.VISIBLE);

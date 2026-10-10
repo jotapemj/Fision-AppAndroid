@@ -120,6 +120,25 @@
                 app:layout_constraintTop_toTopOf="@+id/b_settings"
                 app:layout_constraintBottom_toBottomOf="@+id/b_settings" />
 
+            <!-- Asterisk on the cloud: the server GPU has less free memory than
+                 its minimum (orange cloud). -->
+            <TextView
+                android:id="@+id/tv_cloud_vramAsterisk"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="*"
+                android:textColor="@color/gpu_warning_accent"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false"
+                android:translationX="6dp"
+                android:translationY="-4dp"
+                android:visibility="gone"
+                android:importantForAccessibility="no"
+                app:layout_constraintEnd_toEndOf="@+id/iv_cloud_status"
+                app:layout_constraintTop_toTopOf="@+id/iv_cloud_status"
+                tools:ignore="HardcodedText" />
+
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.appcompat.widget.Toolbar>
 

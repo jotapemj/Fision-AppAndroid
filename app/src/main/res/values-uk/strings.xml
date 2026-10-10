@@ -188,6 +188,8 @@
     <string name="gpu_dialog_no_gpu_body">Сервер не пропонує GPU. Обробка виконуватиметься на CPU.</string>
     <string name="gpu_dialog_no_data">Увійдіть, щоб отримати цю інформацію.</string>
     <string name="vram_gb_fmt">%1$d ГБ</string>
+    <string name="vram_free_fmt">%1$.1f ГБ вільно</string>
+    <string name="server_vram_low">Мало вільної пам\'яті GPU на сервері</string>
     <string name="settings_donate_title">Дивитися на GitHub</string>
     <string name="settings_donate_subtitle">Вихідний код, задачі та плани</string>
     <string name="licenses_title">Ліцензії</string>

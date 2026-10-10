@@ -150,7 +150,10 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             tvTitle    = v.findViewById(R.id.tv_settings_cardTitle);
             tvSubtitle = v.findViewById(R.id.tv_settings_cardSubtitle);
             ivChevron  = v.findViewById(R.id.iv_settings_cardChevron);
+            defaultSubtitleColors = tvSubtitle.getTextColors();
         }
+
+        private final android.content.res.ColorStateList defaultSubtitleColors;
 
         void bind(SettingsItem item, OnItemClickListener l) {
             Context ctx = root.getContext();
@@ -170,6 +173,11 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             } else {
                 tvSubtitle.setVisibility(View.VISIBLE);
                 tvSubtitle.setText(item.subtitle);
+            }
+            if (item.subtitleColorOverride != 0) {
+                tvSubtitle.setTextColor(ContextCompat.getColor(ctx, item.subtitleColorOverride));
+            } else {
+                tvSubtitle.setTextColor(defaultSubtitleColors);
             }
             if (item.externalLink) {
                 ivChevron.setImageResource(R.drawable.ic_open_external);

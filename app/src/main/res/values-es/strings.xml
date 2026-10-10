@@ -208,6 +208,8 @@
     <string name="gpu_dialog_no_gpu_body">El servidor no expone GPU. Los trabajos correrán en CPU.</string>
     <string name="gpu_dialog_no_data">Inicia sesión para consultar esta información.</string>
     <string name="vram_gb_fmt">%1$d GB</string>
+    <string name="vram_free_fmt">%1$.1f GB libres</string>
+    <string name="server_vram_low">Poca memoria de GPU libre en el servidor</string>
     <string name="settings_donate_title">Ver en GitHub</string>
     <string name="settings_donate_subtitle">Código fuente, issues y roadmap</string>
     <string name="licenses_title">Licencias</string>

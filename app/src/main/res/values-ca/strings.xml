@@ -189,6 +189,8 @@
     <string name="gpu_dialog_no_gpu_body">El servidor no exposa GPU. Els treballs correran per CPU.</string>
     <string name="gpu_dialog_no_data">Inicia sessió per consultar aquesta informació.</string>
     <string name="vram_gb_fmt">%1$d GB</string>
+    <string name="vram_free_fmt">%1$.1f GB lliures</string>
+    <string name="server_vram_low">Poca memòria de GPU lliure al servidor</string>
     <string name="settings_donate_title">Veure a GitHub</string>
     <string name="settings_donate_subtitle">Codi font, issues i roadmap</string>
     <string name="licenses_title">Llicències</string>

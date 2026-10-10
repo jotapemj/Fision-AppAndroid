@@ -20,6 +20,7 @@ public class SettingsItem {
     public boolean showChevron = true;
     public boolean externalLink = false;
     public int iconTintOverride = 0; // 0 = use colorPrimary default
+    public int subtitleColorOverride = 0; // 0 = default subtitle colour
 
     // Header fields
     public String user;

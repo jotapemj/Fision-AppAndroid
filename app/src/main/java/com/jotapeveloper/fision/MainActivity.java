@@ -123,6 +123,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     // === Server state ===
     private ImageView ivCloudStatus;
+    private TextView tvCloudAsterisk;
+    /** Repaints the cloud icon when a /server/info fetch lands (free VRAM). */
+    private final ServerInfoManager.Listener serverInfoListener = () -> {
+        if (isFinishing() || isDestroyed()) return;
+        refreshCloudStatusIcon();
+    };
     private View flAvatar;
     private TextView tvAvatarInitial;
     private com.google.android.material.imageview.ShapeableImageView ivAvatarImage;
@@ -321,6 +327,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         b_add = findViewById(R.id.b_add);
         b_orderBy = findViewById(R.id.b_orderBy);
         ivCloudStatus = findViewById(R.id.iv_cloud_status);
+        tvCloudAsterisk = findViewById(R.id.tv_cloud_vramAsterisk);
         flAvatar = findViewById(R.id.fl_avatar);
         tvAvatarInitial = findViewById(R.id.tv_avatarInitial);
         ivAvatarImage = findViewById(R.id.iv_avatarImage);
@@ -853,6 +860,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void refreshCloudStatusIcon(Boolean reachable) {
         if (ivCloudStatus == null) return;
+        // The asterisk only belongs to the low-VRAM state set further down.
+        if (tvCloudAsterisk != null) tvCloudAsterisk.setVisibility(View.GONE);
         boolean loggedIn = AuthManager.get(this).isLoggedIn();
 
         // No session → grey cloud icon regardless of reachability. Tap opens the
@@ -894,6 +903,18 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             ivCloudStatus.setContentDescription(getString(R.string.server_status_offline));
             ivCloudStatus.setAlpha(1f);
             ivCloudStatus.setVisibility(View.VISIBLE);
+            return;
+        }
+        // Online but the server GPU has less free memory than its minimum
+        // (last /server/info): orange cloud with an asterisk, kept on screen.
+        if (ServerInfoManager.get(this).isVramLow()) {
+            ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+            ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.gpu_warning_accent)));
+            ivCloudStatus.setContentDescription(getString(R.string.server_vram_low));
+            ivCloudStatus.setAlpha(1f);
+            ivCloudStatus.setVisibility(View.VISIBLE);
+            if (tvCloudAsterisk != null) tvCloudAsterisk.setVisibility(View.VISIBLE);
             return;
         }
         if (firstCall || !wasOffline) {
@@ -1638,11 +1659,11 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         CloudRepository.get(this).addListener(cloudListener);
         CloudRepository.get(this).startPolling();
         AvatarManager.get(this).addListener(avatarListener);
-        // Ensure the ServerInfo cache is populated for signed-in sessions.
-        // Covers legacy installs whose migration granted a session without
-        // ever hitting the login hook that seeds the cache.
-        if (AuthManager.get(this).isLoggedIn()
-                && !ServerInfoManager.get(this).isLoaded()) {
+        // One /server/info per visit to the list: seeds the cache for signed-in
+        // sessions and refreshes the free VRAM behind the cloud warning. Not a
+        // poll (each request runs nvidia-smi on the server).
+        ServerInfoManager.get(this).addListener(serverInfoListener);
+        if (AuthManager.get(this).isLoggedIn()) {
             ServerInfoManager.get(this).refresh();
         }
         // Session state may have changed since onCreate (Settings → logout, etc.)
@@ -1662,6 +1683,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         CloudRepository.get(this).removeListener(cloudListener);
         CloudRepository.get(this).stopPolling();
         AvatarManager.get(this).removeListener(avatarListener);
+        ServerInfoManager.get(this).removeListener(serverInfoListener);
     }
 
     // Swaps the mini-player play/pause icon. Uses an AVD morph when animate=true
