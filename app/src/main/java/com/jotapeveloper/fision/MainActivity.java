@@ -1988,42 +1988,11 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Decode off the main thread so the list and the mini-player keep
         // responding while the song loads.
         playbackService.loadSongAsync(path, name, id, ok -> {
-            if (ok) applySavedVolumes(id, autoplay);
-        });
-    }
-
-    /** Reads the saved volumes/pan from Room, applies them to the engine and,
-     *  when [autoplay], starts playback afterwards. */
-    private void applySavedVolumes(int id, boolean autoplay) {
-        if (playbackService == null) return;
-        // Background: read Room, apply volumes/pan, then play on the main thread
-        AppDatabase db = AppDatabase.getInstance(getApplicationContext());
-        Executors.newSingleThreadExecutor().execute(() -> {
-            java.util.List<db_SongParameters> list =
-                    db.DAO_db_SongParameters().getParametersByElementId(id);
-            if (!list.isEmpty() && playbackService != null) {
-                db_SongParameters p = list.get(0);
-                java.util.Map<String, StemSetting> settings =
-                        StemSettingsCodec.parse(p.stemSettingsJson);
-                AudioEngine engine = playbackService.getEngine();
-                if (engine != null) {
-                    for (java.util.Map.Entry<String, StemSetting> e : settings.entrySet()) {
-                        Integer t = playbackService.getStemTrack(e.getKey());
-                        if (t == null) continue;
-                        float vol = e.getValue().volume * 0.01f;
-                        float L = vol, R = vol;
-                        float pan = e.getValue().pan;
-                        if (pan > 0)      L = vol * (100f - pan) * 0.01f;
-                        else if (pan < 0) R = vol * (100f - Math.abs(pan)) * 0.01f;
-                        engine.setVolume(t, L, R);
-                    }
-                }
-            }
-            if (autoplay) {
-                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                    if (playbackService != null) playbackService.play();
-                });
-            }
+            if (!ok || playbackService == null) return;
+            // Saved mix (volumes, pan, tempo, pitch), then play if requested.
+            playbackService.applySavedSongSettings(id, () -> {
+                if (autoplay && playbackService != null) playbackService.play();
+            });
         });
     }
 }

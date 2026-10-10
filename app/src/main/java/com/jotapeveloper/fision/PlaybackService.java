@@ -217,6 +217,7 @@ public class PlaybackService extends Service {
         loadGeneration++;
         loading = false;
         loadExecutor.shutdown();
+        settingsExecutor.shutdown();
         releaseInternal();
         if (mediaSession != null) { mediaSession.release(); mediaSession = null; }
         super.onDestroy();
@@ -660,36 +661,71 @@ public class PlaybackService extends Service {
         loadAndPlayWithVolumes(siblings[nextIdx]);
     }
 
-    /** Loads the song, applies stem volumes/pan from Room, then plays.
-     *  Mirrors MainActivity.loadSongInServiceWithVolumes so skip works when
-     *  no Activity is alive. */
+    /** Loads the song, applies its saved mix, then plays. Used by the skips
+     *  when no Activity drives the switch. */
     private void loadAndPlayWithVolumes(File folder) {
         final String path = folder.getAbsolutePath();
         final String name = folder.getName();
         final int    id   = name.hashCode();
         boolean ok = loadSong(path, name, id);
         if (!ok) return;
+        applySavedSongSettings(id, this::play);
+    }
+
+    private final java.util.concurrent.ExecutorService settingsExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    /**
+     * Applies the saved mix of the loaded song from Room: per-stem volume and
+     * pan, tempo, and pitch on the pitched stems (drums and percussion are
+     * excluded by design). Metronomes stay silent and 3D stays off: this is
+     * the playback-only mix used whenever the Player is not driving the engine
+     * (mini-player, playlist, notification and car skips, Android Auto).
+     * The Room read runs off the main thread; the engine is touched on the
+     * main thread and only if the same song is still loaded. [done] (may be
+     * null) runs on the main thread afterwards, also when nothing was saved.
+     */
+    public void applySavedSongSettings(int songId, @Nullable Runnable done) {
+        final AudioEngine target = engine;
+        if (target == null) { if (done != null) done.run(); return; }
         AppDatabase db = AppDatabase.getInstance(getApplicationContext());
-        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+        settingsExecutor.execute(() -> {
             java.util.List<db_SongParameters> list =
-                    db.DAO_db_SongParameters().getParametersByElementId(id);
-            if (!list.isEmpty() && engine != null) {
-                db_SongParameters p = list.get(0);
-                java.util.Map<String, StemSetting> settings =
-                        StemSettingsCodec.parse(p.stemSettingsJson);
-                for (java.util.Map.Entry<String, StemSetting> e : settings.entrySet()) {
-                    Integer t = stemTracks.get(e.getKey());
-                    if (t == null) continue;
-                    float vol = e.getValue().volume * 0.01f;
-                    float L = vol, R = vol;
-                    float pan = e.getValue().pan;
-                    if (pan > 0)      L = vol * (100f - pan) * 0.01f;
-                    else if (pan < 0) R = vol * (100f - Math.abs(pan)) * 0.01f;
-                    engine.setVolume(t, L, R);
-                }
-            }
-            mainHandler.post(this::play);
+                    db.DAO_db_SongParameters().getParametersByElementId(songId);
+            final db_SongParameters p = list.isEmpty() ? null : list.get(0);
+            mainHandler.post(() -> {
+                // A later load replaced the engine: these settings are stale.
+                if (engine != target) return;
+                if (p != null) applySongParameters(p);
+                if (done != null) done.run();
+            });
         });
+    }
+
+    private void applySongParameters(db_SongParameters p) {
+        java.util.Map<String, StemSetting> settings = StemSettingsCodec.parse(p.stemSettingsJson);
+        for (java.util.Map.Entry<String, StemSetting> e : settings.entrySet()) {
+            Integer t = stemTracks.get(e.getKey());
+            if (t == null) continue;
+            float vol = e.getValue().volume * 0.01f;
+            float L = vol, R = vol;
+            float pan = e.getValue().pan;
+            if (pan > 0)      L = vol * (100f - pan) * 0.01f;
+            else if (pan < 0) R = vol * (100f - Math.abs(pan)) * 0.01f;
+            engine.setVolume(t, L, R);
+        }
+        // Tempo applies to every stem and to the (silent) metronomes, so they
+        // stay in step if the Player later turns one on.
+        float tempo = (p.tempoMultMilli > 0 ? p.tempoMultMilli : 1000) / 1000f;
+        for (Integer t : stemTracks.values()) engine.setTempo(t, tempo);
+        if (metronomeTrack >= 0)       engine.setTempo(metronomeTrack, tempo);
+        if (metronomeHalfTrack >= 0)   engine.setTempo(metronomeHalfTrack, tempo);
+        if (metronomeDoubleTrack >= 0) engine.setTempo(metronomeDoubleTrack, tempo);
+        int pitchIndex = p.pitchIndex > 0 ? p.pitchIndex : numberPickerData.CENTRAL_PITCH_INDEX;
+        float semitones = Float.parseFloat(numberPickerData.PITCH_VALUES[pitchIndex - 1]);
+        for (java.util.Map.Entry<String, Integer> e : stemTracks.entrySet()) {
+            if (StemSpec.isPitched(e.getKey())) engine.setPitch(e.getValue(), semitones);
+        }
     }
 
     /** Releases the song and stops the foreground service. */
