@@ -509,6 +509,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     seedFromLegacy("vocals", parameters.vocals,  parameters.vocalsPan);
                     seedFromLegacy("instrumental", parameters.instrumental, 0f);
                 }
+            } else {
+                // No saved row: defaults, not the previous song's values
+                // (these fields survive an in-place song switch).
+                chordsActive         = true;
+                chordsBasicMode      = false;
+                metronomeEnabled     = false;
+                selectedMetronome    = 1;
+                metronomeVol         = 100;
+                metronomePan         = 0;
+                metronomeHalfVariant = 0;
+                selectedPitch        = numberPickerData.CENTRAL_PITCH_INDEX;
+                selectedTempoMultMilli = 1000;
+                is3DEnabled          = false;
+                stem3DPositions.clear();
             }
             // Update the UI on the main thread
             runOnUiThread(this::updateUI);
@@ -610,12 +624,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         applyChordsItemEnabled();
         if (chordsBasicMode) reloadChords();
 
-        // Metronome section
+        // Metronome section (per song). Off also repaints the icon: after a song
+        // switch it still showed the previous song's state.
         if(metronomeEnabled){
             b_metronome.setIconTint(ColorStateList.valueOf(accent()));
             if(selectedMetronome == 0){engine.setVolume(metronomeHalfTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
             if(selectedMetronome == 1){engine.setVolume(metronomeTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
             if(selectedMetronome == 2){engine.setVolume(metronomeDoubleTrack, metronomeVol*0.01f, metronomeVol*0.01f);}
+        } else {
+            b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(255, 255, 255)));
         }
 
 
