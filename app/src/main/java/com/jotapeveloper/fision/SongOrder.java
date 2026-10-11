@@ -31,22 +31,36 @@ public final class SongOrder {
         return PreferenceManager.getDefaultSharedPreferences(ctx).getInt(PREF_SORT_ORDER, 0);
     }
 
-    /** Date used to sort a song: cloud timestamps first, then the folder. */
-    public static long timestamp(@Nullable CloudItem cloud, @Nullable File folder) {
+    /** Date used to sort a song: cloud timestamps first, then the last known
+     *  server date (before the first server answer or offline), then the folder. */
+    public static long timestamp(Context ctx, @Nullable CloudItem cloud, @Nullable File folder) {
         if (cloud != null) {
             if (cloud.stickyOrderTs > 0) return cloud.stickyOrderTs;
             long sc = parseIsoTs(cloud.serverCreated);
             if (sc > 0) return sc;
             long su = parseIsoTs(cloud.serverUpdated);
             if (su > 0) return su;
-            if (cloud.submittedAt > 0) return cloud.submittedAt;
         }
-        return folder != null && folder.exists() ? folder.lastModified() : 0L;
+        String hash = cloud != null ? cloud.hash : (folder != null ? folder.getName() : null);
+        CloudRepository repo = CloudRepository.get(ctx);
+        long cached = repo.getCachedOrderTs(hash);
+        if (cached > 0) return cached;
+        if (cloud != null && cloud.submittedAt > 0) return cloud.submittedAt;
+        if (folder == null || !folder.exists()) return 0L;
+        // First sight of a song with no server date: its folder date is frozen,
+        // so later writes into the folder (lyrics, covers) never move it.
+        return repo.freezeOrderTs(folder.getName(), folder.lastModified());
     }
 
-    /** Compares two dates in the configured direction. */
-    public static int compare(long a, long b, int sortOrder) {
-        return sortOrder == 0 ? Long.compare(b, a) : Long.compare(a, b);
+    /** Compares two songs by date in the configured direction; equal dates
+     *  fall back to the hash so the order never depends on listing order. */
+    public static int compare(long a, @Nullable String keyA, long b, @Nullable String keyB,
+                              int sortOrder) {
+        int c = sortOrder == 0 ? Long.compare(b, a) : Long.compare(a, b);
+        if (c != 0) return c;
+        if (keyA == null) keyA = "";
+        if (keyB == null) keyB = "";
+        return keyA.compareTo(keyB);
     }
 
     /** Downloaded songs (folders under [songsRoot]) in list order. */
@@ -57,11 +71,11 @@ public final class SongOrder {
         long[] ts = new long[dirs.length];
         Integer[] idx = new Integer[dirs.length];
         for (int i = 0; i < dirs.length; i++) {
-            ts[i] = timestamp(repo.getByHash(dirs[i].getName()), dirs[i]);
+            ts[i] = timestamp(ctx, repo.getByHash(dirs[i].getName()), dirs[i]);
             idx[i] = i;
         }
         int order = sortOrder(ctx);
-        Arrays.sort(idx, (a, b) -> compare(ts[a], ts[b], order));
+        Arrays.sort(idx, (a, b) -> compare(ts[a], dirs[a].getName(), ts[b], dirs[b].getName(), order));
         List<File> out = new ArrayList<>(dirs.length);
         for (Integer i : idx) out.add(dirs[i]);
         return out;

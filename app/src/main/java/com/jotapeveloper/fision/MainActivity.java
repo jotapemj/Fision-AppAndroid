@@ -800,7 +800,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         //    (submission time while the server has no date yet), instead of the
         //    repository's insertion order.
         java.util.Comparator<SongListData> byDate =
-                (a, b) -> SongOrder.compare(tsForItem(a), tsForItem(b), sortOrder);
+                (a, b) -> SongOrder.compare(tsForItem(a), orderKey(a),
+                        tsForItem(b), orderKey(b), sortOrder);
         java.util.Collections.sort(inFlight, byDate);
         java.util.Collections.sort(regular, byDate);
 
@@ -814,7 +815,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  sticky if present, otherwise server created_at (stable order, does not change on
      *  reprocess), otherwise updated_at, otherwise the local folder's lastModified. */
     private long tsForItem(SongListData s) {
-        return SongOrder.timestamp(s.cloud, new File(SongFolder, s.getTitle()));
+        return SongOrder.timestamp(this, s.cloud, new File(SongFolder, s.getTitle()));
+    }
+
+    /** Tie-break key matching SongOrder.sortedSongFolders: the song hash. */
+    private static String orderKey(SongListData s) {
+        return s.cloud != null ? s.cloud.hash : s.getTitle();
     }
 
     // Reachability tracking for the cloud icon. Offline = red, persistent.

@@ -7,6 +7,9 @@ import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.jotapeveloper.fision.SongOrder;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,6 +50,9 @@ public class CloudRepository {
      *  a CLOUD_ONLY entry. Persisted so that after restarting the app they keep their
      *  original position with title, artist and cover. Key format: "sticky_<field>_<hash>". */
     private static final String KEY_STICKY_PREFIX = "sticky_";
+    /** Last known server order date per hash ("order_ts_<hash>"). Keeps the
+     *  list order stable from the first render and while offline. */
+    private static final String KEY_ORDER_TS_PREFIX = "order_ts_";
 
     public interface Listener {
         void onCloudChanged();
@@ -72,6 +78,8 @@ public class CloudRepository {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private final LinkedHashMap<String, CloudItem> items = new LinkedHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> cachedOrderTs =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private boolean reachable = false;
     private boolean polling = false;
 
@@ -112,7 +120,35 @@ public class CloudRepository {
         this.prefs  = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         restorePendingJobs();
         restoreStickyMetadata();
+        restoreOrderTs();
         sanitizeCoverCache();
+    }
+
+    /** Last known server order date of [hash], 0 when never seen. */
+    public long getCachedOrderTs(@Nullable String hash) {
+        if (hash == null) return 0L;
+        Long v = cachedOrderTs.get(hash);
+        return v != null ? v : 0L;
+    }
+
+    /** Stores [ts] as the order date of [hash] unless one is already known.
+     *  Returns the date in effect. A later server date replaces it. */
+    public long freezeOrderTs(@NonNull String hash, long ts) {
+        if (ts <= 0) return 0L;
+        Long prev = cachedOrderTs.putIfAbsent(hash, ts);
+        if (prev != null) return prev;
+        prefs.edit().putLong(KEY_ORDER_TS_PREFIX + hash, ts).apply();
+        return ts;
+    }
+
+    private void restoreOrderTs() {
+        for (Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
+            String key = e.getKey();
+            if (!key.startsWith(KEY_ORDER_TS_PREFIX)) continue;
+            Object v = e.getValue();
+            if (!(v instanceof Long) || (Long) v <= 0) continue;
+            cachedOrderTs.put(key.substring(KEY_ORDER_TS_PREFIX.length()), (Long) v);
+        }
     }
 
     /** Deletes cached cover files that no longer decode as images. Old versions
@@ -527,6 +563,8 @@ public class CloudRepository {
         java.util.List<String> readyForDownload = new java.util.ArrayList<>();
         // Hashes whose cover needs to be fetched from the server (not cached yet)
         java.util.List<String> coversToFetch = new java.util.ArrayList<>();
+        // Server order dates that changed in this pass, written in one apply().
+        SharedPreferences.Editor orderEdit = null;
         for (LibraryEntry e : remote) {
             if (e == null || e.hash == null) continue;
             seen.add(e.hash);
@@ -552,6 +590,13 @@ public class CloudRepository {
             // serverUpdated: prefer the new updated_at; fall back to legacy actualizado.
             it.serverUpdated = e.updatedAt != null ? e.updatedAt : e.actualizado;
             it.serverCreated = e.createdAt;
+            long orderTs = SongOrder.parseIsoTs(it.serverCreated);
+            if (orderTs <= 0) orderTs = SongOrder.parseIsoTs(it.serverUpdated);
+            if (orderTs > 0 && orderTs != getCachedOrderTs(e.hash)) {
+                cachedOrderTs.put(e.hash, orderTs);
+                if (orderEdit == null) orderEdit = prefs.edit();
+                orderEdit.putLong(KEY_ORDER_TS_PREFIX + e.hash, orderTs);
+            }
             // Current server config, kept so the reprocess wizard can prefill without asking again.
             if (e.config != null) it.config = e.config;
             // Server cover_url: when the CloudItem has no local coverPath yet, trigger
@@ -608,6 +653,7 @@ public class CloudRepository {
             if (ci.isInFlight()) continue;
             if (!seen.contains(ci.hash)) it.remove();
         }
+        if (orderEdit != null) orderEdit.apply();
         notifyChanged();
         // Auto-start the download of items the server reports as "listo" while they
         // were in flight (RUNNING/QUEUED). Done OUTSIDE the lock to avoid blocking.
