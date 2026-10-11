@@ -123,7 +123,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     // === Server state ===
     private ImageView ivCloudStatus;
-    private TextView tvCloudAsterisk;
     /** Repaints the cloud icon when a /server/info fetch lands (free VRAM). */
     private final ServerInfoManager.Listener serverInfoListener = () -> {
         if (isFinishing() || isDestroyed()) return;
@@ -327,7 +326,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         b_add = findViewById(R.id.b_add);
         b_orderBy = findViewById(R.id.b_orderBy);
         ivCloudStatus = findViewById(R.id.iv_cloud_status);
-        tvCloudAsterisk = findViewById(R.id.tv_cloud_vramAsterisk);
         flAvatar = findViewById(R.id.fl_avatar);
         tvAvatarInitial = findViewById(R.id.tv_avatarInitial);
         ivAvatarImage = findViewById(R.id.iv_avatarImage);
@@ -860,8 +858,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void refreshCloudStatusIcon(Boolean reachable) {
         if (ivCloudStatus == null) return;
-        // The asterisk only belongs to the low-VRAM state set further down.
-        if (tvCloudAsterisk != null) tvCloudAsterisk.setVisibility(View.GONE);
         boolean loggedIn = AuthManager.get(this).isLoggedIn();
 
         // No session → grey cloud icon regardless of reachability. Tap opens the
@@ -906,15 +902,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             return;
         }
         // Online but the server GPU has less free memory than its minimum
-        // (last /server/info): orange cloud with an asterisk, kept on screen.
+        // (last /server/info): orange chip alert, kept on screen.
         if (ServerInfoManager.get(this).isVramLow()) {
-            ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+            ivCloudStatus.setImageResource(R.drawable.ic_gpu_alert);
             ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
                     ContextCompat.getColor(this, R.color.gpu_warning_accent)));
             ivCloudStatus.setContentDescription(getString(R.string.server_vram_low));
             ivCloudStatus.setAlpha(1f);
             ivCloudStatus.setVisibility(View.VISIBLE);
-            if (tvCloudAsterisk != null) tvCloudAsterisk.setVisibility(View.VISIBLE);
             return;
         }
         if (firstCall || !wasOffline) {
@@ -996,7 +991,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  check server details or trigger a health test. */
     private void handleCloudIconTap() {
         if (AuthManager.get(this).isLoggedIn()) {
-            openSettings(null);
+            // Low-VRAM chip leads straight to the GPU card.
+            Intent intent = new Intent(this, SettingsActivity.class);
+            if (ServerInfoManager.get(this).isVramLow()) {
+                intent.putExtra(SettingsActivity.EXTRA_OPEN_GPU, true);
+            }
+            startActivity(intent);
         } else {
             LoginDialog.show(this, true, new LoginDialog.Callback() {
                 @Override public void onLoggedIn(String u) {

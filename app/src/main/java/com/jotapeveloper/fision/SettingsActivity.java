@@ -61,6 +61,9 @@ public class SettingsActivity extends AppCompatActivity
     private static final String ID_PERFORMANCE = "performance";
     private static final String ID_LANGUAGE  = "language";
     private static final String ID_GPU       = "gpu";
+
+    /** Boolean extra: open the GPU card dialog right after launch. */
+    public static final String EXTRA_OPEN_GPU = "open_gpu";
     private static final String ID_VERSION   = "server_version";
     private static final String ID_TEST      = "server_test";
     private static final String ID_ABOUT     = "about";
@@ -96,6 +99,11 @@ public class SettingsActivity extends AppCompatActivity
         rv.setAdapter(adapter);
 
         rebuildItems();
+
+        // Opened from the low-VRAM chip in the main toolbar: show the GPU card.
+        if (savedInstanceState == null && getIntent().getBooleanExtra(EXTRA_OPEN_GPU, false)) {
+            rv.post(this::showGpuDialog);
+        }
     }
 
     @Override
