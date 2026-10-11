@@ -66,6 +66,8 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     private int    currentSongId = -1;
     private long   songDurationMs = 0;
     private boolean isPlaying = false;
+    // A load that ends in play() is in progress (see loadAndPlay).
+    private boolean startPending = false;
     // Metadata cached at load time (display title + artist + cover)
     private SongMetadata currentMetadata = new SongMetadata();
 
@@ -441,6 +443,9 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         } catch (Throwable ignored) { return null; }
     }
     public boolean isPlaying()                { return isPlaying; }
+    /** Playing, or loading a song that starts playing once ready. Play/pause
+     *  icons use it so a song switch does not flash the play icon. */
+    public boolean isPlayingOrStarting()      { return isPlaying || startPending; }
     public long    getCurrentPositionMs()     { return engine != null ? engine.getCurrentPositionMs() : 0; }
     public long    getDurationMs()            { return songDurationMs; }
 
@@ -479,6 +484,13 @@ public class PlaybackService extends MediaBrowserServiceCompat {
      */
     public void loadSongAsync(String songPath, String songName, int songId,
                               java.util.function.Consumer<Boolean> done) {
+        loadSongAsync(songPath, songName, songId, false, done);
+    }
+
+    private void loadSongAsync(String songPath, String songName, int songId,
+                               boolean thenPlay, java.util.function.Consumer<Boolean> done) {
+        // Any new load replaces the start intent of a previous one.
+        startPending = thenPlay;
         if (isCurrentSong(songPath) && engine != null) {
             currentSongName = songName;
             currentSongId   = songId;
@@ -694,6 +706,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         if (engine.getCurrentPositionMs() == 0) engine.start();
         else                                    engine.resume();
         isPlaying = true;
+        startPending = false;
         startForegroundWithNotif(PlaybackStateCompat.STATE_PLAYING);
         updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
         notifyListeners();
@@ -721,6 +734,15 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     }
 
     private void pauseInternal(boolean transientLoss) {
+        if (startPending) {
+            // Pause during a load cancels its pending start.
+            startPending = false;
+            if (engine == null) {
+                updatePlaybackState(PlaybackStateCompat.STATE_PAUSED);
+                notifyListeners();
+                return;
+            }
+        }
         if (engine == null) return;
         stopEndOfSongWatcher();
         engine.pause();
@@ -784,17 +806,22 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     /** Loads a song in the background, applies its saved mix, then plays.
      *  Used by the skips without an Activity and by Android Auto. The session
      *  reports BUFFERING while the stems decode. */
-    private void loadAndPlay(File folder) {
+    public void loadAndPlay(File folder) {
         final String path = folder.getAbsolutePath();
         final String name = folder.getName();
         final int    id   = name.hashCode();
         updatePlaybackState(PlaybackStateCompat.STATE_BUFFERING);
-        loadSongAsync(path, name, id, ok -> {
+        loadSongAsync(path, name, id, true, ok -> {
             if (!ok) {
+                startPending = false;
                 updatePlaybackState(PlaybackStateCompat.STATE_ERROR);
+                notifyListeners();
                 return;
             }
-            applySavedSongSettings(id, this::play);
+            applySavedSongSettings(id, () -> {
+                // Still wanted: no pause and no newer load in between.
+                if (startPending) play();
+            });
         });
     }
 
@@ -856,6 +883,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
 
     /** Releases the song and stops the foreground service. */
     public void releaseSongAndStop() {
+        startPending = false;
         releaseInternal();
         stopForeground(true);
         notificationManager.cancel(NOTIF_ID);

@@ -383,7 +383,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         bMiniPlayPause.setOnClickListener(v -> {
             if (playbackService == null) return;
-            if (playbackService.isPlaying()) playbackService.pause();
+            if (playbackService.isPlayingOrStarting()) playbackService.pause();
             else                              playbackService.play();
         });
         // Gestures over the text area: tap → open player; lateral fling → switch song
@@ -1767,7 +1767,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         } else {
             ivMiniIcon.setImageResource(R.raw.artcover_generic);
         }
-        applyMiniPlayIcon(playbackService.isPlaying(), true);
+        applyMiniPlayIcon(playbackService.isPlayingOrStarting(), true);
         // Refresh prev/next previews in case the song list changed
         populateMiniPreviews();
         // Start / restart the progress tick (idempotent)
@@ -1902,8 +1902,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     tvMiniArtist.setText(aStr);
                     tvMiniArtist.setVisibility(aStr.isEmpty() ? View.GONE : View.VISIBLE);
                     llMiniCurrent.setTranslationX(0f);
-                    // Load the song in the service (autoplay after volumes come from Room)
-                    loadSongInServiceWithVolumes(next, true);
+                    // Load, apply the saved mix, then play
+                    if (playbackService != null) playbackService.loadAndPlay(next);
                     // Recompute and reposition previews for the new current
                     populateMiniPreviews();
                 }).start();
@@ -1948,47 +1948,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         artist.setVisibility(a.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
-    /** Computes the adjacent song folder respecting the active sort order. */
+    /** Song [direction] steps from the current one in library order. */
     private File computeAdjacentSongFolder(int direction) {
         if (playbackService == null) return null;
         String currentPath = playbackService.getCurrentSongPath();
         if (currentPath == null) return null;
-        File current = new File(currentPath);
-        File parent = current.getParentFile();
-        if (parent == null || !parent.isDirectory()) return null;
-        File[] subs = parent.listFiles(File::isDirectory);
-        if (subs == null || subs.length < 2) return null;
-        int order = PreferenceManager.getDefaultSharedPreferences(this).getInt(PREF_SORT_ORDER, 0);
-        java.util.Arrays.sort(subs, (a, b) -> order == 0
-                ? Long.compare(b.lastModified(), a.lastModified())
-                : Long.compare(a.lastModified(), b.lastModified()));
-        int idx = -1;
-        for (int i = 0; i < subs.length; i++) {
-            if (subs[i].getName().equals(current.getName())) { idx = i; break; }
-        }
-        if (idx < 0) return null;
-        int target = ((idx + direction) % subs.length + subs.length) % subs.length;
-        return subs[target];
-    }
-
-    /** Loads a song into the service, reads saved volumes from Room, applies them
-     *  to the engine and only then starts playback. Without this, the song would
-     *  play at the default 75% during the delay it takes Room to return the settings.
-     *  @param autoplay true to start after volumes are applied. */
-    private void loadSongInServiceWithVolumes(File folder, boolean autoplay) {
-        if (playbackService == null || folder == null) return;
-        final String path = folder.getAbsolutePath();
-        final String name = folder.getName();
-        final int    id   = name.hashCode();
-        // Decode off the main thread so the list and the mini-player keep
-        // responding while the song loads.
-        playbackService.loadSongAsync(path, name, id, ok -> {
-            if (!ok || playbackService == null) return;
-            // Saved mix (volumes, pan, tempo, pitch), then play if requested.
-            playbackService.applySavedSongSettings(id, () -> {
-                if (autoplay && playbackService != null) playbackService.play();
-            });
-        });
+        return SongOrder.adjacent(this, new File(currentPath), direction);
     }
 }
 
