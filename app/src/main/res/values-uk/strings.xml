@@ -188,7 +188,8 @@
     <string name="gpu_dialog_no_gpu_body">Сервер не пропонує GPU. Обробка виконуватиметься на CPU.</string>
     <string name="gpu_dialog_no_data">Увійдіть, щоб отримати цю інформацію.</string>
     <string name="vram_gb_fmt">%1$d ГБ</string>
-    <string name="vram_free_fmt">%1$.1f ГБ вільно</string>
+    <string name="vram_free_of_total_fmt">%1$.1f / %2$d ГБ вільно</string>
+    <string name="gpu_vram_low_body">GPU зайнятий. Завдання чекатимуть на вільну VRAM.</string>
     <string name="server_vram_low">Мало вільної пам\'яті GPU на сервері</string>
     <string name="settings_donate_title">Дивитися на GitHub</string>
     <string name="settings_donate_subtitle">Вихідний код, задачі та плани</string>
@@ -307,6 +308,12 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="login_status_unauthenticated">Не авторизовано</string>
     <string name="login_err_empty_fields">Заповни всі поля</string>
     <string name="login_err_bad_credentials">Неправильний логін чи пароль</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="one">Забагато спроб. Спробуйте через %d хв.</item>
+        <item quantity="few">Забагато спроб. Спробуйте через %d хв.</item>
+        <item quantity="many">Забагато спроб. Спробуйте через %d хв.</item>
+        <item quantity="other">Забагато спроб. Спробуйте через %d хв.</item>
+    </plurals>
     <string name="login_err_network">Немає відповіді від сервера</string>
     <string name="login_err_bad_url">Некоректний URL сервера</string>
     <string name="login_err_server">Помилка сервера</string>
@@ -374,6 +381,9 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="import_no_server">Спочатку налаштуй URL сервера в Налаштуваннях</string>
     <string name="import_uploading">Завантаження…</string>
     <string name="import_upload_failed">Помилка завантаження</string>
+    <string name="import_err_unsupported_format">Формат не підтримується. Використовуйте MP3, WAV, FLAC, M4A, AAC, OGG, OPUS, AIFF або WMA.</string>
+    <string name="import_err_too_large">Файл завеликий (макс. 200 МБ)</string>
+    <string name="import_err_internal">Внутрішня помилка застосунку. Її записано в журнал.</string>
     <string name="import_gpu_warning">Немає GPU на сервері. Обробка виконуватиметься на CPU (повільно).</string>
     <string name="import_loading_server_info">Отримуємо дані сервера…</string>
 
@@ -383,6 +393,8 @@ HTTP-клієнт і серверні bindings.]]></string>
     <string name="cloud_state_running">Обробка…</string>
     <string name="cloud_state_waiting_gpu">Очікування GPU…</string>
     <string name="gpu_timeout_body">GPU досі зайнятий після 10 хвилин. Спробувати знову чи скасувати?</string>
+    <string name="job_timeout_body">Обробка тривала занадто довго й була скасована. Спробувати знову чи скасувати?</string>
+    <string name="lyrics_timeout">Обробка тривала занадто довго й була скасована.</string>
     <string name="gpu_timeout_retry">Спробувати знову</string>
     <string name="gpu_timeout_cancel">Скасувати</string>
     <string name="cloud_state_downloading">Завантаження %1$d%%</string>

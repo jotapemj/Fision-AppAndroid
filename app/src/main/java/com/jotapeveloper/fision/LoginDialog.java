@@ -109,6 +109,15 @@ public class LoginDialog {
     }
 
     private static String errorForReason(Activity host, String reason) {
+        if (reason.startsWith(AuthManager.REASON_TOO_MANY_ATTEMPTS_PREFIX)) {
+            int min = 1;
+            try {
+                min = Integer.parseInt(reason.substring(
+                        AuthManager.REASON_TOO_MANY_ATTEMPTS_PREFIX.length()));
+            } catch (NumberFormatException ignored) { }
+            return host.getResources().getQuantityString(
+                    R.plurals.login_err_too_many_attempts, min, min);
+        }
         switch (reason) {
             case "empty_fields":    return host.getString(R.string.login_err_empty_fields);
             case "bad_credentials": return host.getString(R.string.login_err_bad_credentials);

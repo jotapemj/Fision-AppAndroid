@@ -24,6 +24,19 @@ public class AuthManager {
         void onFailure(int httpCode, String userMessage);
     }
 
+    /** Login failure reason for HTTP 429, followed by the wait in minutes. */
+    public static final String REASON_TOO_MANY_ATTEMPTS_PREFIX = "too_many_attempts:";
+
+    /** Retry-After seconds rounded up to whole minutes; 1 when missing or invalid. */
+    static int retryAfterMinutes(String header) {
+        try {
+            long s = Long.parseLong(header.trim());
+            return (int) Math.max(1, (s + 59) / 60);
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+
     public interface ChangePasswordCallback {
         void onSuccess();
         void onFailure(int httpCode, String userMessage);
@@ -141,8 +154,17 @@ public class AuthManager {
                     main.post(() -> cb.onSuccess(uname));
                 } else {
                     int code = r.code();
-                    main.post(() -> cb.onFailure(code,
-                            code == 401 ? "bad_credentials" : "server_error"));
+                    String reason;
+                    if (code == 401) {
+                        reason = "bad_credentials";
+                    } else if (code == 429) {
+                        // Server lockout: wait time in minutes, rounded up.
+                        reason = REASON_TOO_MANY_ATTEMPTS_PREFIX
+                                + retryAfterMinutes(r.headers().get("Retry-After"));
+                    } else {
+                        reason = "server_error";
+                    }
+                    main.post(() -> cb.onFailure(code, reason));
                 }
             }
             @Override public void onFailure(Call<LoginResponse> c, Throwable t) {

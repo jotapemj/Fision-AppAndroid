@@ -319,11 +319,11 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                     // Processing/queued/downloading/waiting-gpu: tap does nothing
                     return;
                 }
-                // GPU-busy error: reopen the retry dialog so the user can act on
-                // items whose original popup was dismissed while off-screen.
+                // Retryable error (GPU busy, time limit): reopen the retry dialog
+                // so the user can act on items whose original popup was dismissed.
                 if (c.state == CloudItem.State.ERROR
-                        && CloudRepository.ERROR_GPU_BUSY.equalsIgnoreCase(c.errorMessage)) {
-                    ParentActivity.showGpuTimeoutDialog(c.hash);
+                        && CloudRepository.isRetryableJobError(c.errorMessage)) {
+                    ParentActivity.showJobRetryDialog(c.hash);
                     return;
                 }
             }

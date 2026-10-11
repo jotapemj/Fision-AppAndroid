@@ -208,23 +208,23 @@ public class SettingsActivity extends AppCompatActivity
             return getString(R.string.server_gpu_unknown);
         }
         if (mgr.hasGpu()) {
-            int vramGb = Math.max(0, mgr.getVramMb() / 1024);
             String name = mgr.getGpuName();
             if (name == null || name.isEmpty()) name = getString(R.string.server_gpu_ok_short);
-            String s = getString(R.string.server_gpu_ok_fmt, name, vramGb);
             String free = vramFreeText(mgr);
-            return free != null ? s + " · " + free : s;
+            if (free != null) return name + " · " + free;
+            return getString(R.string.server_gpu_ok_fmt, name, Math.max(0, mgr.getVramMb() / 1024));
         }
         return getString(R.string.server_gpu_missing);
     }
 
-    /** "18.2 GB free" from the last fetch, or null when the server does not
-     *  report it (before 1.4.0). */
+    /** "22.1 / 24 GB free" from the last fetch, or null when the server does
+     *  not report the free memory (before 1.4.0). */
     @androidx.annotation.Nullable
     private String vramFreeText(ServerInfoManager mgr) {
         int freeMb = mgr.getVramFreeMb();
         if (freeMb < 0) return null;
-        return getString(R.string.vram_free_fmt, freeMb / 1024f);
+        return getString(R.string.vram_free_of_total_fmt, freeMb / 1024f,
+                Math.max(0, mgr.getVramMb() / 1024));
     }
 
     private CharSequence currentLanguageLabel() {
@@ -286,6 +286,7 @@ public class SettingsActivity extends AppCompatActivity
         TextView tvState  = v.findViewById(R.id.tv_gpu_dialogState);
         TextView tvName   = v.findViewById(R.id.tv_gpu_dialogName);
         TextView tvVram   = v.findViewById(R.id.tv_gpu_dialogVram);
+        TextView tvVramWarning = v.findViewById(R.id.tv_gpu_dialogVramWarning);
         TextView tvDriver = v.findViewById(R.id.tv_gpu_dialogDriver);
         View detailsWrap  = v.findViewById(R.id.ll_gpu_dialogDetailsWrap);
         MaterialButton bRefresh = v.findViewById(R.id.b_gpu_dialogRefresh);
@@ -300,7 +301,7 @@ public class SettingsActivity extends AppCompatActivity
 
         // Paint the dialog against the current cache state
         Runnable paint = () -> paintGpuDialog(badgeWrap, ivBadge, tvState, tvName, tvVram,
-                tvDriver, detailsWrap, bRefresh);
+                tvVramWarning, tvDriver, detailsWrap, bRefresh);
         paint.run();
 
         // Live-refresh: repaint on every ServerInfoManager notification
@@ -331,7 +332,7 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     private void paintGpuDialog(View badgeWrap, ImageView ivBadge, TextView tvState,
-                                 TextView tvName, TextView tvVram,
+                                 TextView tvName, TextView tvVram, TextView tvVramWarning,
                                  TextView tvDriver, View detailsWrap,
                                  MaterialButton bRefresh) {
         AuthManager auth = AuthManager.get(this);
@@ -354,16 +355,17 @@ public class SettingsActivity extends AppCompatActivity
             String name = mgr.getGpuName();
             if (name == null || name.isEmpty()) name = getString(R.string.server_gpu_ok_short);
             tvName.setText(name);
-            int vramGb = Math.max(0, mgr.getVramMb() / 1024);
-            String vram = getString(R.string.vram_gb_fmt, vramGb);
             String free = vramFreeText(mgr);
-            tvVram.setText(free != null ? vram + " · " + free : vram);
-            // Orange when the free VRAM is under the server's minimum.
-            if (mgr.isVramLow()) {
+            tvVram.setText(free != null ? free
+                    : getString(R.string.vram_gb_fmt, Math.max(0, mgr.getVramMb() / 1024)));
+            // Orange plus a note when the free VRAM is under the server's minimum.
+            boolean low = mgr.isVramLow();
+            if (low) {
                 tvVram.setTextColor(ContextCompat.getColor(this, R.color.gpu_warning_accent));
             } else {
                 tvVram.setTextColor(tvDriver.getTextColors());
             }
+            tvVramWarning.setVisibility(low ? View.VISIBLE : View.GONE);
             String driver = mgr.getDriver();
             tvDriver.setText(driver == null || driver.isEmpty() ? "—" : driver);
             detailsWrap.setVisibility(View.VISIBLE);

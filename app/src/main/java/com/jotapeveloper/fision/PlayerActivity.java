@@ -7822,6 +7822,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     android.widget.Toast.makeText(this,
                             R.string.lyrics_no_vocals, android.widget.Toast.LENGTH_SHORT).show();
                     setLyricsUiState(LyricsUiState.PICKER);
+                } else if (com.jotapeveloper.fision.cloud.CloudRepository.isTimeoutError(errorMsg)) {
+                    // Time limit on the server: back to the picker to retry.
+                    android.widget.Toast.makeText(this,
+                            R.string.lyrics_timeout, android.widget.Toast.LENGTH_LONG).show();
+                    setLyricsUiState(LyricsUiState.PICKER);
                 } else {
                     setLyricsUiState(LyricsUiState.ERROR);
                 }

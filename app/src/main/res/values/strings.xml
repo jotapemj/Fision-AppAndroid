@@ -210,7 +210,8 @@
     <string name="gpu_dialog_no_gpu_body">No GPU exposed by the server. Jobs will run on CPU.</string>
     <string name="gpu_dialog_no_data">Sign in to fetch this information.</string>
     <string name="vram_gb_fmt">%1$d GB</string>
-    <string name="vram_free_fmt">%1$.1f GB free</string>
+    <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB free</string>
+    <string name="gpu_vram_low_body">GPU busy. Jobs will wait for free VRAM.</string>
     <string name="server_vram_low">Low free GPU memory on the server</string>
     <string name="settings_donate_title">View on GitHub</string>
     <string name="settings_donate_subtitle">Source code, issues and roadmap</string>
@@ -328,6 +329,10 @@ HTTP client and server API bindings.]]></string>
     <string name="login_status_unauthenticated">Not signed in</string>
     <string name="login_err_empty_fields">Fill in every field</string>
     <string name="login_err_bad_credentials">Wrong username or password</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="one">Too many attempts. Try again in %d min.</item>
+        <item quantity="other">Too many attempts. Try again in %d min.</item>
+    </plurals>
     <string name="login_err_network">No response from server</string>
     <string name="login_err_bad_url">Invalid server URL</string>
     <string name="login_err_server">Server error</string>
@@ -395,6 +400,9 @@ HTTP client and server API bindings.]]></string>
     <string name="import_no_server">Set the server URL in Settings first</string>
     <string name="import_uploading">Uploading…</string>
     <string name="import_upload_failed">Upload failed</string>
+    <string name="import_err_unsupported_format">Unsupported format. Use MP3, WAV, FLAC, M4A, AAC, OGG, OPUS, AIFF or WMA.</string>
+    <string name="import_err_too_large">File too large (max. 200 MB)</string>
+    <string name="import_err_internal">Internal app error. It has been logged.</string>
     <string name="import_gpu_warning">No GPU detected on server. Processing will run on CPU (slow).</string>
     <string name="import_loading_server_info">Reading server info…</string>
 
@@ -404,6 +412,8 @@ HTTP client and server API bindings.]]></string>
     <string name="cloud_state_running">Processing…</string>
     <string name="cloud_state_waiting_gpu">Waiting for GPU…</string>
     <string name="gpu_timeout_body">The GPU is still busy after 10 minutes. You can retry or cancel.</string>
+    <string name="job_timeout_body">Processing took too long and was cancelled. You can retry or cancel.</string>
+    <string name="lyrics_timeout">Processing took too long and was cancelled.</string>
     <string name="gpu_timeout_retry">Retry</string>
     <string name="gpu_timeout_cancel">Cancel</string>
     <string name="cloud_state_downloading">Downloading %1$d%%</string>

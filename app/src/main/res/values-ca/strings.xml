@@ -189,7 +189,8 @@
     <string name="gpu_dialog_no_gpu_body">El servidor no exposa GPU. Els treballs correran per CPU.</string>
     <string name="gpu_dialog_no_data">Inicia sessió per consultar aquesta informació.</string>
     <string name="vram_gb_fmt">%1$d GB</string>
-    <string name="vram_free_fmt">%1$.1f GB lliures</string>
+    <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB lliures</string>
+    <string name="gpu_vram_low_body">GPU ocupada. Els treballs esperaran VRAM lliure.</string>
     <string name="server_vram_low">Poca memòria de GPU lliure al servidor</string>
     <string name="settings_donate_title">Veure a GitHub</string>
     <string name="settings_donate_subtitle">Codi font, issues i roadmap</string>
@@ -307,6 +308,11 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="login_status_unauthenticated">Sense sessió</string>
     <string name="login_err_empty_fields">Omple tots els camps</string>
     <string name="login_err_bad_credentials">Usuari o contrasenya incorrectes</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="one">Massa intents. Torna-ho a provar d\'aquí a %d min.</item>
+        <item quantity="many">Massa intents. Torna-ho a provar d\'aquí a %d min.</item>
+        <item quantity="other">Massa intents. Torna-ho a provar d\'aquí a %d min.</item>
+    </plurals>
     <string name="login_err_network">Sense resposta del servidor</string>
     <string name="login_err_bad_url">URL del servidor no vàlida</string>
     <string name="login_err_server">Error del servidor</string>
@@ -374,6 +380,9 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="import_no_server">Configura primer la URL del servidor a Ajustaments</string>
     <string name="import_uploading">Pujant…</string>
     <string name="import_upload_failed">Pujada fallida</string>
+    <string name="import_err_unsupported_format">Format no compatible. Fes servir MP3, WAV, FLAC, M4A, AAC, OGG, OPUS, AIFF o WMA.</string>
+    <string name="import_err_too_large">Fitxer massa gran (màx. 200 MB)</string>
+    <string name="import_err_internal">Error intern de l\'app. S\'ha registrat al log.</string>
     <string name="import_gpu_warning">No s\'ha detectat GPU al servidor. El procés continuarà a CPU (més lent).</string>
     <string name="import_loading_server_info">Consultant el servidor…</string>
 
@@ -383,6 +392,8 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="cloud_state_running">Processant…</string>
     <string name="cloud_state_waiting_gpu">Esperant GPU…</string>
     <string name="gpu_timeout_body">La GPU segueix ocupada després de 10 minuts. Pots reintentar o cancel·lar.</string>
+    <string name="job_timeout_body">El procés ha trigat massa i s\'ha cancel·lat. Pots reintentar o cancel·lar.</string>
+    <string name="lyrics_timeout">El procés ha trigat massa i s\'ha cancel·lat.</string>
     <string name="gpu_timeout_retry">Reintentar</string>
     <string name="gpu_timeout_cancel">Cancel·lar</string>
     <string name="cloud_state_downloading">Descarregant %1$d%%</string>

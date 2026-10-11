@@ -147,9 +147,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             if (isFinishing() || isDestroyed()) return;
             updateCloudStatusIcon(reachable);
         }
-        @Override public void onGpuTimeout(String hash) {
+        @Override public void onRetryableJobError(String hash) {
             if (isFinishing() || isDestroyed()) return;
-            showGpuTimeoutDialog(hash);
+            showJobRetryDialog(hash);
         }
     };
 
@@ -1234,11 +1234,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         cancel.setOnClickListener(v -> sortDialog.dismiss());
     }
 
-    /** Blur dialog surfaced when the server aborts a job after 10 minutes of
-     *  waiting for a free GPU. Offers a single retry that reprocesses on the
-     *  server without re-uploading the audio. Package-private so the list
-     *  adapter can re-open it when the user taps an item stuck on this error. */
-    void showGpuTimeoutDialog(String hash) {
+    /** Blur dialog surfaced when the server aborts a job for a retryable
+     *  reason: 10 minutes waiting for a free GPU, or the processing time
+     *  limit. Offers a single retry that reprocesses on the server without
+     *  re-uploading the audio. Package-private so the list adapter can re-open
+     *  it when the user taps an item stuck on this error. */
+    void showJobRetryDialog(String hash) {
+        CloudItem item = CloudRepository.get(this).getByHash(hash);
+        boolean timedOut = item != null && CloudRepository.isTimeoutError(item.errorMessage);
         LayoutInflater inflater = LayoutInflater.from(this);
         View dv = inflater.inflate(R.layout.delete_alert_dialog, null);
         android.widget.ImageView icon = dv.findViewById(R.id.iv_alertDialog_ic);
@@ -1248,7 +1251,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         icon.setImageResource(R.drawable.ic_warning);
         icon.setColorFilter(ContextCompat.getColor(this, R.color.gpu_warning_accent));
-        body.setText(R.string.gpu_timeout_body);
+        body.setText(timedOut ? R.string.job_timeout_body : R.string.gpu_timeout_body);
         retry.setText(R.string.gpu_timeout_retry);
         cancel.setText(R.string.gpu_timeout_cancel);
 
@@ -1264,7 +1267,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         cancel.setOnClickListener(v -> dlg.dismiss());
         retry.setOnClickListener(v -> {
-            CloudRepository.get(this).retryGpuJob(hash);
+            CloudRepository.get(this).retryJob(hash);
             dlg.dismiss();
         });
     }

@@ -208,7 +208,8 @@
     <string name="gpu_dialog_no_gpu_body">El servidor no expone GPU. Los trabajos correrán en CPU.</string>
     <string name="gpu_dialog_no_data">Inicia sesión para consultar esta información.</string>
     <string name="vram_gb_fmt">%1$d GB</string>
-    <string name="vram_free_fmt">%1$.1f GB libres</string>
+    <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB libres</string>
+    <string name="gpu_vram_low_body">GPU ocupada. Los trabajos esperarán VRAM libre.</string>
     <string name="server_vram_low">Poca memoria de GPU libre en el servidor</string>
     <string name="settings_donate_title">Ver en GitHub</string>
     <string name="settings_donate_subtitle">Código fuente, issues y roadmap</string>
@@ -327,6 +328,11 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="login_status_unauthenticated">Sin sesión</string>
     <string name="login_err_empty_fields">Rellena todos los campos</string>
     <string name="login_err_bad_credentials">Usuario o contraseña incorrectos</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="one">Demasiados intentos. Prueba en %d min.</item>
+        <item quantity="many">Demasiados intentos. Prueba en %d min.</item>
+        <item quantity="other">Demasiados intentos. Prueba en %d min.</item>
+    </plurals>
     <string name="login_err_network">No hay respuesta del servidor</string>
     <string name="login_err_bad_url">URL del servidor no válida</string>
     <string name="login_err_server">Error del servidor</string>
@@ -394,6 +400,9 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="import_no_server">Configura primero la URL del servidor en Ajustes</string>
     <string name="import_uploading">Subiendo…</string>
     <string name="import_upload_failed">Subida fallida</string>
+    <string name="import_err_unsupported_format">Formato no soportado. Usa MP3, WAV, FLAC, M4A, AAC, OGG, OPUS, AIFF o WMA.</string>
+    <string name="import_err_too_large">Archivo demasiado grande (máx. 200 MB)</string>
+    <string name="import_err_internal">Error interno de la app. Se ha registrado en el log.</string>
     <string name="import_gpu_warning">No se detectó GPU en el servidor. El proceso continuará en CPU (más lento).</string>
     <string name="import_loading_server_info">Consultando servidor…</string>
 
@@ -403,6 +412,8 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="cloud_state_running">Procesando…</string>
     <string name="cloud_state_waiting_gpu">Esperando GPU…</string>
     <string name="gpu_timeout_body">La GPU sigue ocupada tras 10 minutos. Puedes reintentar o cancelar.</string>
+    <string name="job_timeout_body">El proceso tardó demasiado y se canceló. Puedes reintentar o cancelar.</string>
+    <string name="lyrics_timeout">El proceso tardó demasiado y se canceló.</string>
     <string name="gpu_timeout_retry">Reintentar</string>
     <string name="gpu_timeout_cancel">Cancelar</string>
     <string name="cloud_state_downloading">Descargando %1$d%%</string>

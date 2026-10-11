@@ -50,6 +50,8 @@ import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import okhttp3.ResponseBody;
+import androidx.annotation.Nullable;
 
 /**
  * Submits audio to the self-hosted server.
@@ -561,6 +563,18 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
         String mime = cr.getType(selectedUri);
         if (TextUtils.isEmpty(mime)) mime = "application/octet-stream";
 
+        // Checked before uploading: the server rejects these anyway (415 / 413).
+        String filename = uploadFilename(selectedFilename, mime);
+        if (filename == null) {
+            Toast.makeText(this, R.string.import_err_unsupported_format, Toast.LENGTH_LONG).show();
+            return;
+        }
+        long size = querySize(selectedUri);
+        if (size > MAX_UPLOAD_BYTES) {
+            Toast.makeText(this, R.string.import_err_too_large, Toast.LENGTH_LONG).show();
+            return;
+        }
+
         // Wrap the body with a ProgressRequestBody that counts bytes live.
         RequestBody rawBody = new ContentUriRequestBody(cr, selectedUri, mime);
         ProgressRequestBody fileBody = new ProgressRequestBody(rawBody, (sent, total) -> {
@@ -570,7 +584,6 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
             lastUploadNotifyNs = now;
             main.post(() -> updateUploadUi(sent, total));
         });
-        String filename = selectedFilename != null ? selectedFilename : "audio";
         MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", filename, fileBody);
         RequestBody cfgBody = RequestBody.create(configJson,
                 MediaType.parse("application/json; charset=utf-8"));
@@ -592,8 +605,7 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
                     dismissUploadDialog();
                     if (uploadCancelled) return;
                     if (!r.isSuccessful() || r.body() == null) {
-                        Toast.makeText(ImportActivity.this,
-                                getString(R.string.import_upload_failed) + " (" + r.code() + ")",
+                        Toast.makeText(ImportActivity.this, uploadErrorMessage(r),
                                 Toast.LENGTH_LONG).show();
                         return;
                     }
@@ -791,6 +803,76 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
         m.put("enabled", enabled);
         if (variant != null) m.put("variant", variant);
         return m;
+    }
+
+    /** Upload message for a failed submit, chosen by HTTP code (the server's
+     *  own text is not localised). */
+    private String uploadErrorMessage(Response<?> r) {
+        switch (r.code()) {
+            case 415: return getString(R.string.import_err_unsupported_format);
+            case 413: return getString(R.string.import_err_too_large);
+            case 400:
+                String detail = null;
+                try (ResponseBody eb = r.errorBody()) {
+                    if (eb != null) detail = eb.string();
+                } catch (Throwable ignored) {}
+                android.util.Log.e("ImportActivity", "Upload rejected (400): " + detail);
+                return getString(R.string.import_err_internal);
+            default:
+                return getString(R.string.import_upload_failed) + " (" + r.code() + ")";
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Upload file name: real name with an extension the server accepts
+    // ---------------------------------------------------------------
+    /** Server limit for an uploaded audio file. */
+    private static final long MAX_UPLOAD_BYTES = 200L * 1024 * 1024;
+
+    private static final java.util.Set<String> ACCEPTED_EXTENSIONS = new java.util.HashSet<>(
+            java.util.Arrays.asList("mp3", "wav", "flac", "m4a", "aac", "ogg", "opus",
+                    "aiff", "aif", "wma"));
+
+    /** Extension in lower case, or null when the name has none. */
+    @Nullable
+    private static String extensionOf(@Nullable String name) {
+        if (name == null) return null;
+        int dot = name.lastIndexOf('.');
+        if (dot <= 0 || dot == name.length() - 1) return null;
+        return name.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Accepted extension for an audio MIME type, or null. */
+    @Nullable
+    private static String extensionForMime(@Nullable String mime) {
+        if (mime == null) return null;
+        switch (mime.toLowerCase(java.util.Locale.ROOT)) {
+            case "audio/mpeg": case "audio/mp3":                   return "mp3";
+            case "audio/wav": case "audio/x-wav": case "audio/wave": return "wav";
+            case "audio/flac": case "audio/x-flac":                return "flac";
+            case "audio/mp4": case "audio/x-m4a": case "audio/m4a": return "m4a";
+            case "audio/aac": case "audio/x-aac":                  return "aac";
+            case "audio/ogg": case "application/ogg":              return "ogg";
+            case "audio/opus":                                     return "opus";
+            case "audio/aiff": case "audio/x-aiff":                return "aiff";
+            case "audio/x-ms-wma":                                 return "wma";
+        }
+        String ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime);
+        return ext != null && ACCEPTED_EXTENSIONS.contains(ext) ? ext : null;
+    }
+
+    /** Name sent to the server: the real file name when its extension is
+     *  accepted; otherwise the name plus the extension of its MIME type.
+     *  Null when no accepted extension can be found. */
+    @Nullable
+    private static String uploadFilename(@Nullable String displayName, @Nullable String mime) {
+        String ext = extensionOf(displayName);
+        if (ext != null && ACCEPTED_EXTENSIONS.contains(ext)) return displayName;
+        String fromMime = extensionForMime(mime);
+        if (fromMime == null) return null;
+        String base = displayName != null && !displayName.trim().isEmpty()
+                ? displayName.trim() : "audio";
+        return base + "." + fromMime;
     }
 
     // ---------------------------------------------------------------
