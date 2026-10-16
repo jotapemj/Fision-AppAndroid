@@ -37,6 +37,7 @@ bool AudioEngine::createStream(){
     mChannels         = mStream->getChannelCount();
     mOutFmt           = mStream->getFormat();
 
+    for (auto& r : mReverbs) r.setSampleRate(mDeviceSampleRate);
     // When tracks already exist (reopen from device change — BT/jack), recalibrate them to the new SR
     for (auto& t : mTracks) t->setDeviceSampleRate(mDeviceSampleRate);
     // The click track lives outside mTracks; it also needs recalibration
@@ -129,6 +130,23 @@ void AudioEngine::setTrack3DPosition(int id, float azimuthRad, float distance, f
 }
 void AudioEngine::setTrack3DOmnipresent(int id, bool o){
     if(id>=0 && id<(int)mTracks.size()) mTracks[id]->set3DOmnipresent(o);
+}
+std::vector<float> AudioEngine::getTrackEnvelope(int id) const {
+    if (id < 0 || id >= (int) mTracks.size()) return {};
+    return mTracks[id]->getEnvelopeDb();
+}
+
+void AudioEngine::setTrackFilter(int id, float a){
+    if(id>=0 && id<(int)mTracks.size()) mTracks[id]->setFxFilter(a);
+}
+void AudioEngine::setTrackEcho(int id, float a, float delaySourceMs){
+    if(id>=0 && id<(int)mTracks.size()) mTracks[id]->setFxEcho(a, delaySourceMs);
+}
+void AudioEngine::setTrackReverbSend(int id, float s, int room){
+    if(id>=0 && id<(int)mTracks.size()) {
+        mTracks[id]->setReverbRoom(room);
+        mTracks[id]->setReverbSend(std::min(1.f, s));
+    }
 }
 void AudioEngine::setTrack3DMuted(int id, bool m){
     if(id>=0 && id<(int)mTracks.size()) mTracks[id]->set3DMuted(m);
@@ -306,10 +324,30 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(oboe::AudioStream* stream, vo
         }
     }
 
+    // Reverb buses: post-fader sends of every track, each room processed once.
+    constexpr int ROOMS = fx::Reverb::ROOMS;
+    static thread_local std::vector<float> rev[ROOMS];
+    bool anySend[ROOMS] = {false, false, false};
+    for (int r = 0; r < ROOMS; ++r) rev[r].assign(numFrames*ch, 0.f);
     for(auto& t : mTracks){
         std::fill(tmp.begin(), tmp.end(), 0.f);
         int got = t->render(tmp.data(), numFrames, forceST); // rendered frames
         for(int i=0;i<got*ch;++i) mix[i] += tmp[i];
+        const float send = t->getReverbSend();
+        if (send > 0.f) {
+            const int r = t->getReverbRoom();
+            anySend[r] = true;
+            float* bus = rev[r].data();
+            for(int i=0;i<got*ch;++i) bus[i] += tmp[i] * send;
+        }
+    }
+    if (ch == 2) {
+        for (int r = 0; r < ROOMS; ++r) {
+            if (!anySend[r] && !mReverbs[r].isActive()) continue;
+            mReverbs[r].process(rev[r].data(), numFrames);
+            const float* bus = rev[r].data();
+            for(int i=0;i<numFrames*ch;++i) mix[i] += bus[i];
+        }
     }
 
     // Click track: render and mix. Does NOT go through SoundTouch (forceST=false). Reasons:

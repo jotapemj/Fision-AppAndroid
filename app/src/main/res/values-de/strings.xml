@@ -450,4 +450,16 @@
     <string name="playlist_err_generic">Serverfehler (%d)</string>
     <string name="crop_use">Verwenden</string>
 
+    <string name="fx_title">FX</string>
+    <string name="fx_clear">FX entfernen</string>
+    <string name="fx_filter">Filter</string>
+    <string name="fx_echo">Echo</string>
+    <string name="fx_reverb">Hall</string>
+    <string name="fx_reset_desc">Zurücksetzen</string>
+    <string name="fx_off">Aus</string>
+    <string name="fx_filter_lowpass">Tiefpass · %1$s</string>
+    <string name="fx_filter_highpass">Hochpass · %1$s</string>
+    <string name="fx_room_small">Klein</string>
+    <string name="fx_room_medium">Mittel</string>
+    <string name="fx_room_large">Groß</string>
 </resources>

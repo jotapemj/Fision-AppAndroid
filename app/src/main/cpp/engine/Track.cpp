@@ -26,6 +26,7 @@ Track::Track(const char* path, bool loop, int deviceSR, int outCh)
         return;
     }
     mSrcStep = (double)mSrcSR / (double)mDevSR; // source frames per output frame
+    computeEnvelope();
 
     // 3D mode delay lines (fixed size, initialized to 0)
     mDelayBufL.assign(DELAY_BUF_SIZE, 0.f);
@@ -41,6 +42,26 @@ Track::Track(const char* path, bool loop, int deviceSR, int outCh)
 }
 
 Track::~Track() = default;
+
+void Track::computeEnvelope(){
+    mEnvDb.clear();
+    if (mSrcSR <= 0 || mSrcCh <= 0 || mPcm.empty()) return;
+    const size_t frames = mPcm.size() / (size_t) mSrcCh;
+    const size_t hop = std::max<size_t>(1, (size_t) mSrcSR * ENVELOPE_HOP_MS / 1000);
+    mEnvDb.reserve(frames / hop + 1);
+    for (size_t f0 = 0; f0 < frames; f0 += hop) {
+        const size_t f1 = std::min(frames, f0 + hop);
+        double acc = 0.0;
+        for (size_t f = f0; f < f1; ++f) {
+            float m = 0.f;
+            for (int c = 0; c < mSrcCh; ++c) m += mPcm[f * mSrcCh + c];
+            m /= (float) mSrcCh;
+            acc += (double) m * m;
+        }
+        const double ms = acc / (double) (f1 - f0);
+        mEnvDb.push_back((float) (10.0 * std::log10(ms + 1e-12)));
+    }
+}
 
 void Track::setTempo(float t){ mTempo.store(std::clamp(t, 0.25f, 4.0f)); }
 void Track::setPitch(float s){ mPitch.store(std::clamp(s,-24.f,24.f)); }
@@ -125,6 +146,12 @@ int64_t Track::getDurationMs() const {
     return (int64_t) llround((double) totalFrames * 1000.0 / (double) mSrcSR);
 }
 
+void Track::applyInsertFx(float* buf, int frames){
+    if (frames <= 0) return;
+    if (mFxFilter.isActive()) mFxFilter.process(buf, frames, mDevSR);
+    if (mFxEcho.isActive())   mFxEcho.process(buf, frames, mDevSR, mTempo.load(std::memory_order_relaxed));
+}
+
 // Main render: returns frames written (<= numFrames)
 int Track::render(float* out, int32_t numFrames, bool forceST){
     // Apply any pending seek from the UI thread
@@ -146,6 +173,7 @@ int Track::render(float* out, int32_t numFrames, bool forceST){
         // Leaving ST: flag it so the next activation clears the buffer
         if (mWasInST) { mWasInST = false; }
         int got = generateResampled(numFrames, res);
+        applyInsertFx(res.data(), got);
         const float dm = mEngineDuckMul.load(std::memory_order_acquire);
         if (m3DEnabled.load(std::memory_order_acquire)) {
             // Copy and apply 3D directly on out
@@ -217,6 +245,8 @@ int Track::render(float* out, int32_t numFrames, bool forceST){
                   stTmp.data() + numFrames*mOutCh, 0.f);
         produced = numFrames;
     }
+
+    applyInsertFx(stTmp.data(), produced);
 
     // apply volume (user × engine duck) or 3D mode (real HRTF when present, ITD/ILD otherwise)
     const float dm = mEngineDuckMul.load(std::memory_order_acquire);

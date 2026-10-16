@@ -483,4 +483,18 @@
     <string name="playlist_err_generic">Server error (%d)</string>
     <string name="crop_use">Use</string>
 
+    <string name="fx_title">FX</string>
+    <string name="fx_clear">Clear FX</string>
+    <string name="fx_filter">Filter</string>
+    <string name="fx_echo">Echo</string>
+    <string name="fx_reverb">Reverb</string>
+    <string name="fx_reset_desc">Reset</string>
+    <string name="fx_off">Off</string>
+    <string name="fx_filter_lowpass">Low-pass · %1$s</string>
+    <string name="fx_filter_highpass">High-pass · %1$s</string>
+    <string name="fx_lowpass_short" translatable="false">LP</string>
+    <string name="fx_highpass_short" translatable="false">HP</string>
+    <string name="fx_room_small">Small</string>
+    <string name="fx_room_medium">Medium</string>
+    <string name="fx_room_large">Large</string>
 </resources>

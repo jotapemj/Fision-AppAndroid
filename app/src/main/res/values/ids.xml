@@ -7,4 +7,6 @@
     <item name="accent_applied_tag" type="id" />
     <!-- Artwork key bound to a playlist cover view (drops late results) -->
     <item name="tag_playlist_cover_key" type="id" />
+    <!-- Running style animation of a lyrics row (active line change) -->
+    <item name="tag_lyrics_anim" type="id" />
 </resources>

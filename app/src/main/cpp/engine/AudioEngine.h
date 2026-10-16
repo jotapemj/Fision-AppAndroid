@@ -38,6 +38,12 @@ public:
     void  setTrack3DPosition(int trackId, float azimuthRad, float distance, float elevationDeg);
     void  setTrack3DOmnipresent(int trackId, bool omni);
     void  setTrack3DMuted(int trackId, bool muted);
+    // === Per-track FX (not persisted) ===
+    void  setTrackFilter(int trackId, float amount);                    // -1..1, 0 = off
+    void  setTrackEcho(int trackId, float amount, float delaySourceMs); // 0..1
+    void  setTrackReverbSend(int trackId, float send, int room);        // 0..1, room 0..2
+    // Loudness envelope of a track (dBFS every Track::ENVELOPE_HOP_MS).
+    std::vector<float> getTrackEnvelope(int trackId) const;
     /** Loads the HRIRs from `assets/<assetPath>` and propagates them to all tracks
      *  (new and existing). Call once at startup. Returns true when loaded. */
     bool  initHrtfFromAssets(AAssetManager* mgr, const char* assetPath);
@@ -95,6 +101,9 @@ private:
     // resurrecting audio after a BT disconnect (Oboe triggers a stream reopen).
     std::atomic<bool> mUserWantsPlay{false};
     std::atomic<float> mDuckFactor{1.f}; // global mix attenuation (1=normal)
+    // Shared reverb buses (one per room size) fed by the per-track sends
+    // (audio thread only).
+    fx::Reverb mReverbs[fx::Reverb::ROOMS] = {fx::Reverb(0), fx::Reverb(1), fx::Reverb(2)};
     int32_t mWarmupFrames = 0; // initial silence to prime the pipeline
 
     // Downbeat click. Separate track (not in mTracks because its lifetime is

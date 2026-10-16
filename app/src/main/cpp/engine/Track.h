@@ -6,6 +6,7 @@
 #include <climits>
 #include <SoundTouch.h>
 #include "HrtfBank.h"
+#include "StemFx.h"
 
 class Track {
 public:
@@ -44,11 +45,28 @@ public:
     int64_t getCurrentPositionMs() const;
     int64_t getDurationMs() const;
 
+    // Loudness envelope of the source: RMS in dBFS every ENVELOPE_HOP_MS,
+    // computed once at load. Read-only afterwards.
+    static constexpr int ENVELOPE_HOP_MS = 10;
+    const std::vector<float>& getEnvelopeDb() const { return mEnvDb; }
+
     // True when tempo or pitch are outside the neutral values (1.0 / 0)
     bool hasNonNeutralPitchOrTempo() const {
         return std::fabs(mTempo.load() - 1.f) > 1e-3f
             || std::fabs(mPitch.load())      > 1e-3f;
     }
+
+    // === Insert FX (filter + tempo echo) and reverb send. Not persisted. ===
+    void setFxFilter(float amount)        { mFxFilter.setAmount(amount); }
+    void setFxEcho(float amount, float delaySourceMs) {
+        if (amount > 0.f) mFxEcho.prepare(mDevSR);
+        mFxEcho.setDelaySourceMs(delaySourceMs);
+        mFxEcho.setAmount(amount);
+    }
+    void  setReverbSend(float s)  { mReverbSend.store(std::max(0.f, s), std::memory_order_relaxed); }
+    float getReverbSend() const   { return mReverbSend.load(std::memory_order_relaxed); }
+    void  setReverbRoom(int r)    { mReverbRoom.store(std::clamp(r, 0, fx::Reverb::ROOMS - 1), std::memory_order_relaxed); }
+    int   getReverbRoom() const   { return mReverbRoom.load(std::memory_order_relaxed); }
 
     // render
     // forceST: always run through SoundTouch even when tempo/pitch are neutral (keeps stems in sync)
@@ -68,6 +86,16 @@ private:
 
     // Applies the pending seek from the audio thread (lock-free)
     void applyPendingSeek();
+
+    void computeEnvelope();
+    std::vector<float> mEnvDb;
+
+    // Filter then echo, on the stereo buffer before volume / 3D.
+    void applyInsertFx(float* interleaved, int frames);
+    fx::Filter mFxFilter;
+    fx::Echo   mFxEcho;
+    std::atomic<float> mReverbSend{0.f};
+    std::atomic<int>   mReverbRoom{1};
 
     // track state
     std::vector<float> mPcm;   // interleaved source

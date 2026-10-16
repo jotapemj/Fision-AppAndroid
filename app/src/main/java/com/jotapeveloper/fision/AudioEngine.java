@@ -67,6 +67,22 @@ public class AudioEngine {
         nativeSetTrack3DMuted(handle, trackId, muted);
     }
 
+    /** Envelope hop of {@link #getTrackEnvelope}. */
+    public static final int ENVELOPE_HOP_MS = 10;
+    /** Loudness envelope of a track: RMS in dBFS every ENVELOPE_HOP_MS (source time). */
+    public float[] getTrackEnvelope(int trackId) { return nativeGetTrackEnvelope(handle, trackId); }
+
+    /** Insert filter: -1 (low-pass, closed) .. 0 (off) .. 1 (high-pass, closed). */
+    public void setTrackFilter(int trackId, float amount) { nativeSetTrackFilter(handle, trackId, amount); }
+    /** Tempo echo: amount 0..1, delay in source ms (follows the playback tempo). */
+    public void setTrackEcho(int trackId, float amount, float delaySourceMs) {
+        nativeSetTrackEcho(handle, trackId, amount, delaySourceMs);
+    }
+    /** Post-fader send into the shared reverb of [room] (0 small, 1 medium, 2 large), 0..1. */
+    public void setTrackReverbSend(int trackId, float send, int room) {
+        nativeSetTrackReverbSend(handle, trackId, send, room);
+    }
+
     /** Loads the HRIR bank from `assets/<assetPath>`. Must be called before
      *  addTrack so the first song already uses HRTF. Returns true when loaded. */
     public boolean initHrtf(android.content.res.AssetManager mgr, String assetPath) {
@@ -83,6 +99,10 @@ public class AudioEngine {
     private static native void   nativeSetPitch(long h, int id, float semi);
     private static native void   nativeSetVolume(long h, int id, float L, float R);
     private static native void   nativeSetDuckFactor(long h, float factor);
+    private static native void   nativeSetTrackFilter(long h, int id, float amount);
+    private static native float[] nativeGetTrackEnvelope(long h, int id);
+    private static native void   nativeSetTrackEcho(long h, int id, float amount, float delayMs);
+    private static native void   nativeSetTrackReverbSend(long h, int id, float send, int room);
     private static native boolean nativeStart(long h);
     private static native void    nativePause(long h);
     private static native void    nativeResume(long h);

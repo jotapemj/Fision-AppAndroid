@@ -41,6 +41,8 @@ The magic starts with the fision of your music.
   with 27 language options plus automatic detection.
 - Dynamic metronome that follows the song's own beat grid.
 - Per-song stem panning and volume, remembered across launches.
+- Per-stem effects: sweepable low-pass / high-pass filter, tempo-synced
+  echo and a reverb send with three room sizes.
 - Downbeat click with configurable sample.
 - 3D audio positioning per stem using HRTF convolution.
 - Cloud processing: pick a local file, choose the separation model, and get
@@ -390,6 +392,18 @@ can:
 - Set the stem pan from left to right.
 - Solo or unsolo the stem.
 - Export the stem on its own, choosing the target format.
+- Shape it with effects:
+  - **Filter**: one bipolar slider. Left sweeps a low-pass filter down from
+    20 kHz to 200 Hz, right sweeps a high-pass filter up from 20 Hz to
+    5 kHz; the centre is off.
+  - **Echo**: amount plus a beat division (1/2, 1/4, dotted 1/8, 1/8,
+    1/16). The delay follows the song's tempo, including playback speed
+    changes, and the repeats ring out naturally when the echo is turned off.
+  - **Reverb**: a send into a shared room, small, medium or large.
+
+Effects are not saved: they reset when another song is loaded and are
+never applied in Android Auto. A mix export with the current volumes
+includes them; separate stems are exported dry.
 
 ## Pitch bottom sheet
 
@@ -468,6 +482,9 @@ faster, and picks up more of the pulse than the two ambient halos.
 
 Switching the effect on or off fades smoothly. When disabled the layer
 stops drawing entirely, so it costs nothing when not in use.
+
+Above 130 BPM (as heard, after any speed change) the background pulses at
+half time, on beats 1 and 3, so fast songs stay comfortable to watch.
 
 An optional sub-switch under the animated background enables **haptic
 beat**, which pulses the phone's vibration motor in sync with the same
@@ -552,7 +569,18 @@ While the server is working, the overlay shows a shimmering skeleton;
 the process can be cancelled at any moment. When the transcript is
 ready, the lyrics are shown as scrolling lines with the currently
 playing line highlighted. Position is aligned with the perceived audio
-latency, so the highlight matches what you actually hear.
+latency, so the highlight matches what you actually hear. Line changes
+glide the new line to the centre while it grows and takes the accent
+colour.
+
+Transcription timestamps alone are imprecise around pauses: the silence
+before a phrase is attributed to its first word, held notes are cut short
+and pauses inside a line light the next word too early. The app measures
+where the voice actually sounds on the separated vocal stems (lead and
+backing) and uses it to start each line and word when it is sung, keep a
+line lit until its last note fades, and show the instrumental marker only
+during real vocal silence. An optional karaoke mode lights each word as it
+is sung.
 
 The finished transcript is cached locally, so reopening the same song
 does not hit the network again. A reprocess action lets you rerun the

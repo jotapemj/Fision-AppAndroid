@@ -137,6 +137,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // Frequency cap: never fire more than ~140 pulses per minute (≈ every 428ms)
     // to protect the linear vibration motor on fast songs.
     private static final long  MIN_BEAT_HAPTIC_INTERVAL_MS = 428L;
+    // Above this heard tempo the nebula pulses only on the strong beats.
+    private static final float NEBULA_HALF_TIME_BPM = 130f;
     /** Extra latency subtracted from the source position to align beat-driven
      *  visuals + haptics with the audio the user actually hears. Compensates
      *  the SoundTouch WSOLA processing latency (not reported by Oboe) plus
@@ -2003,7 +2005,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             activeExporter.exportMixdown(songFolder, displayName,
                     playbackService.getStemOrder(), stemSettings,
                     pendingVolumeSource, format,
-                    metronomeFile, metronomeVolN, listener);
+                    metronomeFile, metronomeVolN,
+                    playbackService.getActiveStemFx(), globalBpm, listener);
         }
     }
 
@@ -2793,7 +2796,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             } else {
                                 beatIntensity = (beatPos % 2 == 0) ? 0.90f : 0.35f;
                             }
-                            if (nebulaView != null && nebulaEnabled) {
+                            // Fast tempos pulse at half time (beats 1 and 3
+                            // only): every beat above NEBULA_HALF_TIME_BPM is
+                            // dizzying and costly.
+                            boolean halfTime = false;
+                            if (idx > 0) {
+                                float beatSec = (beatCells.get(idx).time - beatCells.get(idx - 1).time)
+                                        / (selectedTempoMultMilli / 1000f);
+                                halfTime = beatSec > 0f && 60f / beatSec > NEBULA_HALF_TIME_BPM;
+                            }
+                            // Half time keeps beats 1 and 3 (the downbeat in
+                            // ternary metres), each one pulsing strong.
+                            boolean halfBeat = beatsPerBar == 3 ? beatPos == 1 : beatPos % 2 == 1;
+                            if (halfTime && halfBeat) beatIntensity = 0.90f;
+                            if (nebulaView != null && nebulaEnabled && (!halfTime || halfBeat)) {
                                 nebulaView.pulse(beatIntensity);
                                 triggerBeatHaptic(beatIntensity);
                             }
@@ -3659,8 +3675,175 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             applyStemVolumeToEngine(stemType);
         });
 
+        bindFxSection(bottomSheetView, stemType);
+
         optionsBottomSheet.setContentView(bottomSheetView);
+        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from((View) bottomSheetView.getParent());
+        behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        behavior.setSkipCollapsed(true);
         showWithPlayerAccent(optionsBottomSheet);
+    }
+
+    // ==================================================================
+    //   STEM FX (filter, tempo echo, reverb). In memory only: the service
+    //   holds them for the loaded song.
+    // ==================================================================
+
+    /** Dead zone around the filter center, in slider units (-100..100). */
+    private static final int FX_FILTER_DEAD_ZONE = 3;
+
+    private void bindFxSection(View root, String stem) {
+        if (playbackService == null) return;
+        final StemFx fx = playbackService.getStemFx(stem);
+        playbackService.setFxBpm(globalBpm);
+
+        TextView clear = root.findViewById(R.id.tv_fxClear);
+        TextView filterLabel = root.findViewById(R.id.tv_fxFilterLabel);
+        TextView filterValue = root.findViewById(R.id.tv_fxFilterValue);
+        Slider sFilter = root.findViewById(R.id.s_fxFilter);
+        ImageButton rFilter = root.findViewById(R.id.ib_fxFilterRestore);
+        TextView echoLabel = root.findViewById(R.id.tv_fxEchoLabel);
+        TextView echoValue = root.findViewById(R.id.tv_fxEchoValue);
+        Slider sEcho = root.findViewById(R.id.s_fxEcho);
+        ImageButton rEcho = root.findViewById(R.id.ib_fxEchoRestore);
+        com.jotapeveloper.fision.chords.SlidingChipSelector division =
+                root.findViewById(R.id.sel_fxEchoDivision);
+        TextView reverbLabel = root.findViewById(R.id.tv_fxReverbLabel);
+        TextView reverbValue = root.findViewById(R.id.tv_fxReverbValue);
+        Slider sReverb = root.findViewById(R.id.s_fxReverb);
+        com.jotapeveloper.fision.chords.SlidingChipSelector room =
+                root.findViewById(R.id.sel_fxReverbRoom);
+        ImageButton rReverb = root.findViewById(R.id.ib_fxReverbRestore);
+
+        final int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        Runnable refresh = () -> {
+            boolean f = fx.filter != 0f, e = fx.echo > 0f, r = fx.reverb > 0f;
+            filterLabel.setTextColor(f ? accent : Color.WHITE);
+            echoLabel.setTextColor(e ? accent : Color.WHITE);
+            reverbLabel.setTextColor(r ? accent : Color.WHITE);
+            filterValue.setText(fxFilterText(fx.filter));
+            echoValue.setText(e ? Math.round(fx.echo * 100f) + "%" : getString(R.string.fx_off));
+            reverbValue.setText(r ? Math.round(fx.reverb * 100f) + "%" : getString(R.string.fx_off));
+            setFxRestoreVisible(rFilter, f);
+            setFxRestoreVisible(rEcho, e);
+            setFxRestoreVisible(rReverb, r);
+            setFxRestoreVisible(clear, fx.isActive());
+            division.setAlpha(e ? 1f : 0.5f);
+            room.setAlpha(r ? 1f : 0.5f);
+        };
+        Runnable apply = () -> {
+            playbackService.setStemFx(stem, fx);
+            refresh.run();
+            refreshStemFxIndicator(stem);
+        };
+
+        // Filter: bipolar, haptic tick when crossing the center.
+        sFilter.setValue(Math.round(fx.filter * 100f));
+        sFilter.addOnChangeListener((sl, value, fromUser) -> {
+            if (!fromUser) return;
+            float prev = fx.filter;
+            fx.filter = Math.abs(value) <= FX_FILTER_DEAD_ZONE ? 0f : value / 100f;
+            if ((prev == 0f) != (fx.filter == 0f) || Math.signum(prev) * Math.signum(fx.filter) < 0f) {
+                sl.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+            }
+            apply.run();
+        });
+        rFilter.setOnClickListener(v -> {
+            fx.filter = 0f;
+            animateFxSlider(sFilter, 0f);
+            apply.run();
+        });
+
+        // Echo amount + division.
+        sEcho.setValue(Math.round(fx.echo * 100f));
+        sEcho.addOnChangeListener((sl, value, fromUser) -> {
+            if (!fromUser) return;
+            fx.echo = value / 100f;
+            apply.run();
+        });
+        rEcho.setOnClickListener(v -> {
+            fx.echo = 0f;
+            animateFxSlider(sEcho, 0f);
+            apply.run();
+        });
+        division.setOptions(StemFx.echoLabels(globalBpm));
+        division.setSelected(fx.echoDivision, false);
+        division.setOnSelectedListener(i -> {
+            fx.echoDivision = i;
+            apply.run();
+        });
+
+        // Reverb send.
+        sReverb.setValue(Math.round(fx.reverb * 100f));
+        sReverb.addOnChangeListener((sl, value, fromUser) -> {
+            if (!fromUser) return;
+            fx.reverb = value / 100f;
+            apply.run();
+        });
+        room.setOptions(getString(R.string.fx_room_small), getString(R.string.fx_room_medium),
+                getString(R.string.fx_room_large));
+        room.setSelected(fx.reverbRoom, false);
+        room.setOnSelectedListener(i -> {
+            fx.reverbRoom = i;
+            apply.run();
+        });
+        rReverb.setOnClickListener(v -> {
+            fx.reverb = 0f;
+            animateFxSlider(sReverb, 0f);
+            apply.run();
+        });
+
+        clear.setOnClickListener(v -> {
+            if (!fx.isActive()) return;
+            fx.filter = 0f; fx.echo = 0f; fx.reverb = 0f;
+            animateFxSlider(sFilter, 0f);
+            animateFxSlider(sEcho, 0f);
+            animateFxSlider(sReverb, 0f);
+            apply.run();
+        });
+
+        refresh.run();
+    }
+
+    private String fxFilterText(float amount) {
+        if (amount == 0f) return getString(R.string.fx_off);
+        float hz = StemFx.filterCutoffHz(amount);
+        String f = hz >= 1000f
+                ? String.format(java.util.Locale.ROOT, "%.1f kHz", hz / 1000f)
+                : Math.round(hz) + " Hz";
+        return getString(amount < 0f ? R.string.fx_filter_lowpass : R.string.fx_filter_highpass, f);
+    }
+
+    private static void setFxRestoreVisible(View v, boolean visible) {
+        int target = visible ? View.VISIBLE : View.INVISIBLE;
+        if (v.getVisibility() == target) return;
+        v.setVisibility(target);
+        v.setAlpha(visible ? 0f : 1f);
+        if (visible) v.animate().alpha(1f).setDuration(150).start();
+    }
+
+    private static void animateFxSlider(Slider s, float to) {
+        ObjectAnimator a = ObjectAnimator.ofFloat(s, "value", s.getValue(), to);
+        a.setDuration(150);
+        a.start();
+    }
+
+    /** True when the stem has any FX on (options button in the accent). */
+    public boolean stemHasFx(String stem) {
+        return playbackService != null && playbackService.hasActiveFx(stem);
+    }
+
+    private void refreshStemFxIndicator(String stem) {
+        if (rvStems == null || stemsAdapter == null) return;
+        int idx = stemsAdapter.adapterPositionForStem(stem);
+        if (idx == RecyclerView.NO_POSITION) return;
+        RecyclerView.ViewHolder vh = rvStems.findViewHolderForAdapterPosition(idx);
+        if (vh instanceof StemListAdapter.ViewHolder) {
+            ((StemListAdapter.ViewHolder) vh).ib_options.setImageTintList(stemHasFx(stem)
+                    ? ColorStateList.valueOf(
+                            com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this))
+                    : null);
+        }
     }
 
     /** Re-applies volume + pan to the engine for a given stem. */
@@ -4465,10 +4648,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private int mLyricsActiveIdx = -1;
     private static final String PREF_LYRICS_KARAOKE_MODE = "lyrics_karaoke_mode";
     private boolean mLyricsKaraokeMode = false;
-    // Whisper marks the word onset at the leading consonant; visually the
-    // syllable is perceived slightly later. Delay the karaoke highlight by
-    // this amount so the coloured word matches what the singer just uttered.
-    private static final int KARAOKE_HIGHLIGHT_OFFSET_MS = 220;
 
     /** True when the performance preference selects the Filament scene
      *  variant of the 3D Audio view (vs the flat 2D one). Falls back
@@ -6959,6 +7138,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (is3DEnabled) apply3DEnabled(false);
 
         resetStemsToDefault();
+
+        // FX off (in memory only).
+        if (playbackService != null) {
+            java.util.List<String> fxStems = new java.util.ArrayList<>(playbackService.getStemOrder());
+            playbackService.clearAllFx();
+            for (String s : fxStems) refreshStemFxIndicator(s);
+        }
     }
 
     /** Every stem back to volume 75, pan 0 and its default 3D pose (no
@@ -7065,7 +7251,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
             @Override public void onLyricsLoaded(Lyrics lyrics) {
                 mLoadedLyrics = lyrics;
-                mLyricsLinesAdapter.setLyrics(lyrics);
+                mLyricsLinesAdapter.setLyrics(lyrics, lyricsVocalActivity());
                 mLyricsLinesAdapter.setKaraokeMode(mLyricsKaraokeMode);
                 mLyricsActiveIdx = -1;
                 setLyricsUiState(LyricsUiState.CONTENT);
@@ -7141,7 +7327,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     runOnUiThread(() -> {
                         mLoadedLyrics = ly;
                         if (mLyricsLinesAdapter != null) {
-                            mLyricsLinesAdapter.setLyrics(ly);
+                            mLyricsLinesAdapter.setLyrics(ly, lyricsVocalActivity());
                             mLyricsLinesAdapter.setKaraokeMode(mLyricsKaraokeMode);
                         }
                         mLyricsActiveIdx = -1;
@@ -7832,7 +8018,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (lyricsReprocessMode) {
             mLyricsMgr.deleteRemote(hash);
             mLoadedLyrics = null;
-            mLyricsLinesAdapter.setLyrics(null);
+            mLyricsLinesAdapter.setLyrics(null, null);
         }
         lyricsReprocessMode = false;
         mLyricsMgr.startJob(hash, SongFolder, lang);
@@ -7907,6 +8093,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         applyActivityBlur();
         dlg.setOnDismissListener(d -> removeActivityBlur());
         showWithPlayerAccent(dlg);
+        // Exact window width: with a wrap-content dialog the rows measured to
+        // their text and the touch/press area did not span the whole width.
+        if (dlg.getWindow() != null) {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int w = Math.min(Math.round(dm.widthPixels * 0.86f), Math.round(400 * dm.density));
+            dlg.getWindow().setLayout(w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
         rv.scrollToPosition(currentIdx);
     }
 
@@ -7927,6 +8120,54 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
+    // Lyrics clock: the heard position without the beat-specific offset
+    // (BEAT_SYNC_OFFSET_MS is tuned for beat_this), minus a short delay
+    // because Whisper marks a word at its leading consonant. Lines and
+    // karaoke words share this one clock.
+    private static final int LYRICS_WORD_DELAY_MS = 80;
+    // A line may light up this much before its first word, but never before
+    // the previous line's last word has been fully lit.
+    private static final double LYRICS_LINE_LEAD_SEC = 0.15;
+
+    // Vocal activity of the loaded song (vocals stem), keyed by song path.
+    private VocalActivity mVocalActivity;
+    private String mVocalActivityKey;
+
+    /** Measured vocal activity of the current song, or null (no vocals stem
+     *  or no engine yet). Main thread: reads the engine's tracks. */
+    private VocalActivity lyricsVocalActivity() {
+        if (playbackService == null || engine == null) return null;
+        String key = playbackService.getCurrentSongPath();
+        if (key == null) return null;
+        if (key.equals(mVocalActivityKey)) return mVocalActivity;
+        // Lead and backing vocals together: whole lines can be sung by the chorus.
+        Integer lead = playbackService.getStemTrack("vocals");
+        Integer backing = playbackService.getStemTrack("vocals2");
+        mVocalActivity = VocalActivity.fromEnvelopes(
+                lead != null ? engine.getTrackEnvelope(lead) : null,
+                backing != null ? engine.getTrackEnvelope(backing) : null);
+        mVocalActivityKey = key;
+        return mVocalActivity;
+    }
+
+    /** Moment (lyrics clock, seconds) at which row [i] takes over. */
+    private static double lyricsSwitchAt(java.util.List<LyricsLinesAdapter.Row> rows, int i) {
+        LyricsLinesAdapter.Row r = rows.get(i);
+        double at = r.onset - LYRICS_LINE_LEAD_SEC;
+        if (i > 0) {
+            LyricsLinesAdapter.Row prev = rows.get(i - 1);
+            if (prev.type == 0 /*VT_TEXT*/) {
+                double prevDone = prev.voicedEnd;
+                if (prev.wordOnsets != null && prev.wordOnsets.length > 0) {
+                    double lastOnset = prev.wordOnsets[prev.wordOnsets.length - 1];
+                    prevDone = Math.max(prevDone, lastOnset + LyricsLinesAdapter.KARAOKE_FADE_SEC);
+                }
+                at = Math.max(at, prevDone);
+            }
+        }
+        return Math.min(at, r.onset);
+    }
+
     /** Called from the playback timer to move the active line highlight and
      *  scroll it towards the vertical centre of the recycler. Cheap linear
      *  advance keyed off the previous index so the average update is O(1). */
@@ -7935,12 +8176,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (mLyricsLinesAdapter == null) return;
         java.util.List<LyricsLinesAdapter.Row> rows = mLyricsLinesAdapter.getRows();
         if (rows == null || rows.isEmpty()) return;
-        double posSec = uiPosMs / 1000.0;
+        double posSec = Math.max(0.0,
+                (uiPosMs + BEAT_SYNC_OFFSET_MS - LYRICS_WORD_DELAY_MS) / 1000.0);
         int idx = mLyricsActiveIdx;
         // Rewind if seek went backwards.
-        while (idx >= 0 && idx < rows.size() && rows.get(idx).start > posSec) idx--;
-        // Advance while the next row has already started.
-        while (idx + 1 < rows.size() && rows.get(idx + 1).start <= posSec) idx++;
+        while (idx >= 0 && idx < rows.size() && lyricsSwitchAt(rows, idx) > posSec) idx--;
+        // Advance while the next row has already taken over.
+        while (idx + 1 < rows.size() && lyricsSwitchAt(rows, idx + 1) <= posSec) idx++;
         // Clamp to -1 while before the first row so nothing is highlighted.
         // With word-level timestamps the segment end coincides with the last
         // spoken word, so a strict "end < posSec" would leave the row blank
@@ -7954,7 +8196,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             LyricsLinesAdapter.Row r = rows.get(idx);
             if (r.type == 0 /*VT_TEXT*/) {
                 double effectiveEnd = idx + 1 < rows.size()
-                        ? rows.get(idx + 1).start
+                        ? lyricsSwitchAt(rows, idx + 1)
                         : r.end + 2.0;
                 if (posSec >= effectiveEnd) deactivate = true;
             } else if (r.type == 1 /*VT_INSTRUMENTAL*/) {
@@ -7970,20 +8212,27 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         // Publish position every tick so karaoke mode can advance word by
         // word inside the active row without waiting for a row change.
-        if (mLyricsKaraokeMode) {
-            double karaokePosSec = Math.max(0.0,
-                    posSec - KARAOKE_HIGHLIGHT_OFFSET_MS / 1000.0);
-            mLyricsLinesAdapter.setKaraokePosSec(karaokePosSec);
-        }
+        if (mLyricsKaraokeMode) mLyricsLinesAdapter.setKaraokePosSec(posSec);
         if (idx == mLyricsActiveIdx) return;
         mLyricsActiveIdx = idx;
         mLyricsLinesAdapter.setActiveIndex(idx);
-        // Smooth-scroll so the new active row settles at the vertical center
-        // of the recycler. The item animator is disabled, so the resize is
-        // instantaneous while the scroll travel is what gives the motion.
+        // Glide the new active row to the vertical center with a fixed
+        // duration and the same curve as the row's style change, so scroll
+        // and highlight move as one. A target that is not laid out (after a
+        // seek) falls back to the distance-based smooth scroller.
         androidx.recyclerview.widget.LinearLayoutManager lm =
                 (androidx.recyclerview.widget.LinearLayoutManager) rvLyrics.getLayoutManager();
-        if (lm != null) {
+        android.view.View target = lm != null ? lm.findViewByPosition(idx) : null;
+        if (target != null) {
+            int viewCenter = (lm.getDecoratedTop(target) + lm.getDecoratedBottom(target)) / 2;
+            int boxCenter = (rvLyrics.getPaddingTop()
+                    + (rvLyrics.getHeight() - rvLyrics.getPaddingBottom())) / 2;
+            int dy = viewCenter - boxCenter;
+            if (dy != 0) {
+                rvLyrics.smoothScrollBy(0, dy, LyricsLinesAdapter.LINE_INTERPOLATOR,
+                        (int) LyricsLinesAdapter.LINE_ANIM_MS);
+            }
+        } else if (lm != null) {
             androidx.recyclerview.widget.LinearSmoothScroller scroller =
                     new androidx.recyclerview.widget.LinearSmoothScroller(this) {
                         @Override protected int getVerticalSnapPreference() {
@@ -8005,7 +8254,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             // Much slower than the default 25f/densityDpi so
                             // the travel reads as a gentle glide instead of
                             // a snap. Higher numbers = slower motion.
-                            return 140f / dm.densityDpi;
+                            return 60f / dm.densityDpi;
                         }
                     };
             scroller.setTargetPosition(idx);
@@ -8049,7 +8298,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (mLyricsMgr != null) mLyricsMgr.release();
         mLoadedLyrics = null;
         mLyricsActiveIdx = -1;
-        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setLyrics(null);
+        if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setLyrics(null, null);
     }
 
     private void resetLyricsForNewSong() {
@@ -8065,7 +8314,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 @Override public void onLyricsLoaded(Lyrics lyrics) {
                     mLoadedLyrics = lyrics;
                     if (mLyricsLinesAdapter != null) {
-                        mLyricsLinesAdapter.setLyrics(lyrics);
+                        mLyricsLinesAdapter.setLyrics(lyrics, lyricsVocalActivity());
                         mLyricsLinesAdapter.setKaraokeMode(mLyricsKaraokeMode);
                     }
                     mLyricsActiveIdx = -1;

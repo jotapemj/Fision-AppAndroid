@@ -204,6 +204,11 @@ public class StemListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         holder.ib_options.setOnClickListener(v ->
                 ParentActivity.showOptionsBottomDialog(stem));
+        // Options button in the accent while the stem has FX on.
+        holder.ib_options.setImageTintList(ParentActivity.stemHasFx(stem)
+                ? android.content.res.ColorStateList.valueOf(
+                        com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx))
+                : null);
 
         // Visual + functional lock when 3D mode is active.
         boolean interactive = !editingLocked;

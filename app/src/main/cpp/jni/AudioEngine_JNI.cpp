@@ -215,3 +215,97 @@ Java_com_jotapeveloper_fision_FlacDecoderJni_nativeDecodeFlac(
     }
     return out;
 }
+
+// === Per-track FX (realtime) ===
+extern "C" JNIEXPORT void JNICALL
+Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrackFilter(JNIEnv*, jclass, jlong h, jint id, jfloat a){
+    if (h == 0) return;
+    asEngine(h)->setTrackFilter(id, a);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrackEcho(JNIEnv*, jclass, jlong h, jint id, jfloat a, jfloat delayMs){
+    if (h == 0) return;
+    asEngine(h)->setTrackEcho(id, a, delayMs);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrackReverbSend(JNIEnv*, jclass, jlong h, jint id, jfloat s, jint room){
+    if (h == 0) return;
+    asEngine(h)->setTrackReverbSend(id, s, room);
+}
+
+// === Offline FX for the mix export ===
+// One instance per stem: filter + echo (tempo 1) + volume, then its own reverb
+// on the post-fader send. Reverb and echo are linear, so summing per-stem
+// reverbs equals the shared bus of the realtime engine.
+namespace {
+struct OfflineFx {
+    int sr;
+    fx::Filter filter;
+    fx::Echo   echo;
+    fx::Reverb reverb;
+    float send = 0.f;
+    std::vector<float> chunk, wet, io;
+    OfflineFx(int s, int room) : sr(s) { reverb.setRoom(room); reverb.setSampleRate(s); }
+};
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_jotapeveloper_fision_StemFxOffline_nativeCreate(JNIEnv*, jclass, jint sr,
+        jfloat filter, jfloat echo, jfloat echoDelayMs, jfloat send, jint room){
+    auto* o = new OfflineFx(sr, room);
+    o->filter.setAmount(filter);
+    if (echo > 0.f) o->echo.prepare(sr);
+    o->echo.setDelaySourceMs(echoDelayMs);
+    o->echo.setAmount(echo);
+    o->send = std::max(0.f, std::min(1.f, (float) send));
+    return reinterpret_cast<jlong>(o);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jotapeveloper_fision_StemFxOffline_nativeDispose(JNIEnv*, jclass, jlong h){
+    delete reinterpret_cast<OfflineFx*>(h);
+}
+
+// Reads [frames] from src (interleaved, srcCh channels; null = silence for the
+// tail), runs the FX and ADDS the result to out (stereo) at outFrame.
+extern "C" JNIEXPORT void JNICALL
+Java_com_jotapeveloper_fision_StemFxOffline_nativeProcess(JNIEnv* env, jclass, jlong h,
+        jfloatArray src, jint srcCh, jint srcFrame, jint frames,
+        jfloatArray out, jint outFrame, jfloat volL, jfloat volR){
+    if (h == 0 || frames <= 0) return;
+    auto* o = reinterpret_cast<OfflineFx*>(h);
+    o->chunk.assign((size_t) frames * 2, 0.f);
+    if (src != nullptr) {
+        o->io.resize((size_t) frames * srcCh);
+        env->GetFloatArrayRegion(src, srcFrame * srcCh, frames * srcCh, o->io.data());
+        for (int f = 0; f < frames; ++f) {
+            const float* p = o->io.data() + (size_t) f * srcCh;
+            o->chunk[2 * f]     = p[0];
+            o->chunk[2 * f + 1] = srcCh > 1 ? p[1] : p[0];
+        }
+    }
+    if (o->filter.isActive()) o->filter.process(o->chunk.data(), frames, o->sr);
+    if (o->echo.isActive())   o->echo.process(o->chunk.data(), frames, o->sr, 1.f);
+    for (int f = 0; f < frames; ++f) { o->chunk[2 * f] *= volL; o->chunk[2 * f + 1] *= volR; }
+    const bool rev = o->send > 0.f;
+    if (rev) {
+        o->wet.resize(o->chunk.size());
+        for (size_t i = 0; i < o->chunk.size(); ++i) o->wet[i] = o->chunk[i] * o->send;
+        o->reverb.process(o->wet.data(), frames);
+    }
+    o->io.resize(o->chunk.size());
+    env->GetFloatArrayRegion(out, outFrame * 2, frames * 2, o->io.data());
+    for (size_t i = 0; i < o->chunk.size(); ++i) o->io[i] += o->chunk[i] + (rev ? o->wet[i] : 0.f);
+    env->SetFloatArrayRegion(out, outFrame * 2, frames * 2, o->io.data());
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_jotapeveloper_fision_AudioEngine_nativeGetTrackEnvelope(JNIEnv* env, jclass, jlong h, jint id){
+    if (h == 0) return nullptr;
+    std::vector<float> e = asEngine(h)->getTrackEnvelope(id);
+    jfloatArray out = env->NewFloatArray((jsize) e.size());
+    if (out != nullptr && !e.empty()) env->SetFloatArrayRegion(out, 0, (jsize) e.size(), e.data());
+    return out;
+}

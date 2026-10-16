@@ -26,6 +26,7 @@ public class FadingEdgeRecyclerView extends RecyclerView {
     private static final int   DEFAULT_BOTTOM_DP = 110;
 
     private final Paint         mFadePaint    = new Paint();
+    private final Paint         mSolidPaint   = new Paint();
     private LinearGradient      mTopShader;
     private LinearGradient      mBottomShader;
     private int                 mFadeTopPx;
@@ -54,6 +55,8 @@ public class FadingEdgeRecyclerView extends RecyclerView {
 
     private void init(Context ctx) {
         mFadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        mSolidPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        mSolidPaint.setColor(0xFF000000);
         // Offscreen layer required so DST_OUT operates on the content pixels
         // rather than on the framebuffer.
         setLayerType(LAYER_TYPE_HARDWARE, null);
@@ -97,24 +100,15 @@ public class FadingEdgeRecyclerView extends RecyclerView {
         int topLen = Math.min(mFadeTopPx, h / 2);
         int botLen = Math.min(mFadeBottomPx, h / 2);
         // Alpha 1 near the edge, alpha 0 towards the visible area. DST_OUT
-        // subtracts that alpha from the destination. With mFadeTopSolidPx > 0
-        // an extra stop keeps the wipe fully opaque up to that y, so the
-        // covered band never sees content through the tile gaps.
-        if (topLen > 0) {
-            int solid = Math.max(0, Math.min(mFadeTopSolidPx, topLen));
-            if (solid == 0) {
-                mTopShader = new LinearGradient(0, 0, 0, topLen,
-                        0xFF000000, 0x00000000, Shader.TileMode.CLAMP);
-            } else {
-                float p = solid / (float) topLen;
-                mTopShader = new LinearGradient(0, 0, 0, topLen,
-                        new int[] { 0xFF000000, 0xFF000000, 0x00000000 },
-                        new float[] { 0f, p, 1f },
-                        Shader.TileMode.CLAMP);
-            }
-        } else {
-            mTopShader = null;
-        }
+        // subtracts that alpha from the destination. The solid slab
+        // (mFadeTopSolidPx) is drawn apart, always fully wiped, so the covered
+        // band never sees content through the tile gaps; the gradient covers
+        // the soft part below it.
+        int solid = Math.max(0, Math.min(mFadeTopSolidPx, topLen));
+        mTopShader = topLen > solid
+                ? new LinearGradient(0, solid, 0, topLen,
+                    0xFF000000, 0x00000000, Shader.TileMode.CLAMP)
+                : null;
         mBottomShader = botLen > 0
                 ? new LinearGradient(0, h - botLen, 0, h,
                     0x00000000, 0xFF000000, Shader.TileMode.CLAMP)
@@ -132,15 +126,35 @@ public class FadingEdgeRecyclerView extends RecyclerView {
         super.draw(canvas);
         int w = getWidth();
         int h = getHeight();
+        int topLen = Math.min(mFadeTopPx, h / 2);
+        int solid = Math.max(0, Math.min(mFadeTopSolidPx, topLen));
+        if (solid > 0) canvas.drawRect(0, 0, w, solid, mSolidPaint);
+        // The soft fades only show while there is content beyond that edge:
+        // at the very top or bottom of the list nothing is faded, and the
+        // fade grows with the scroll distance up to its full length.
         if (mTopShader != null) {
-            int topLen = Math.min(mFadeTopPx, h / 2);
-            mFadePaint.setShader(mTopShader);
-            canvas.drawRect(0, 0, w, topLen, mFadePaint);
+            float strength = edgeStrength(computeVerticalScrollOffset(), topLen - solid);
+            if (strength > 0f) {
+                mFadePaint.setShader(mTopShader);
+                mFadePaint.setAlpha(Math.round(strength * 255f));
+                canvas.drawRect(0, solid, w, topLen, mFadePaint);
+            }
         }
         if (mBottomShader != null) {
             int botLen = Math.min(mFadeBottomPx, h / 2);
-            mFadePaint.setShader(mBottomShader);
-            canvas.drawRect(0, h - botLen, w, h, mFadePaint);
+            int below = computeVerticalScrollRange() - computeVerticalScrollExtent()
+                    - computeVerticalScrollOffset();
+            float strength = edgeStrength(below, botLen);
+            if (strength > 0f) {
+                mFadePaint.setShader(mBottomShader);
+                mFadePaint.setAlpha(Math.round(strength * 255f));
+                canvas.drawRect(0, h - botLen, w, h, mFadePaint);
+            }
         }
+    }
+
+    private static float edgeStrength(int hiddenPx, int fadeLen) {
+        if (hiddenPx <= 0 || fadeLen <= 0) return 0f;
+        return Math.min(1f, hiddenPx / (float) fadeLen);
     }
 }

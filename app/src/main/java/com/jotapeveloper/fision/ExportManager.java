@@ -91,8 +91,13 @@ public class ExportManager {
                               Format format,
                               File metronomeWavOrNull,
                               float metronomeVol,
+                              Map<String, StemFx> stemFx,
+                              float bpm,
                               Listener listener) {
         cancelled.set(false);
+        // FX belong to the current mix only.
+        mixFx = volSrc == VolumeSource.CURRENT ? stemFx : null;
+        mixFxBpm = bpm;
         _listener = listener;
         worker = new Thread(() -> {
             try {
@@ -314,7 +319,12 @@ public class ExportManager {
         return r;
     }
 
-    /** Mixes one stem into the global `out` buffer applying its volume+pan. */
+    // FX of the mix being exported (null = dry mix).
+    private Map<String, StemFx> mixFx;
+    private float mixFxBpm;
+
+    /** Mixes one stem into the global `out` buffer applying its volume+pan
+     *  and, for the current mix, its FX. */
     private void mixOneStem(WavIO.WavData d, String stem,
                             Map<String, StemSetting> currentSettings,
                             VolumeSource volSrc,
@@ -329,6 +339,15 @@ public class ExportManager {
         }
         int srcCh = d.channels;
         int len   = (int) d.framesCount();
+        StemFx fx = mixFx != null ? mixFx.get(stem) : null;
+        if (fx != null && fx.isActive() && ch == 2) {
+            try (StemFxOffline off = new StemFxOffline(d.sampleRate, fx, mixFxBpm)) {
+                if (!off.mixInto(d.samples, srcCh, len, d.sampleRate, out, volL, volR, cancelled::get)) {
+                    throw new InterruptedException();
+                }
+            }
+            return;
+        }
         for (int f = 0; f < len; f++) {
             if ((f & 0xFFFF) == 0 && cancelled.get()) throw new InterruptedException();
             float l, r;

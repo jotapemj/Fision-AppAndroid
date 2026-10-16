@@ -462,6 +462,65 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     public Integer getStemTrack(String stem)      { return stemTracks.get(stem); }
     public boolean hasStem(String stem)           { return stemTracks.containsKey(stem); }
 
+    // ---- Stem FX (filter, tempo echo, reverb send) ----
+    // In memory only, for the loaded song: cleared on every load, on stop and
+    // in the car. The echo needs the song tempo, given by the Player.
+    private final java.util.Map<String, StemFx> stemFx = new java.util.HashMap<>();
+    private float fxBpm = 0f;
+
+    /** Copy of the stem FX (defaults when none). */
+    public StemFx getStemFx(String stem) {
+        StemFx f = stemFx.get(stem);
+        return f != null ? f.copy() : new StemFx();
+    }
+
+    /** Copies of every active FX, for the mix export. */
+    public java.util.Map<String, StemFx> getActiveStemFx() {
+        java.util.Map<String, StemFx> m = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, StemFx> e : stemFx.entrySet()) {
+            if (e.getValue().isActive()) m.put(e.getKey(), e.getValue().copy());
+        }
+        return m;
+    }
+
+    public boolean hasActiveFx(String stem) {
+        StemFx f = stemFx.get(stem);
+        return f != null && f.isActive();
+    }
+
+    public void setStemFx(String stem, StemFx fx) {
+        if (!stemTracks.containsKey(stem)) return;
+        stemFx.put(stem, fx.copy());
+        applyStemFx(stem);
+    }
+
+    /** Song tempo for the echo divisions (0 = unknown). */
+    public void setFxBpm(float bpm) {
+        if (bpm == fxBpm) return;
+        fxBpm = bpm;
+        for (String stem : stemFx.keySet()) applyStemFx(stem);
+    }
+
+    public float getFxBpm() { return fxBpm; }
+
+    private void applyStemFx(String stem) {
+        Integer id = stemTracks.get(stem);
+        StemFx f = stemFx.get(stem);
+        if (engine == null || id == null || f == null) return;
+        engine.setTrackFilter(id, f.filter);
+        engine.setTrackEcho(id, f.echo, f.echoDelayMs(fxBpm));
+        engine.setTrackReverbSend(id, f.reverb, f.reverbRoom);
+    }
+
+    /** Turns every FX off (the tails ring out). */
+    public void clearAllFx() {
+        for (String stem : new java.util.ArrayList<>(stemFx.keySet())) {
+            stemFx.put(stem, new StemFx());
+            applyStemFx(stem);
+        }
+        stemFx.clear();
+    }
+
     // Compat wrappers for the legacy code path (4 stems). Return -1 when the stem is missing.
     private int trackOrMinus1(String stem) {
         Integer t = stemTracks.get(stem); return t == null ? -1 : t;
@@ -671,6 +730,9 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     /** Applies a decoded song to the service state (main thread). */
     private void commitSong(DecodedSong song, String songName, int songId) {
         engine = song.engine;
+        // FX never carry over to another song.
+        stemFx.clear();
+        fxBpm = 0f;
         stemTracks.clear();
         stemTracks.putAll(song.stems);
         metronomeTrack       = song.metronome;
@@ -944,6 +1006,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     private void applyCarMix() {
         if (engine == null) return;
         cancelCarFades();
+        clearAllFx();
         for (java.util.Map.Entry<String, Integer> e : stemTracks.entrySet()) {
             float g = carTargetGain(e.getKey());
             carGain.put(e.getKey(), g);
@@ -1036,6 +1099,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         isPlaying       = false;
         stemTracks.clear();
         stemOrder.clear();
+        stemFx.clear();
         metronomeTrack = metronomeHalfTrack = metronomeDoubleTrack = -1;
     }
 

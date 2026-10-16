@@ -462,4 +462,16 @@
     <string name="playlist_err_generic">Ошибка сервера (%d)</string>
     <string name="crop_use">Использовать</string>
 
+    <string name="fx_title">FX</string>
+    <string name="fx_clear">Убрать FX</string>
+    <string name="fx_filter">Фильтр</string>
+    <string name="fx_echo">Эхо</string>
+    <string name="fx_reverb">Реверб</string>
+    <string name="fx_reset_desc">Сбросить</string>
+    <string name="fx_off">Выкл.</string>
+    <string name="fx_filter_lowpass">ФНЧ · %1$s</string>
+    <string name="fx_filter_highpass">ФВЧ · %1$s</string>
+    <string name="fx_room_small">Малая</string>
+    <string name="fx_room_medium">Средняя</string>
+    <string name="fx_room_large">Большая</string>
 </resources>

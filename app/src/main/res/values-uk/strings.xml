@@ -472,4 +472,16 @@
     <string name="playlist_err_generic">Помилка сервера (%d)</string>
     <string name="crop_use">Використати</string>
 
+    <string name="fx_title">FX</string>
+    <string name="fx_clear">Прибрати FX</string>
+    <string name="fx_filter">Фільтр</string>
+    <string name="fx_echo">Луна</string>
+    <string name="fx_reverb">Реверб</string>
+    <string name="fx_reset_desc">Скинути</string>
+    <string name="fx_off">Вимкнено</string>
+    <string name="fx_filter_lowpass">ФНЧ · %1$s</string>
+    <string name="fx_filter_highpass">ФВЧ · %1$s</string>
+    <string name="fx_room_small">Мала</string>
+    <string name="fx_room_medium">Середня</string>
+    <string name="fx_room_large">Велика</string>
 </resources>

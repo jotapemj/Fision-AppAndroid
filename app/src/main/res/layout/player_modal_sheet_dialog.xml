@@ -27,6 +27,11 @@
             android:layout_marginStart="15dp"
             android:layout_marginEnd="15dp">
 
+            <!-- Mirrors the export button so the title stays centered -->
+            <Space
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
+
             <TextView
                 android:id="@+id/Title"
                 android:layout_width="0dp"
@@ -147,5 +152,276 @@
 
 
 
+
+        <!-- FX: filter, tempo echo, reverb send. In memory only. -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="16dp"
+            android:background="#22FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/fx_title"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/tv_fxClear"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="@string/fx_clear"
+                android:textColor="@color/AppWhite"
+                android:textSize="12sp"
+                android:visibility="invisible"
+                app:strokeColor="?attr/colorPrimary"
+                app:rippleColor="?attr/colorPrimary"
+                app:cornerRadius="20dp" />
+        </LinearLayout>
+
+        <!-- Filter: low-pass to the left, high-pass to the right -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp">
+
+            <TextView
+                android:id="@+id/tv_fxFilterLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/fx_filter"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tv_fxFilterValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/noto_sans_regular"
+                android:textColor="#919191"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/fx_lowpass_short"
+                android:textColor="#919191"
+                android:textSize="12sp" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/s_fxFilter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:value="0"
+                android:valueFrom="-100"
+                android:valueTo="100"
+                app:labelBehavior="gone"
+                app:trackColorActive="@color/AppDarkGrey"
+                app:trackColorInactive="@color/AppDarkGrey"
+                app:thumbColor="?attr/accentSecondary"
+                app:haloRadius="0dp"
+                app:haloColor="@color/sliderHalo" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/fx_highpass_short"
+                android:textColor="#919191"
+                android:textSize="12sp" />
+
+            <ImageButton
+                android:id="@+id/ib_fxFilterRestore"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="10dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="@string/fx_reset_desc"
+                android:padding="0dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_restore_pan"
+                android:visibility="invisible" />
+        </LinearLayout>
+
+        <!-- Tempo echo: amount + beat division -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp">
+
+            <TextView
+                android:id="@+id/tv_fxEchoLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/fx_echo"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tv_fxEchoValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/noto_sans_regular"
+                android:textColor="#919191"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="20dp">
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/s_fxEcho"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:value="0"
+                android:valueFrom="0"
+                android:valueTo="100"
+                app:labelBehavior="gone"
+                app:trackColorActive="?attr/colorPrimary"
+                app:trackColorInactive="@color/AppDarkGrey"
+                app:thumbColor="?attr/accentSecondary"
+                app:haloRadius="0dp"
+                app:haloColor="@color/sliderHalo" />
+
+            <ImageButton
+                android:id="@+id/ib_fxEchoRestore"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="10dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="@string/fx_reset_desc"
+                android:padding="0dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_restore_stem"
+                android:visibility="invisible" />
+        </LinearLayout>
+
+        <com.jotapeveloper.fision.chords.SlidingChipSelector
+            android:id="@+id/sel_fxEchoDivision"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="56dp"
+            android:layout_marginBottom="6dp" />
+
+        <!-- Reverb send (shared room) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp">
+
+            <TextView
+                android:id="@+id/tv_fxReverbLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/fx_reverb"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tv_fxReverbValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/noto_sans_regular"
+                android:textColor="#919191"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="20dp">
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/s_fxReverb"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:value="0"
+                android:valueFrom="0"
+                android:valueTo="100"
+                app:labelBehavior="gone"
+                app:trackColorActive="?attr/colorPrimary"
+                app:trackColorInactive="@color/AppDarkGrey"
+                app:thumbColor="?attr/accentSecondary"
+                app:haloRadius="0dp"
+                app:haloColor="@color/sliderHalo" />
+
+            <ImageButton
+                android:id="@+id/ib_fxReverbRestore"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="10dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="@string/fx_reset_desc"
+                android:padding="0dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_restore_stem"
+                android:visibility="invisible" />
+        </LinearLayout>
+
+        <com.jotapeveloper.fision.chords.SlidingChipSelector
+            android:id="@+id/sel_fxReverbRoom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="56dp"
+            android:layout_marginBottom="24dp" />
 
 </LinearLayout>

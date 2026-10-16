@@ -465,4 +465,16 @@
     <string name="playlist_err_playlist_limit">Màxim %d playlists</string>
     <string name="playlist_err_generic">Error del servidor (%d)</string>
     <string name="crop_use">Fer servir</string>
+    <string name="fx_title">FX</string>
+    <string name="fx_clear">Treu els FX</string>
+    <string name="fx_filter">Filtre</string>
+    <string name="fx_echo">Eco</string>
+    <string name="fx_reverb">Reverb</string>
+    <string name="fx_reset_desc">Restableix</string>
+    <string name="fx_off">Apagat</string>
+    <string name="fx_filter_lowpass">Pas baix · %1$s</string>
+    <string name="fx_filter_highpass">Pas alt · %1$s</string>
+    <string name="fx_room_small">Petita</string>
+    <string name="fx_room_medium">Mitjana</string>
+    <string name="fx_room_large">Gran</string>
 </resources>

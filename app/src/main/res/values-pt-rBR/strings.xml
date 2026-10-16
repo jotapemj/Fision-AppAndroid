@@ -457,4 +457,16 @@
     <string name="playlist_err_generic">Erro do servidor (%d)</string>
     <string name="crop_use">Usar</string>
 
+    <string name="fx_title">FX</string>
+    <string name="fx_clear">Remover FX</string>
+    <string name="fx_filter">Filtro</string>
+    <string name="fx_echo">Eco</string>
+    <string name="fx_reverb">Reverb</string>
+    <string name="fx_reset_desc">Redefinir</string>
+    <string name="fx_off">Desligado</string>
+    <string name="fx_filter_lowpass">Passa-baixa · %1$s</string>
+    <string name="fx_filter_highpass">Passa-alta · %1$s</string>
+    <string name="fx_room_small">Pequena</string>
+    <string name="fx_room_medium">Média</string>
+    <string name="fx_room_large">Grande</string>
 </resources>

@@ -447,4 +447,16 @@
     <string name="playlist_err_generic">服务器错误（%d）</string>
     <string name="crop_use">使用</string>
 
+    <string name="fx_title">效果</string>
+    <string name="fx_clear">清除效果</string>
+    <string name="fx_filter">滤波</string>
+    <string name="fx_echo">回声</string>
+    <string name="fx_reverb">混响</string>
+    <string name="fx_reset_desc">重置</string>
+    <string name="fx_off">关闭</string>
+    <string name="fx_filter_lowpass">低通 · %1$s</string>
+    <string name="fx_filter_highpass">高通 · %1$s</string>
+    <string name="fx_room_small">小</string>
+    <string name="fx_room_medium">中</string>
+    <string name="fx_room_large">大</string>
 </resources>
