@@ -580,7 +580,9 @@ where the voice actually sounds on the separated vocal stems (lead and
 backing) and uses it to start each line and word when it is sung, keep a
 line lit until its last note fades, and show the instrumental marker only
 during real vocal silence. An optional karaoke mode lights each word as it
-is sung.
+is sung. Sentences that the transcription merged into one line are split
+again, and tapping a line or word jumps there and centres it, also while
+paused.
 
 The finished transcript is cached locally, so reopening the same song
 does not hit the network again. A reprocess action lets you rerun the

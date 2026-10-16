@@ -176,6 +176,89 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     public void setLineClickListener(LineClickListener l) { this.lineClickListener = l; }
 
+    // Common sentence starters (lower case). A capitalised one in the middle
+    // of a segment marks a new sentence the transcription merged.
+    private static final java.util.Set<String> STARTERS = new java.util.HashSet<>(
+            java.util.Arrays.asList(
+                    // es / ca / pt / it / fr
+                    "y", "e", "o", "que", "porque", "pero", "mas", "sobre", "si", "no",
+                    "ya", "yo", "tu", "te", "me", "mi", "se", "es", "el", "la", "los",
+                    "las", "un", "una", "en", "de", "con", "por", "para", "cuando",
+                    "como", "donde", "aunque", "todavia", "hoy", "ahora", "hay",
+                    "eu", "voce", "nao", "mas", "ma", "che", "io", "non", "et", "je",
+                    "tu", "il", "elle", "nous", "vous", "et", "per", "quan",
+                    // en / de
+                    "and", "but", "so", "the", "you", "we", "they", "he", "she", "it",
+                    "if", "when", "oh", "now", "und", "ich", "du", "wir", "aber"));
+
+    /**
+     * The transcription sometimes merges two sentences into one segment
+     * ("...estar en pie Porque ya hasta..."): a capitalised word right after
+     * a word without punctuation. Such a segment is split there, unless the
+     * word looks like a proper noun: it must be a common starter or appear
+     * in lower case elsewhere in the lyrics.
+     */
+    private static List<Lyrics.Segment> splitMergedSentences(List<Lyrics.Segment> in) {
+        java.util.Set<String> lower = new java.util.HashSet<>();
+        for (Lyrics.Segment s : in) {
+            if (s.words == null) continue;
+            for (Lyrics.Word w : s.words) {
+                String t = bare(w.text);
+                if (!t.isEmpty() && Character.isLowerCase(t.charAt(0))) lower.add(t);
+            }
+        }
+        List<Lyrics.Segment> out = new ArrayList<>(in.size() + 8);
+        for (Lyrics.Segment s : in) {
+            if (s.words == null || s.words.size() < 2) { out.add(s); continue; }
+            int from = 0;
+            for (int i = 1; i < s.words.size(); i++) {
+                String prev = s.words.get(i - 1).text == null ? "" : s.words.get(i - 1).text.trim();
+                String t = bare(s.words.get(i).text);
+                boolean capital = !t.isEmpty() && Character.isUpperCase(t.charAt(0));
+                boolean prevOpen = !prev.isEmpty() && ".!?,;:\u2026".indexOf(prev.charAt(prev.length() - 1)) < 0;
+                String key = stripAccents(t.toLowerCase(java.util.Locale.ROOT));
+                if (capital && prevOpen && t.length() > 1
+                        && (STARTERS.contains(key) || lower.contains(t.toLowerCase(java.util.Locale.ROOT)))) {
+                    out.add(subSegment(s, from, i));
+                    from = i;
+                }
+            }
+            out.add(from == 0 ? s : subSegment(s, from, s.words.size()));
+        }
+        return out;
+    }
+
+    private static Lyrics.Segment subSegment(Lyrics.Segment s, int from, int to) {
+        Lyrics.Segment p = new Lyrics.Segment();
+        p.id = s.id;
+        p.words = new ArrayList<>(s.words.subList(from, to));
+        p.start = from == 0 ? s.start : p.words.get(0).start;
+        p.end = to == s.words.size() ? s.end : p.words.get(p.words.size() - 1).end;
+        StringBuilder sb = new StringBuilder();
+        for (Lyrics.Word w : p.words) {
+            String t = w.text == null ? "" : w.text.trim();
+            if (t.isEmpty()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(t);
+        }
+        p.text = sb.toString();
+        return p;
+    }
+
+    /** Word without surrounding punctuation. */
+    private static String bare(String s) {
+        if (s == null) return "";
+        int a = 0, b = s.length();
+        while (a < b && !Character.isLetterOrDigit(s.charAt(a))) a++;
+        while (b > a && !Character.isLetterOrDigit(s.charAt(b - 1))) b--;
+        return s.substring(a, b);
+    }
+
+    private static String stripAccents(String s) {
+        return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+    }
+
     /** [va] is the measured vocal activity of the song, or null. */
     public void setLyrics(Lyrics lyrics, VocalActivity va) {
         if (lyrics == null || lyrics.segments == null || lyrics.segments.isEmpty()) {
@@ -184,7 +267,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             notifyDataSetChanged();
             return;
         }
-        List<Lyrics.Segment> segs = lyrics.segments;
+        List<Lyrics.Segment> segs = splitMergedSentences(lyrics.segments);
         int n = segs.size();
         double[] onset = new double[n];
         double[] vEnd = new double[n];

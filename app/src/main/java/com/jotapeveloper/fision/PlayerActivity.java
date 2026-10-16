@@ -3948,6 +3948,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  downbeat clicks, progress bar and clock at once. */
     private void seekToMs(int newPosMillis) {
         if (engine == null) return;
+        mLyricsHoldIdx = -1;
         if (songDuration > 0) newPosMillis = Math.max(0, Math.min(songDuration - 1, newPosMillis));
         stopChordsBrowsing();                 // the carousel follows the seek
         seekGeneration++;
@@ -7224,6 +7225,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
             @Override public void onLyricsWordClicked(double startSec) {
                 seekToLyricsPosSec(startSec);
+                holdLyricsRow(lyricsRowAt(startSec));
             }
         });
         rvLyrics.setAdapter(mLyricsLinesAdapter);
@@ -8183,6 +8185,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         while (idx >= 0 && idx < rows.size() && lyricsSwitchAt(rows, idx) > posSec) idx--;
         // Advance while the next row has already taken over.
         while (idx + 1 < rows.size() && lyricsSwitchAt(rows, idx + 1) <= posSec) idx++;
+        // A tapped row stays lit until playback reaches it (the heard
+        // position trails the seek target by the output latency).
+        if (mLyricsHoldIdx >= 0) {
+            if (mLyricsHoldIdx < rows.size() && posSec < mLyricsHoldUntilSec) idx = mLyricsHoldIdx;
+            else mLyricsHoldIdx = -1;
+        }
         // Clamp to -1 while before the first row so nothing is highlighted.
         // With word-level timestamps the segment end coincides with the last
         // spoken word, so a strict "end < posSec" would leave the row blank
@@ -8214,6 +8222,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // word inside the active row without waiting for a row change.
         if (mLyricsKaraokeMode) mLyricsLinesAdapter.setKaraokePosSec(posSec);
         if (idx == mLyricsActiveIdx) return;
+        showLyricsRow(idx);
+    }
+
+    /** Lights row [idx] and glides it to the centre. */
+    private void showLyricsRow(int idx) {
         mLyricsActiveIdx = idx;
         mLyricsLinesAdapter.setActiveIndex(idx);
         // Glide the new active row to the vertical center with a fixed
@@ -8267,8 +8280,34 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  Mirrors the SeekBar path so playback state (playing vs paused) is
      *  preserved without duplicating the reset logic. */
     private void seekToLyricsRow(LyricsLinesAdapter.Row row) {
-        if (row == null) return;
+        if (row == null || mLyricsLinesAdapter == null) return;
         seekToLyricsPosSec(row.start);
+        holdLyricsRow(mLyricsLinesAdapter.getRows().indexOf(row));
+    }
+
+    // Row lit by a tap until playback reaches it (see updateLyricsHighlight).
+    private int mLyricsHoldIdx = -1;
+    private double mLyricsHoldUntilSec;
+
+    /** Lights the tapped row right away, also while paused, so pressing
+     *  play does not move the view again. */
+    private void holdLyricsRow(int idx) {
+        java.util.List<LyricsLinesAdapter.Row> rows = mLyricsLinesAdapter.getRows();
+        if (idx < 0 || idx >= rows.size()) return;
+        mLyricsHoldIdx = idx;
+        mLyricsHoldUntilSec = lyricsSwitchAt(rows, idx);
+        if (idx != mLyricsActiveIdx) showLyricsRow(idx);
+    }
+
+    /** Index of the text row that holds the word starting at [sec]. */
+    private int lyricsRowAt(double sec) {
+        java.util.List<LyricsLinesAdapter.Row> rows = mLyricsLinesAdapter.getRows();
+        int found = -1;
+        for (int i = 0; i < rows.size(); i++) {
+            LyricsLinesAdapter.Row r = rows.get(i);
+            if (r.type == 0 /*VT_TEXT*/ && r.start <= sec + 1e-6) found = i;
+        }
+        return found;
     }
 
     /** Shared seek entrypoint used by both row clicks and per-word clicks
