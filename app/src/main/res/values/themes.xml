@@ -81,7 +81,7 @@
         <item name="android:backgroundTint">@color/button_background_color</item>
         <item name="android:strokeColor">@color/AppDarkGrey</item>
         <item name="android:textColor">@color/button_text_color</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
         <item name="android:strokeWidth">4</item>
     </style>
 
@@ -92,7 +92,7 @@
         <item name="android:textColor">@color/AppWhite</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
     </style>
 
     <style name="ImportSubLabel" parent="">
@@ -101,7 +101,7 @@
         <item name="android:textColor">@color/AppWhite</item>
         <item name="android:textSize">14sp</item>
         <item name="android:layout_marginTop">6dp</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
     </style>
 
     <!-- Toggle group buttons with app styling (colorPrimary when selected,
@@ -126,7 +126,7 @@
         <item name="cornerRadius">16dp</item>
         <item name="android:paddingStart">6dp</item>
         <item name="android:paddingEnd">6dp</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
         <item name="android:singleLine">false</item>
         <item name="android:maxLines">2</item>
         <item name="android:lineSpacingMultiplier">0.95</item>
@@ -146,7 +146,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">#919191</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
     </style>
 
     <style name="SongInfoValue" parent="">
@@ -157,7 +157,7 @@
         <item name="android:layout_marginStart">10dp</item>
         <item name="android:textColor">@color/AppWhite</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
         <item name="android:singleLine">true</item>
         <item name="android:ellipsize">end</item>
     </style>
@@ -231,7 +231,7 @@
         <item name="android:textColor">@color/AppWhite</item>
         <item name="android:textSize">15sp</item>
         <item name="android:layout_marginTop">8dp</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
         <item name="buttonTint">?attr/colorPrimary</item>
         <item name="android:background">@drawable/stem_check_bg</item>
         <item name="android:paddingStart">14dp</item>

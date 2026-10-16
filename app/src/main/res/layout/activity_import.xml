@@ -44,7 +44,7 @@
                 android:text="@string/import_title"
                 android:textColor="@color/AppWhite"
                 android:textSize="20sp"
-                android:fontFamily="@font/yugothic_ui_regular"
+                android:fontFamily="@font/noto_sans_regular"
                 android:includeFontPadding="false"
                 android:layout_marginStart="12dp"
                 app:layout_constraintStart_toEndOf="@+id/b_import_back"
@@ -141,7 +141,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:maxLines="2"
-                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:fontFamily="@font/noto_sans_regular"
                     android:textColor="@color/AppWhite"
                     android:textSize="17sp"
                     android:textStyle="bold"
@@ -154,7 +154,7 @@
                     android:layout_marginTop="2dp"
                     android:ellipsize="end"
                     android:singleLine="true"
-                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:fontFamily="@font/noto_sans_regular"
                     android:textColor="#B3FFFFFF"
                     android:textSize="14sp"
                     android:visibility="gone"
@@ -167,7 +167,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:singleLine="true"
-                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:fontFamily="@font/noto_sans_regular"
                     android:textColor="#80FFFFFF"
                     android:textSize="12sp"
                     android:visibility="gone"
@@ -230,7 +230,7 @@
                 android:text="@string/import_gpu_warning"
                 android:textColor="@color/gpu_warning_text"
                 android:textSize="13sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
         </LinearLayout>
 
         <TextView style="@style/ImportSectionLabel"
@@ -314,7 +314,7 @@
         android:text="@string/import_send_short"
         android:textSize="17sp"
         android:textStyle="bold"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         app:cornerRadius="21dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -356,7 +356,7 @@
                 android:text="@string/import_loading_server_info"
                 android:textColor="@color/AppWhite"
                 android:textSize="14sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
         </LinearLayout>
 
     </FrameLayout>

@@ -328,7 +328,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         PrepareControls();
         setupRecyclerViews();
         refreshRepeatButtonUi();
-        bindPlaylistSwitch();
+        bindAutoplayNextSwitch();
         // Auto-play only when this is a fresh open (service was not playing).
         // Flag as pending: play is triggered from updateUI() after the stored volumes
         // are pushed to the engine — before, play started here and a moment of 75%
@@ -373,13 +373,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Black curtain with the loading spinner until the player is fully
         // loaded (revealed from updateUI, when the stem sliders animate).
         loadingCurtain = com.jotapeveloper.fision.brand.LoadingCurtain.show(this);
-        // load preferences language
-        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String language = sharedPreferences.getString("language", "default_language");
-
-        setAppLocale(language);
-
         // Get data from main activity
         String SongPath = getIntent().getStringExtra("SongPathString");
         SongName = getIntent().getStringExtra("SongName");
@@ -1631,7 +1624,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             row.setText(labels[i]);
             row.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
             row.setTypeface(
-                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
+                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular),
                     idx == currentIdx ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
             row.setTextColor(idx == currentIdx ? primary : white);
             if (idx == currentIdx) row.setBackground(activeOptionBackground());
@@ -1874,7 +1867,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         body.setText(R.string.export_permission_body);
         body.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite));
         body.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
-        body.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular));
+        body.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular));
         float density = getResources().getDisplayMetrics().density;
         body.setPadding((int)(8*density),(int)(4*density),(int)(8*density),(int)(12*density));
         wizardOptions.addView(body);
@@ -1963,7 +1956,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         TextView row = new TextView(this);
         row.setText(label);
         row.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
-        row.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
+        row.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular),
                 selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         row.setTextColor(selected ? primary : white);
         if (selected) row.setBackground(activeOptionBackground());
@@ -2206,18 +2199,18 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return (long)(interval * 1000f);
     }
 
-    /** Binds the drawer switch that persists the playlist continuation flag on
-     *  the service. Must run after the service is connected: the switch state
-     *  is read from the service and the listener needs a live reference to
-     *  push the change back. */
-    private void bindPlaylistSwitch() {
+    /** Binds the drawer switch that persists the autoplay-next flag on the
+     *  service. Must run after the service is connected: the switch state is
+     *  read from the service and the listener needs a live reference to push
+     *  the change back. */
+    private void bindAutoplayNextSwitch() {
         com.google.android.material.switchmaterial.SwitchMaterial sw =
-                findViewById(R.id.sw_drawer_playlist);
+                findViewById(R.id.sw_drawer_autoplayNext);
         if (sw == null || playbackService == null) return;
         sw.setOnCheckedChangeListener(null);
-        sw.setChecked(playbackService.isPlaylistMode());
+        sw.setChecked(playbackService.isAutoplayNext());
         sw.setOnCheckedChangeListener((btn, isChecked) -> {
-            if (playbackService != null) playbackService.setPlaylistMode(isChecked);
+            if (playbackService != null) playbackService.setAutoplayNext(isChecked);
         });
     }
 
@@ -2453,7 +2446,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         PrepareControls();
         setupRecyclerViews();
         refreshRepeatButtonUi();
-        bindPlaylistSwitch();
+        bindAutoplayNextSwitch();
         applyPlayIcon(false, false);
         // Wipe any lyrics state from the previous song. If the overlay was open,
         // resetLyricsForNewSong triggers refreshLyricsViewForCurrentSong so the
@@ -4069,18 +4062,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 });
                 return true;
             };
-
-    // Configuration
-
-    private void setAppLocale(String languageCode) {
-        Locale locale = new Locale(languageCode);
-        Locale.setDefault(locale);
-
-        Configuration config = new Configuration();
-        config.setLocale(locale);
-
-        getResources().updateConfiguration(config, getBaseContext().getResources().getDisplayMetrics());
-    }
 
     private void updateDB(String OperationType, int value) {
         AppDatabase db = AppDatabase.getInstance(getApplicationContext());
@@ -7248,7 +7229,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private android.graphics.Typeface chordTypeface() {
         try {
             return androidx.core.content.res.ResourcesCompat.getFont(this,
-                    latinNotation ? R.font.yugothic_ui_regular : R.font.mus_glyhps);
+                    latinNotation ? R.font.noto_sans_regular : R.font.mus_glyhps);
         } catch (Exception e) {
             return android.graphics.Typeface.DEFAULT;
         }

@@ -2,15 +2,16 @@ package com.jotapeveloper.fision;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
 
@@ -19,7 +20,9 @@ import androidx.annotation.Nullable;
 /**
  * Custom view for the cover during download. Draws the darkened cover as
  * background and gradually "fills up" with the cover at real brightness from
- * bottom to top, clipped by a smoothly oscillating sine wave (2D water effect).
+ * bottom to top, bounded by a smoothly oscillating sine wave (2D water effect).
+ * The level eases towards the reported progress, so coarse percentage steps
+ * rise continuously, and the wave edge is antialiased (shader fill, no clip).
  *
  * Usage from the adapter:
  *   view.setCover(bitmap);         // same bitmap used by iv_cover
@@ -30,20 +33,25 @@ import androidx.annotation.Nullable;
 public class CoverFillWaveView extends View {
 
     private @Nullable Bitmap coverBitmap;
-    private float progress = 0f;   // 0..1 base level of the wave
+    private float progress = 0f;   // 0..1 reported level
+    private float shown    = 0f;   // 0..1 drawn level, eased towards progress
     private float phase    = 0f;   // radians, 0..2pi loop
 
     private final Paint darkPaint   = new Paint(Paint.FILTER_BITMAP_FLAG);
-    private final Paint brightPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final Paint brightPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
     private final Path  wavePath    = new Path();
     private final Rect  srcRect     = new Rect();
     private final RectF dstRect     = new RectF();
+    private final Matrix shaderMatrix = new Matrix();
+    private @Nullable BitmapShader shader;
+    private int shaderW = -1, shaderH = -1;
 
     // Config
     private static final float WAVE_AMP_DP     = 6f;    // wave peak amplitude
     private static final float WAVE_CYCLES     = 0.8f;  // wide wave (single visible peak)
     private static final float PHASE_SPEED     = 3.2f;  // rad/s
     private static final float DARK_BRIGHTNESS = 0.28f; // brightness multiplier for the dark background
+    private static final float LEVEL_EASE      = 4f;    // 1/s, level catch-up rate
 
     private boolean animating = false;
     private long    lastFrameNanos = 0L;
@@ -65,11 +73,13 @@ public class CoverFillWaveView extends View {
         });
         cm.postConcat(scale);
         darkPaint.setColorFilter(new ColorMatrixColorFilter(cm));
-        // Hardware layer forced to keep clipPath smooth
-        setLayerType(LAYER_TYPE_HARDWARE, null);
     }
 
     public void setCover(@Nullable Bitmap bm) {
+        if (bm != coverBitmap) {
+            shader = null;
+            brightPaint.setShader(null);
+        }
         this.coverBitmap = bm;
         invalidate();
     }
@@ -77,6 +87,8 @@ public class CoverFillWaveView extends View {
     public void setProgress(float p) {
         if (p < 0f) p = 0f; else if (p > 1f) p = 1f;
         if (this.progress == p) return;
+        // A drop means a new download (recycled row): no easing down.
+        if (p < shown || !animating) shown = p;
         this.progress = p;
         invalidate();
     }
@@ -113,6 +125,7 @@ public class CoverFillWaveView extends View {
         phase += PHASE_SPEED * dt;
         float twoPi = (float) (Math.PI * 2);
         while (phase > twoPi) phase -= twoPi;
+        shown += (progress - shown) * (1f - (float) Math.exp(-LEVEL_EASE * dt));
         invalidate();
         postOnAnimation(frameTick);
     }
@@ -129,18 +142,18 @@ public class CoverFillWaveView extends View {
         // 1) Darkened cover (base).
         canvas.drawBitmap(coverBitmap, srcRect, dstRect, darkPaint);
 
-        // 2) Wave path: grows from the bottom upwards with progress.
-        //    y baseline = h * (1 - progress). Sinusoid around that baseline.
+        // 2) Wave path: grows from the bottom upwards with the level.
+        //    y baseline = h * (1 - level). Sinusoid around that baseline.
         wavePath.reset();
         float density = getResources().getDisplayMetrics().density;
         float amp = WAVE_AMP_DP * density;
-        // When progress=0 the level sits at h+amp (off-screen) so no brightness
-        // shows through. When progress=1 it sits at -amp to fully fill even
+        // At level 0 the baseline sits at h+amp (off-screen) so no brightness
+        // shows through. At level 1 it sits at -amp to fully fill even
         // taking the crest of the wave into account.
-        float baseline = (1f - progress) * (h + 2f * amp) - amp;
+        float baseline = (1f - shown) * (h + 2f * amp) - amp;
         wavePath.moveTo(0f, h);
         wavePath.lineTo(0f, baseline);
-        final int steps = 40;
+        final int steps = 48;
         float twoPi = (float) (Math.PI * 2);
         for (int i = 0; i <= steps; i++) {
             float x = (float) i / steps * w;
@@ -151,10 +164,18 @@ public class CoverFillWaveView extends View {
         wavePath.lineTo(w, h);
         wavePath.close();
 
-        // 3) Clip and draw the cover at real brightness.
-        canvas.save();
-        canvas.clipPath(wavePath);
-        canvas.drawBitmap(coverBitmap, srcRect, dstRect, brightPaint);
-        canvas.restore();
+        // 3) Cover at real brightness filling the wave (antialiased edge).
+        if (shader == null) {
+            shader = new BitmapShader(coverBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            brightPaint.setShader(shader);
+            shaderW = -1;
+        }
+        if (shaderW != w || shaderH != h) {
+            shaderMatrix.setRectToRect(new RectF(srcRect), dstRect, Matrix.ScaleToFit.FILL);
+            shader.setLocalMatrix(shaderMatrix);
+            shaderW = w;
+            shaderH = h;
+        }
+        canvas.drawPath(wavePath, brightPaint);
     }
 }

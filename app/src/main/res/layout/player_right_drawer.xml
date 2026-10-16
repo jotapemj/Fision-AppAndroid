@@ -24,7 +24,7 @@
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:fontFamily="@font/yugothic_ui_regular" />
+        android:fontFamily="@font/noto_sans_regular" />
 
     <View
         android:layout_width="match_parent"
@@ -67,7 +67,7 @@
                 android:text="@string/drawer_item_chords"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
             <TextView
                 android:id="@+id/tv_drawer_chords_subtitle"
@@ -77,7 +77,7 @@
                 android:text="@string/chords_advanced"
                 android:textColor="#919191"
                 android:textSize="13sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
         </LinearLayout>
 
@@ -118,7 +118,7 @@
                 android:text="@string/drawer_item_cifrado"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
             <TextView
                 android:id="@+id/tv_drawer_cifrado_subtitle"
@@ -128,7 +128,7 @@
                 android:text="@string/cifrado_american"
                 android:textColor="#919191"
                 android:textSize="13sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
         </LinearLayout>
 
@@ -169,7 +169,7 @@
                 android:text="@string/drawer_item_notation"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
             <TextView
                 android:id="@+id/tv_drawer_notation_subtitle"
@@ -179,7 +179,7 @@
                 android:text="@string/notation_sharp"
                 android:textColor="#919191"
                 android:textSize="13sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
         </LinearLayout>
 
@@ -219,7 +219,7 @@
             android:text="@string/drawer_switch_transposition"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/sw_drawer_transposition"
@@ -255,7 +255,7 @@
             android:text="@string/drawer_switch_downbeat"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/sw_drawer_downbeat"
@@ -285,7 +285,7 @@
             android:text="@string/drawer_item_downbeat_sound"
             android:textColor="#FFFFFF"
             android:textSize="15sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
         <TextView
             android:id="@+id/tv_drawer_downbeat_subtitle"
@@ -295,11 +295,11 @@
             android:text="@string/downbeat_sound_clap"
             android:textColor="#919191"
             android:textSize="13sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
     </LinearLayout>
 
-    <!-- Switch: continue playlist from this song (global) -->
+    <!-- Switch: play the next song when this one ends (global) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -315,22 +315,22 @@
             android:layout_height="26dp"
             android:layout_marginEnd="16dp"
             android:scaleType="fitCenter"
-            android:src="@drawable/ic_playlist"
+            android:src="@drawable/ic_skip_next"
             app:tint="#FFFFFF"
-            android:contentDescription="@string/drawer_switch_playlist" />
+            android:contentDescription="@string/drawer_switch_autoplay_next" />
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginEnd="12dp"
-            android:text="@string/drawer_switch_playlist"
+            android:text="@string/drawer_switch_autoplay_next"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/sw_drawer_playlist"
+            android:id="@+id/sw_drawer_autoplayNext"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
@@ -364,7 +364,7 @@
             android:text="@string/drawer_switch_nebula"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/sw_drawer_nebula"
@@ -405,7 +405,7 @@
             android:text="@string/drawer_switch_nebula_haptics"
             android:textColor="#CFCFCF"
             android:textSize="13sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/sw_drawer_nebula_haptics"
@@ -452,7 +452,7 @@
             android:text="@string/drawer_item_reset"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
     </LinearLayout>
 
@@ -489,7 +489,7 @@
             android:text="@string/drawer_item_reprocess"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
     </LinearLayout>
 
@@ -523,7 +523,7 @@
             android:text="@string/drawer_item_export"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
 
     </LinearLayout>
 

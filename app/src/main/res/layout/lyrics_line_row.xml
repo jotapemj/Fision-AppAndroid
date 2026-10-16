@@ -10,5 +10,5 @@
     android:textColor="@color/lyrics_line_dim"
     android:textSize="26sp"
     android:lineSpacingExtra="4dp"
-    android:fontFamily="@font/yugothic_ui_regular"
+    android:fontFamily="@font/noto_sans_regular"
     tools:text="I feel the rain on my skin" />

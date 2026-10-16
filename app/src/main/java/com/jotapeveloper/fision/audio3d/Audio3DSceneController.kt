@@ -3010,7 +3010,7 @@ class Audio3DSceneController(
         val textWidth = size - pad * 2
         val baseFont = runCatching {
             androidx.core.content.res.ResourcesCompat.getFont(
-                activity, com.jotapeveloper.fision.R.font.yugothic_ui_regular)
+                activity, com.jotapeveloper.fision.R.font.noto_sans_regular)
         }.getOrNull() ?: android.graphics.Typeface.DEFAULT
         val titlePaint = android.text.TextPaint().apply {
             isAntiAlias = true

@@ -1,0 +1,460 @@
+<resources>
+    <string name="tv_title">Músicas</string>
+    <string name="tv_title_search">Buscar música</string>
+    <string name="te_find">Buscar na biblioteca</string>
+    <string name="b_add">Adicionar</string>
+    <string name="no_results">Nenhum resultado</string>
+    <string name="tv_SongsCount">25 músicas</string>
+
+    <string name="tvTitle">Título da música</string>
+    <string name="tvSubtitle">Mais informações</string>
+
+    <string name="tv_SongTitle">Título da música</string>
+
+    <string name="b_play_description">Reproduzir</string>
+    <string name="b_next_description">Próxima música</string>
+    <string name="b_previous_description">Música anterior</string>
+    <string name="b_seconds_back_description">Voltar 5 segundos</string>
+    <string name="b_seconds_forward_description">Avançar 5 segundos</string>
+    <string name="b_settings_description">Configurações</string>
+
+    <string name="b_delete">Excluir música</string>
+    <string name="b_edit_info">Editar informações</string>
+    <string name="delete_confirm">Excluir %s?</string>
+    <string name="song_info_title">Informações da música</string>
+    <string name="rename_hint_song">Título</string>
+    <string name="rename_hint_artist">Artista</string>
+    <string name="save">SALVAR</string>
+    <string name="song_info_added">Data de adição</string>
+    <string name="song_info_format">Formato</string>
+    <string name="song_info_size">Espaço ocupado</string>
+    <string name="song_info_duration">Duração</string>
+    <string name="song_info_stems">Faixas</string>
+
+    <!--- player side drawer -->
+    <string name="drawer_options_title">Opções</string>
+    <string name="drawer_item_chords">Acordes</string>
+    <string name="chords_dialog_title">Versão dos acordes</string>
+    <string name="chords_basic">Básica</string>
+    <string name="chords_advanced">Avançada</string>
+    <string name="drawer_item_cifrado">Sistema de cifra</string>
+    <string name="cifrado_dialog_title">Sistema de cifra</string>
+    <string name="cifrado_american">Americano (A, B, C, D, E, F, G)</string>
+    <string name="cifrado_latin">Latino (Dó, Ré, Mi, Fá, Sol, Lá, Si)</string>
+    <string name="drawer_switch_transposition">Transpor com o tom</string>
+
+    <!--- accidentals (flat/sharp) -->
+    <string name="drawer_item_notation">Acidentes</string>
+    <string name="notation_dialog_title">Acidentes</string>
+    <string name="notation_flat">Bemol (♭)</string>
+    <string name="notation_sharp">Sustenido (♯)</string>
+
+    <!--- autoplay of the next song -->
+    <string name="drawer_switch_autoplay_next">Tocar a próxima música ao terminar</string>
+    <string name="drawer_switch_nebula">Fundo animado</string>
+    <string name="drawer_switch_nebula_haptics">Batida háptica</string>
+    <string name="b_repeat_description">Modo de repetição</string>
+
+    <!--- sound on downbeat -->
+    <string name="drawer_switch_downbeat">Som no primeiro tempo</string>
+    <string name="drawer_item_downbeat_sound">Som</string>
+    <string name="downbeat_sound_dialog_title">Som do primeiro tempo</string>
+    <string name="downbeat_sound_clap">Palma</string>
+    <string name="downbeat_sound_glass">Vidro</string>
+    <string name="downbeat_sound_metronomebell">Sino de metrônomo</string>
+    <string name="downbeat_sound_snap">Estalo de dedos</string>
+    <string name="downbeat_sound_stick">Baqueta</string>
+    <string name="downbeat_sound_synthbella">Sino synth A</string>
+    <string name="downbeat_sound_synthbellb">Sino synth B</string>
+    <string name="downbeat_sound_synthsquarea">Onda quadrada synth A</string>
+    <string name="downbeat_sound_synthsquareb">Onda quadrada synth B</string>
+    <string name="downbeat_sound_synthsquarec">Onda quadrada synth C</string>
+    <string name="downbeat_sound_tongue">Língua</string>
+    <string name="downbeat_sound_weird">Esquisito</string>
+    <string name="downbeat_sound_whistle">Apito</string>
+
+    <!--- export -->
+    <string name="drawer_item_export">Exportar</string>
+    <string name="drawer_item_reprocess">Reprocessar</string>
+    <string name="import_reprocess_short">Reprocessar</string>
+    <string name="import_reprocess_title">Reprocessar música</string>
+    <string name="reprocess_success">Reprocessamento enviado ao servidor</string>
+    <string name="reprocess_missing_input">O áudio original não está mais no servidor</string>
+    <string name="reprocess_failed">Falha no reprocessamento</string>
+    <string name="reprocess_busy">Esta música já está sendo processada</string>
+    <string name="audio3d_title">Áudio 3D</string>
+    <string name="audio3d_info_title">Áudio 3D</string>
+    <string name="audio3d_info_body">Espacialização binaural experimental. Cada instrumento é posicionado ao redor do ouvinte na vista superior. A convolução HRTF (Head-Related Transfer Function, conjunto de dados KEMAR do MIT) recria a filtragem natural da cabeça, das orelhas e dos ombros para simular direção, elevação e distância. É preciso usar fones de ouvido para o efeito funcionar.</string>
+    <string name="audio3d_legend_drag"><![CDATA[<b>Arrastar</b> · posição]]></string>
+    <string name="audio3d_legend_tap"><![CDATA[<b>Tocar</b> · selecionar]]></string>
+    <string name="audio3d_legend_double"><![CDATA[<b>Toque duplo</b> · onipresente]]></string>
+    <string name="audio3d_legend_long"><![CDATA[<b>Toque longo</b> · silenciar]]></string>
+    <string name="audio3d_legend_reset"><![CDATA[<b>Redefinir</b> · posições iniciais]]></string>
+    <string name="stems_dance_title">Dança das faixas</string>
+    <string name="stems_dance_start">Iniciar</string>
+    <string name="stems_dance_speed">Velocidade</string>
+    <string name="stems_dance_distance">Distância</string>
+    <string name="stems_dance_osc_speed">Velocidade da onda</string>
+    <string name="dl_notif_progress_single">Baixando %1$d%%</string>
+    <string name="dl_notif_progress_multi">Baixando %1$d/%2$d · %3$d%%</string>
+    <string name="dl_notif_ready">Pronta para tocar</string>
+    <string name="drawer_item_reset">Restaurar padrão</string>
+    <string name="drawer_reset_dialog_title">Restaurar</string>
+    <string name="drawer_reset_dialog_body">Todas as configurações desta música (faixas, tom, andamento, metrônomo, acordes e 3D) voltarão ao valor padrão. Continuar?</string>
+    <string name="drawer_reset_dialog_cancel">Cancelar</string>
+    <string name="export_dialog_title">Exportar</string>
+    <string name="export_choice_mixdown">Salvar a mixagem atual</string>
+    <string name="export_choice_separate">Salvar as faixas separadas</string>
+    <string name="export_volume_default">Volumes padrão</string>
+    <string name="export_volume_current">Volumes da mixagem atual</string>
+    <string name="export_format_dialog_title">Formato de saída</string>
+    <string name="export_volume_dialog_title">Origem dos volumes</string>
+    <string name="export_progress_title">Exportando…</string>
+    <string name="export_done">Exportação concluída</string>
+    <string name="export_failed">Falha na exportação</string>
+    <string name="export_save">Salvar</string>
+    <string name="export_stem_button_desc">Exportar faixa</string>
+    <string name="export_back">Voltar</string>
+    <string name="export_include_metronome">Incluir metrônomo na mixagem</string>
+    <string name="export_permission_title">Permissão de armazenamento necessária</string>
+    <string name="export_permission_body">Para salvar as exportações, permita que o Fision acesse todos os arquivos. As configurações do sistema vão abrir: ative o acesso para o Fision e volte.</string>
+    <string name="export_permission_continue">Abrir configurações</string>
+
+    <string name="helpline_icon">Ícone da caixa de alerta</string>
+    <string name="tv_alertDialog_text">Excluir [TÍTULO DA MÚSICA]?</string>
+    <string name="YES">EXCLUIR</string>
+
+    <string name="title_bass">Baixo</string>
+    <string name="title_drums">Bateria</string>
+    <string name="title_other">Outros instrumentos</string>
+    <string name="title_vocals">Voz</string>
+    <string name="title_main_vocals">Voz principal</string>
+    <string name="title_chorus">Coro</string>
+    <string name="title_accompaniment">Instrumental</string>
+    <string name="title_guitar">Guitarra</string>
+    <string name="title_piano">Piano</string>
+    <string name="title_winds">Sopros</string>
+
+    <!--- stem context menu -->
+    <string name="stem_menu_solo">Solo</string>
+    <string name="stem_menu_mute">Mudo</string>
+    <string name="title_kick">Bumbo</string>
+    <string name="title_snare">Caixa</string>
+    <string name="title_hh">Chimbal</string>
+    <string name="title_crash">Crash</string>
+    <string name="title_ride">Condução</string>
+    <string name="title_toms">Tons</string>
+    <string name="title_perc">Percussão</string>
+    <string name="title_drumset">Bateria</string>
+
+    <!--- order by -->
+    <string name="order_by_title">Ordenar por</string>
+    <string name="order_by_date_desc">Data de adição (mais recentes primeiro)</string>
+    <string name="order_by_date_asc">Data de adição (mais antigas primeiro)</string>
+
+    <string name="pan_l">E</string>
+    <string name="pan_r">D</string>
+    <string name="pan_title">Pan</string>
+
+    <!--- metronome -->
+    <string name="tv_metronome_title">Metrônomo dinâmico</string>
+    <string name="tv_metronome_volume">Volume</string>
+    <string name="tv_metronome_speed">Velocidade de reprodução</string>
+
+    <string name="tempo_local_hud_html">Esta seção está a &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">Restaurar andamento original</string>
+    <string name="pitch_restore_desc">Restaurar tom original</string>
+
+    <!--- pitch -->
+    <string name="tv_pitch_title">Transposição</string>
+    <string name="tv_pitch_semitones">semitons</string>
+
+    <!--- settings -->
+    <string name="title_activity_settings">Configurações</string>
+    <string name="settings_toolbar_title">Configurações</string>
+    <string name="gpu_dialog_title_ok">GPU disponível</string>
+    <string name="gpu_dialog_title_missing">GPU indisponível</string>
+    <string name="gpu_dialog_title_unknown">Informações do servidor indisponíveis</string>
+    <string name="gpu_dialog_label_driver">Driver</string>
+    <string name="gpu_dialog_refresh">Atualizar</string>
+    <string name="gpu_dialog_close">Voltar</string>
+    <string name="gpu_dialog_no_gpu_body">O servidor não expõe nenhuma GPU. Os processamentos vão rodar na CPU.</string>
+    <string name="gpu_dialog_no_data">Entre para obter estas informações.</string>
+    <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB livres</string>
+    <string name="gpu_vram_low_body">GPU ocupada. Os processamentos vão esperar VRAM livre.</string>
+    <string name="server_vram_low">Pouca memória de GPU livre no servidor</string>
+    <string name="settings_github_title">Ver no GitHub</string>
+    <string name="settings_donate_title">Apoie o projeto</string>
+    <string name="licenses_title">Licenças</string>
+    <string name="licenses_intro">Componentes de código aberto usados pelo Fision.</string>
+    <string name="license_detail_visit">Visitar o projeto</string>
+    <string name="about_view_licenses">Ver licenças</string>
+    <string name="avatar_studio_title">Escolha seu avatar</string>
+    <string name="avatar_studio_male">Masculino</string>
+    <string name="avatar_studio_female">Feminino</string>
+    <string name="avatar_studio_color_figure">Cor da figura</string>
+    <string name="avatar_studio_color_bg">Cor de fundo</string>
+    <string name="avatar_studio_from_device">Escolher do dispositivo</string>
+    <string name="avatar_studio_apply">Aplicar</string>
+    <string name="avatar_instrument_base">Base</string>
+    <string name="avatar_instrument_vocals">Voz</string>
+    <string name="avatar_instrument_piano">Piano</string>
+    <string name="avatar_instrument_bass">Baixo</string>
+    <string name="avatar_instrument_drums">Bateria</string>
+    <string name="avatar_instrument_trumpet">Trompete</string>
+    <string name="avatar_instrument_guitar">Guitarra</string>
+    <string name="avatar_instrument_winds">Sopros</string>
+    <string name="avatar_instrument_other">Outro</string>
+    <string name="settings_header_local_title">Modo local</string>
+    <string name="settings_header_local_email">Entre para sincronizar com o servidor Fision</string>
+    <string name="settings_section_server">Servidor</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_section_about">Sobre</string>
+    <string name="settings_language_title">Idioma</string>
+    <string name="design_title">Aparência</string>
+    <string name="design_summary">Cor de destaque e cores da música</string>
+    <string name="design_accent_title">Cor de destaque</string>
+    <string name="design_song_colors_title">Usar as cores da música</string>
+    <string name="design_song_colors_summary">O player usa as cores da capa</string>
+    <string name="close">Fechar</string>
+    <string name="performance_title">Desempenho</string>
+    <string name="performance_audio3d_title">Visualização de Áudio 3D</string>
+    <string name="performance_audio3d_scene">Cena 3D (completa)</string>
+    <string name="performance_audio3d_flat">Visualização plana (leve)</string>
+    <string name="settings_language_dialog_title">Escolher idioma</string>
+    <string name="settings_language_system">Idioma do sistema</string>
+    <string name="settings_logout_title">Sair</string>
+
+    <!--- Fision server -->
+    <string name="about_title">Sobre o Fision</string>
+    <string name="server_auth_unavailable">Biometria indisponível neste dispositivo</string>
+    <string name="server_status_online">Servidor on-line</string>
+    <string name="server_status_offline">Servidor off-line</string>
+    <string name="server_test_title">Testar conexão</string>
+    <string name="server_test_summary">Ping manual ao servidor configurado para verificar a conexão</string>
+    <string name="server_gpu_title">Status da GPU</string>
+    <string name="server_version_title">Versão do servidor</string>
+    <string name="server_gpu_unknown">Entre para ler as informações da GPU</string>
+    <string name="server_gpu_ok_short">GPU disponível</string>
+    <string name="server_gpu_missing">GPU indisponível</string>
+    <string name="server_test_running">Pingando o servidor…</string>
+    <string name="server_test_ok">Servidor acessível</string>
+    <string name="server_test_fail">Sem resposta</string>
+    <string name="server_test_no_url">Defina a URL primeiro</string>
+    <string name="server_test_timeout">Sem resposta do servidor</string>
+    <string name="dialog_close">Fechar</string>
+
+    <!--- login / account -->
+    <string name="login_title">Entrar</string>
+    <string name="login_subtitle">Conecte-se ao seu servidor Fision</string>
+    <string name="login_hint_url">URL do servidor</string>
+    <string name="login_hint_user">Nome de usuário</string>
+    <string name="login_hint_pass">Senha</string>
+    <string name="login_submit">Entrar</string>
+    <string name="login_local_mode">Continuar no modo local</string>
+    <string name="login_status_unauthenticated">Sem sessão iniciada</string>
+    <string name="login_err_empty_fields">Preencha todos os campos</string>
+    <string name="login_err_bad_credentials">Usuário ou senha incorretos</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="one">Muitas tentativas. Tente de novo em %d min.</item>
+        <item quantity="many">Muitas tentativas. Tente de novo em %d min.</item>
+        <item quantity="other">Muitas tentativas. Tente de novo em %d min.</item>
+    </plurals>
+    <string name="login_err_network">Sem resposta do servidor</string>
+    <string name="login_err_bad_url">URL do servidor inválida</string>
+    <string name="login_err_server">Erro do servidor</string>
+    <string name="login_session_expired">Sessão expirada, entre novamente</string>
+    <string name="account_url_line">Servidor: %1$s</string>
+    <string name="account_change_password">Alterar senha</string>
+    <string name="local_mode_import_blocked">Entre para processar novas músicas no servidor</string>
+    <string name="change_password_title">Alterar senha</string>
+    <string name="change_password_hint_old">Senha atual</string>
+    <string name="change_password_hint_new">Nova senha</string>
+    <string name="change_password_hint_confirm">Confirmar nova senha</string>
+    <string name="change_password_submit">Atualizar</string>
+    <string name="change_password_ok">Senha atualizada</string>
+    <string name="change_password_err_bad_old">A senha atual está incorreta</string>
+    <string name="change_password_err_bad_new">A nova senha não é válida</string>
+    <string name="change_password_err_mismatch">As senhas não coincidem</string>
+    <string name="change_password_biometric_title">Confirme sua identidade</string>
+    <string name="change_password_biometric_sub">Biometria ou PIN do dispositivo</string>
+    <string name="account_change_photo">Alterar foto</string>
+    <string name="account_remove_photo">Remover foto</string>
+    <string name="crop_hint">Mova e use pinça para ajustar</string>
+    <string name="crop_save">Salvar</string>
+    <string name="crop_read_fail">Não foi possível abrir a imagem</string>
+    <string name="crop_save_fail">Não foi possível salvar a imagem</string>
+    <string name="crop_upload_ok">Foto atualizada</string>
+    <string name="crop_err_too_large">Imagem muito grande (máx. 2 MB)</string>
+    <string name="crop_err_bad_format">Formato de imagem não suportado</string>
+
+    <!--- import / add song -->
+    <string name="import_title">Adicionar música</string>
+    <string name="import_no_file">Nenhum arquivo escolhido</string>
+    <string name="import_section_separation">Separação</string>
+    <string name="import_personalized">Personalizada</string>
+    <string name="import_vocals_always">Voz</string>
+    <string name="import_stem_guitar">Guitarra</string>
+    <string name="import_stem_bass">Baixo</string>
+    <string name="import_stem_drums">Percussão</string>
+    <string name="import_stem_piano">Piano</string>
+    <string name="import_stem_brass">Sopros / Metais</string>
+    <string name="import_send_short">Enviar</string>
+    <string name="import_mode_4stem">4 faixas</string>
+    <string name="import_mode_2stem">2 faixas</string>
+    <string name="import_change_song">Escolher outra música</string>
+    <string name="import_tile_vocals_single">Voz</string>
+    <string name="import_tile_vocals_split">Principal + coro</string>
+    <string name="import_tile_drums_full">Geral</string>
+    <string name="import_tile_drums_split">Bateria</string>
+    <string name="import_no_server">Defina primeiro a URL do servidor nas configurações</string>
+    <string name="import_uploading">Enviando…</string>
+    <string name="import_upload_failed">Falha no envio</string>
+    <string name="import_err_unsupported_format">Formato não suportado. Use MP3, WAV, FLAC, M4A, AAC, OGG, OPUS, AIFF ou WMA.</string>
+    <string name="import_err_too_large">Arquivo muito grande (máx. 200 MB)</string>
+    <string name="import_err_internal">Erro interno do app. Ele foi registrado.</string>
+    <string name="import_gpu_warning">Nenhuma GPU detectada no servidor. O processamento vai rodar na CPU (lento).</string>
+    <string name="import_loading_server_info">Lendo informações do servidor…</string>
+
+    <!--- cloud item / delete -->
+    <string name="cloud_state_queued">Na fila…</string>
+    <string name="cloud_state_queued_pos">Na fila (nº %1$d)…</string>
+    <string name="cloud_state_running">Processando…</string>
+    <string name="cloud_state_waiting_gpu">Aguardando a GPU…</string>
+    <string name="gpu_timeout_body">A GPU continua ocupada depois de 10 minutos. Você pode tentar de novo ou cancelar.</string>
+    <string name="job_timeout_body">O processamento demorou demais e foi cancelado. Você pode tentar de novo ou cancelar.</string>
+    <string name="lyrics_timeout">O processamento demorou demais e foi cancelado.</string>
+    <string name="gpu_timeout_retry">Tentar de novo</string>
+    <string name="gpu_timeout_cancel">Cancelar</string>
+    <string name="cloud_state_downloading">Baixando %1$d%%</string>
+    <string name="cloud_state_cloud_only">Na nuvem</string>
+    <string name="cloud_state_locked">Entre para usar</string>
+    <string name="cloud_state_error">Erro</string>
+    <string name="cloud_delete_cloud">Excluir da nuvem</string>
+    <string name="cloud_delete_cloud_confirm">Excluir esta música também do servidor?</string>
+    <string name="cloud_cancel_queue">Cancelar (fila)</string>
+    <string name="cloud_cancel_queue_confirm">Remover esta música da fila?</string>
+
+    <!-- Lyrics feature -->
+    <string name="lyrics_button_description">Mostrar letra</string>
+    <string name="lyrics_title_process">Processar letra</string>
+    <string name="lyrics_card_title">Idioma da letra</string>
+    <string name="lyrics_card_subtitle_auto">Automático</string>
+    <string name="lyrics_confirm">Confirmar</string>
+    <string name="lyrics_cancel">Cancelar</string>
+    <string name="lyrics_processing">Processando a letra</string>
+    <string name="lyrics_error">Não foi possível processar a letra</string>
+    <string name="lyrics_no_vocals">A voz ainda não está pronta</string>
+    <string name="lyrics_reprocess">Reprocessar</string>
+    <string name="lyrics_options_title">Opções</string>
+    <string name="lyrics_karaoke_mode">Modo karaokê</string>
+    <string name="lyrics_karaoke_unavailable">Reprocesse para ativar</string>
+    <string name="car_karaoke_enable">Modo karaokê</string>
+    <string name="car_karaoke_disable">Desativar karaokê</string>
+    <string name="car_backing_mute">Silenciar coro</string>
+    <string name="car_backing_unmute">Reativar coro</string>
+    <string name="lyrics_cancel_dialog_title">Cancelar o processamento da letra?</string>
+    <string name="lyrics_dialog_yes">Confirmar</string>
+    <string name="lyrics_dialog_no">Não</string>
+    <string name="lyrics_lang_auto">Automático</string>
+    <string name="lyrics_lang_en">Inglês</string>
+    <string name="lyrics_lang_es">Espanhol</string>
+    <string name="lyrics_lang_pt">Português</string>
+    <string name="lyrics_lang_ja">Japonês</string>
+    <string name="lyrics_lang_ko">Coreano</string>
+    <string name="lyrics_lang_hi">Hindi</string>
+    <string name="lyrics_lang_fr">Francês</string>
+    <string name="lyrics_lang_zh">Chinês</string>
+    <string name="lyrics_lang_de">Alemão</string>
+    <string name="lyrics_lang_it">Italiano</string>
+    <string name="lyrics_lang_ar">Árabe</string>
+    <string name="lyrics_lang_ru">Russo</string>
+    <string name="lyrics_lang_tr">Turco</string>
+    <string name="lyrics_lang_id">Indonésio</string>
+    <string name="lyrics_lang_pa">Punjabi</string>
+    <string name="lyrics_lang_sv">Sueco</string>
+    <string name="lyrics_lang_nl">Holandês</string>
+    <string name="lyrics_lang_vi">Vietnamita</string>
+    <string name="lyrics_lang_tl">Tagalo</string>
+    <string name="lyrics_lang_el">Grego</string>
+    <string name="lyrics_lang_th">Tailandês</string>
+    <string name="lyrics_lang_fa">Persa</string>
+    <string name="lyrics_lang_he">Hebraico</string>
+    <string name="lyrics_lang_ta">Tâmil</string>
+    <string name="lyrics_lang_ca">Catalão</string>
+    <string name="lyrics_lang_uk">Ucraniano</string>
+    <string name="lyrics_lang_pl">Polonês</string>
+
+    <!-- Chord diagrams -->
+    <string name="chord_diagram_piano">Piano</string>
+    <string name="chord_diagram_guitar">Violão</string>
+    <string name="chord_diagram_ukulele">Ukulele</string>
+    <string name="chord_diagram_zone_open">Aberto</string>
+    <string name="chord_diagram_zone_auto">Auto</string>
+    <string name="chord_diagram_bass">Baixo: %1$s</string>
+    <string name="chord_mode_diagrams">Diagramas de acordes</string>
+    <string name="chord_mode_carousel">Mostrar/ocultar acordes</string>
+
+    <!-- Playlists -->
+    <string name="tab_songs">Músicas</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="playlist_new">Nova playlist</string>
+    <plurals name="playlist_count">
+        <item quantity="one">%d playlist</item>
+        <item quantity="many">%d playlists</item>
+        <item quantity="other">%d playlists</item>
+    </plurals>
+    <plurals name="playlist_song_count">
+        <item quantity="one">%d música</item>
+        <item quantity="many">%d músicas</item>
+        <item quantity="other">%d músicas</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%d resultado</item>
+        <item quantity="many">%d resultados</item>
+        <item quantity="other">%d resultados</item>
+    </plurals>
+    <plurals name="playlist_selected_count">
+        <item quantity="one">%d selecionada</item>
+        <item quantity="many">%d selecionadas</item>
+        <item quantity="other">%d selecionadas</item>
+    </plurals>
+    <string name="playlists_empty">Crie sua primeira playlist</string>
+    <string name="songs_empty">Adicione sua primeira música</string>
+    <string name="playlists_need_login">Entre para usar playlists</string>
+    <string name="playlist_reorder">Reordenar</string>
+    <string name="playlist_remove_song">Remover da playlist</string>
+    <string name="playlist_edit_title">Editar playlist</string>
+    <string name="playlist_title_hint">Título</string>
+    <string name="playlist_add_songs">Adicionar músicas</string>
+    <string name="playlist_save">Salvar</string>
+    <string name="playlist_done">Concluído</string>
+    <string name="playlist_cancel">Cancelar</string>
+    <string name="playlist_back">Voltar</string>
+    <string name="playlist_search_hint">Buscar músicas</string>
+    <string name="playlist_change_cover">Alterar capa</string>
+    <string name="playlist_remove_cover">Remover capa</string>
+    <string name="playlist_cover_pick">Escolher do dispositivo</string>
+    <string name="playlist_cover_mosaic">Mosaico de músicas</string>
+    <string name="playlist_delete">Excluir playlist</string>
+    <string name="playlist_options">Opções da playlist</string>
+    <string name="playlist_delete_confirm">Excluir %s?</string>
+    <string name="playlist_delete_action">Excluir</string>
+    <string name="playlist_deleted">Playlist excluída</string>
+    <string name="playlist_no_songs_in_cloud">Ainda não há músicas na nuvem</string>
+    <string name="playlist_downloading">Baixando a música…</string>
+    <string name="playlist_empty_songs">Esta playlist não tem músicas</string>
+    <string name="playlist_err_title_empty">Escreva um título</string>
+    <string name="playlist_err_network">Não foi possível acessar o servidor</string>
+    <string name="playlist_err_gone">Esta playlist não existe mais</string>
+    <string name="playlist_err_cover_too_large">Imagem muito grande</string>
+    <string name="playlist_err_cover_format">Formato não suportado</string>
+    <string name="playlist_err_title_length">O título deve ter de 1 a %d caracteres</string>
+    <string name="playlist_err_song_not_found">Uma música não está na sua biblioteca na nuvem</string>
+    <string name="playlist_err_song_duplicate">Uma música está repetida na playlist</string>
+    <string name="playlist_err_song_limit">Máximo de %d músicas por playlist</string>
+    <string name="playlist_err_playlist_limit">Máximo de %d playlists</string>
+    <string name="playlist_err_generic">Erro do servidor (%d)</string>
+    <string name="crop_use">Usar</string>
+
+</resources>

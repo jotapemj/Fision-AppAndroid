@@ -1,0 +1,465 @@
+<resources>
+    <string name="tv_title">Песни</string>
+    <string name="tv_title_search">Поиск песни</string>
+    <string name="te_find">Поиск в библиотеке</string>
+    <string name="b_add">Добавить</string>
+    <string name="no_results">Ничего не найдено</string>
+    <string name="tv_SongsCount">25 песен</string>
+
+    <string name="tvTitle">Название песни</string>
+    <string name="tvSubtitle">Подробнее</string>
+
+    <string name="tv_SongTitle">Название песни</string>
+
+    <string name="b_play_description">Воспроизвести</string>
+    <string name="b_next_description">Следующая песня</string>
+    <string name="b_previous_description">Предыдущая песня</string>
+    <string name="b_seconds_back_description">Назад на 5 секунд</string>
+    <string name="b_seconds_forward_description">Вперёд на 5 секунд</string>
+    <string name="b_settings_description">Настройки</string>
+
+    <string name="b_delete">Удалить песню</string>
+    <string name="b_edit_info">Изменить информацию</string>
+    <string name="delete_confirm">Удалить %s?</string>
+    <string name="song_info_title">Информация о песне</string>
+    <string name="rename_hint_song">Название</string>
+    <string name="rename_hint_artist">Исполнитель</string>
+    <string name="save">СОХРАНИТЬ</string>
+    <string name="song_info_added">Дата добавления</string>
+    <string name="song_info_format">Формат</string>
+    <string name="song_info_size">Занимает места</string>
+    <string name="song_info_duration">Длительность</string>
+    <string name="song_info_stems">Дорожки</string>
+
+    <!--- player side drawer -->
+    <string name="drawer_options_title">Параметры</string>
+    <string name="drawer_item_chords">Аккорды</string>
+    <string name="chords_dialog_title">Версия аккордов</string>
+    <string name="chords_basic">Простая</string>
+    <string name="chords_advanced">Расширенная</string>
+    <string name="drawer_item_cifrado">Система обозначений</string>
+    <string name="cifrado_dialog_title">Система обозначений</string>
+    <string name="cifrado_american">Буквенная (A, B, C, D, E, F, G)</string>
+    <string name="cifrado_latin">Слоговая (До, Ре, Ми, Фа, Соль, Ля, Си)</string>
+    <string name="drawer_switch_transposition">Транспонировать с тональностью</string>
+
+    <!--- accidentals (flat/sharp) -->
+    <string name="drawer_item_notation">Знаки альтерации</string>
+    <string name="notation_dialog_title">Знаки альтерации</string>
+    <string name="notation_flat">Бемоль (♭)</string>
+    <string name="notation_sharp">Диез (♯)</string>
+
+    <!--- autoplay of the next song -->
+    <string name="drawer_switch_autoplay_next">Включать следующую песню по окончании</string>
+    <string name="drawer_switch_nebula">Анимированный фон</string>
+    <string name="drawer_switch_nebula_haptics">Тактильный ритм</string>
+    <string name="b_repeat_description">Режим повтора</string>
+
+    <!--- sound on downbeat -->
+    <string name="drawer_switch_downbeat">Звук на сильную долю</string>
+    <string name="drawer_item_downbeat_sound">Звук</string>
+    <string name="downbeat_sound_dialog_title">Звук сильной доли</string>
+    <string name="downbeat_sound_clap">Хлопок</string>
+    <string name="downbeat_sound_glass">Стекло</string>
+    <string name="downbeat_sound_metronomebell">Звонок метронома</string>
+    <string name="downbeat_sound_snap">Щелчок пальцами</string>
+    <string name="downbeat_sound_stick">Палочка</string>
+    <string name="downbeat_sound_synthbella">Синт-колокол A</string>
+    <string name="downbeat_sound_synthbellb">Синт-колокол B</string>
+    <string name="downbeat_sound_synthsquarea">Синт-меандр A</string>
+    <string name="downbeat_sound_synthsquareb">Синт-меандр B</string>
+    <string name="downbeat_sound_synthsquarec">Синт-меандр C</string>
+    <string name="downbeat_sound_tongue">Цоканье</string>
+    <string name="downbeat_sound_weird">Странный</string>
+    <string name="downbeat_sound_whistle">Свисток</string>
+
+    <!--- export -->
+    <string name="drawer_item_export">Экспорт</string>
+    <string name="drawer_item_reprocess">Обработать заново</string>
+    <string name="import_reprocess_short">Обработать заново</string>
+    <string name="import_reprocess_title">Повторная обработка песни</string>
+    <string name="reprocess_success">Повторная обработка отправлена на сервер</string>
+    <string name="reprocess_missing_input">Исходного аудио больше нет на сервере</string>
+    <string name="reprocess_failed">Не удалось обработать заново</string>
+    <string name="reprocess_busy">Эта песня уже обрабатывается</string>
+    <string name="audio3d_title">3D-звук</string>
+    <string name="audio3d_info_title">3D-звук</string>
+    <string name="audio3d_info_body">Экспериментальная бинауральная пространственная обработка. Каждый инструмент размещается вокруг слушателя на виде сверху. Свёртка HRTF (Head-Related Transfer Function, набор данных KEMAR из MIT) воссоздаёт естественную фильтрацию головой, ушами и плечами, имитируя направление, высоту и расстояние. Для эффекта нужны наушники.</string>
+    <string name="audio3d_legend_drag"><![CDATA[<b>Перетащить</b> · позиция]]></string>
+    <string name="audio3d_legend_tap"><![CDATA[<b>Нажать</b> · выбрать]]></string>
+    <string name="audio3d_legend_double"><![CDATA[<b>Двойное нажатие</b> · вездесущий]]></string>
+    <string name="audio3d_legend_long"><![CDATA[<b>Долгое нажатие</b> · без звука]]></string>
+    <string name="audio3d_legend_reset"><![CDATA[<b>Сброс</b> · исходные позиции]]></string>
+    <string name="stems_dance_title">Танец дорожек</string>
+    <string name="stems_dance_start">Старт</string>
+    <string name="stems_dance_speed">Скорость</string>
+    <string name="stems_dance_distance">Расстояние</string>
+    <string name="stems_dance_osc_speed">Скорость волны</string>
+    <string name="dl_notif_progress_single">Загрузка %1$d%%</string>
+    <string name="dl_notif_progress_multi">Загрузка %1$d/%2$d · %3$d%%</string>
+    <string name="dl_notif_ready">Готово к воспроизведению</string>
+    <string name="drawer_item_reset">Сбросить к умолчаниям</string>
+    <string name="drawer_reset_dialog_title">Сброс</string>
+    <string name="drawer_reset_dialog_body">Все настройки этой песни (дорожки, тональность, темп, метроном, аккорды и 3D) вернутся к значениям по умолчанию. Продолжить?</string>
+    <string name="drawer_reset_dialog_cancel">Отмена</string>
+    <string name="export_dialog_title">Экспорт</string>
+    <string name="export_choice_mixdown">Сохранить текущий микс</string>
+    <string name="export_choice_separate">Сохранить дорожки отдельно</string>
+    <string name="export_volume_default">Громкость по умолчанию</string>
+    <string name="export_volume_current">Громкость текущего микса</string>
+    <string name="export_format_dialog_title">Формат файла</string>
+    <string name="export_volume_dialog_title">Источник громкости</string>
+    <string name="export_progress_title">Экспорт…</string>
+    <string name="export_done">Экспорт завершён</string>
+    <string name="export_failed">Ошибка экспорта</string>
+    <string name="export_save">Сохранить</string>
+    <string name="export_stem_button_desc">Экспортировать дорожку</string>
+    <string name="export_back">Назад</string>
+    <string name="export_include_metronome">Добавить метроном в микс</string>
+    <string name="export_permission_title">Нужен доступ к хранилищу</string>
+    <string name="export_permission_body">Чтобы сохранять экспорт, разрешите Fision доступ ко всем файлам. Откроются системные настройки: включите доступ для Fision и вернитесь.</string>
+    <string name="export_permission_continue">Открыть настройки</string>
+
+    <string name="helpline_icon">Значок предупреждения</string>
+    <string name="tv_alertDialog_text">Удалить [НАЗВАНИЕ ПЕСНИ]?</string>
+    <string name="YES">УДАЛИТЬ</string>
+
+    <string name="title_bass">Бас</string>
+    <string name="title_drums">Ударные</string>
+    <string name="title_other">Другие инструменты</string>
+    <string name="title_vocals">Вокал</string>
+    <string name="title_main_vocals">Основной вокал</string>
+    <string name="title_chorus">Бэк-вокал</string>
+    <string name="title_accompaniment">Инструментал</string>
+    <string name="title_guitar">Гитара</string>
+    <string name="title_piano">Фортепиано</string>
+    <string name="title_winds">Духовые</string>
+
+    <!--- stem context menu -->
+    <string name="stem_menu_solo">Соло</string>
+    <string name="stem_menu_mute">Без звука</string>
+    <string name="title_kick">Бочка</string>
+    <string name="title_snare">Малый барабан</string>
+    <string name="title_hh">Хай-хэт</string>
+    <string name="title_crash">Крэш</string>
+    <string name="title_ride">Райд</string>
+    <string name="title_toms">Томы</string>
+    <string name="title_perc">Перкуссия</string>
+    <string name="title_drumset">Ударная установка</string>
+
+    <!--- order by -->
+    <string name="order_by_title">Сортировка</string>
+    <string name="order_by_date_desc">Дата добавления (сначала новые)</string>
+    <string name="order_by_date_asc">Дата добавления (сначала старые)</string>
+
+    <string name="pan_l">Л</string>
+    <string name="pan_r">П</string>
+    <string name="pan_title">Панорама</string>
+
+    <!--- metronome -->
+    <string name="tv_metronome_title">Динамический метроном</string>
+    <string name="tv_metronome_volume">Громкость</string>
+    <string name="tv_metronome_speed">Скорость воспроизведения</string>
+
+    <string name="tempo_local_hud_html">Этот фрагмент идёт в &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">Вернуть исходный темп</string>
+    <string name="pitch_restore_desc">Вернуть исходную тональность</string>
+
+    <!--- pitch -->
+    <string name="tv_pitch_title">Транспонирование</string>
+    <string name="tv_pitch_semitones">полутонов</string>
+
+    <!--- settings -->
+    <string name="title_activity_settings">Настройки</string>
+    <string name="settings_toolbar_title">Настройки</string>
+    <string name="gpu_dialog_title_ok">GPU доступен</string>
+    <string name="gpu_dialog_title_missing">GPU недоступен</string>
+    <string name="gpu_dialog_title_unknown">Данные сервера недоступны</string>
+    <string name="gpu_dialog_label_driver">Драйвер</string>
+    <string name="gpu_dialog_refresh">Обновить</string>
+    <string name="gpu_dialog_close">Назад</string>
+    <string name="gpu_dialog_no_gpu_body">Сервер не предоставляет GPU. Задачи будут выполняться на CPU.</string>
+    <string name="gpu_dialog_no_data">Войдите, чтобы получить эти данные.</string>
+    <string name="vram_free_of_total_fmt">Свободно %1$.1f / %2$d ГБ</string>
+    <string name="gpu_vram_low_body">GPU занят. Задачи будут ждать свободную VRAM.</string>
+    <string name="server_vram_low">На сервере мало свободной памяти GPU</string>
+    <string name="settings_github_title">Открыть на GitHub</string>
+    <string name="settings_donate_title">Поддержать проект</string>
+    <string name="licenses_title">Лицензии</string>
+    <string name="licenses_intro">Компоненты с открытым исходным кодом, которые использует Fision.</string>
+    <string name="license_detail_visit">Открыть проект</string>
+    <string name="about_view_licenses">Лицензии</string>
+    <string name="avatar_studio_title">Выберите аватар</string>
+    <string name="avatar_studio_male">Мужской</string>
+    <string name="avatar_studio_female">Женский</string>
+    <string name="avatar_studio_color_figure">Цвет фигуры</string>
+    <string name="avatar_studio_color_bg">Цвет фона</string>
+    <string name="avatar_studio_from_device">Выбрать на устройстве</string>
+    <string name="avatar_studio_apply">Применить</string>
+    <string name="avatar_instrument_base">Основа</string>
+    <string name="avatar_instrument_vocals">Вокал</string>
+    <string name="avatar_instrument_piano">Фортепиано</string>
+    <string name="avatar_instrument_bass">Бас</string>
+    <string name="avatar_instrument_drums">Ударные</string>
+    <string name="avatar_instrument_trumpet">Труба</string>
+    <string name="avatar_instrument_guitar">Гитара</string>
+    <string name="avatar_instrument_winds">Духовые</string>
+    <string name="avatar_instrument_other">Другое</string>
+    <string name="settings_header_local_title">Локальный режим</string>
+    <string name="settings_header_local_email">Войдите для синхронизации с сервером Fision</string>
+    <string name="settings_section_server">Сервер</string>
+    <string name="settings_section_app">Приложение</string>
+    <string name="settings_section_about">О приложении</string>
+    <string name="settings_language_title">Язык</string>
+    <string name="design_title">Оформление</string>
+    <string name="design_summary">Акцентный цвет и цвета песни</string>
+    <string name="design_accent_title">Акцентный цвет</string>
+    <string name="design_song_colors_title">Цвета песни</string>
+    <string name="design_song_colors_summary">Плеер берёт цвета из обложки</string>
+    <string name="close">Закрыть</string>
+    <string name="performance_title">Производительность</string>
+    <string name="performance_audio3d_title">Вид 3D-звука</string>
+    <string name="performance_audio3d_scene">3D-сцена (полная)</string>
+    <string name="performance_audio3d_flat">Плоский вид (лёгкий)</string>
+    <string name="settings_language_dialog_title">Выберите язык</string>
+    <string name="settings_language_system">Язык системы</string>
+    <string name="settings_logout_title">Выйти</string>
+
+    <!--- Fision server -->
+    <string name="about_title">О Fision</string>
+    <string name="server_auth_unavailable">Биометрия недоступна на этом устройстве</string>
+    <string name="server_status_online">Сервер в сети</string>
+    <string name="server_status_offline">Сервер не в сети</string>
+    <string name="server_test_title">Проверить соединение</string>
+    <string name="server_test_summary">Ручной пинг настроенного сервера для проверки соединения</string>
+    <string name="server_gpu_title">Состояние GPU</string>
+    <string name="server_version_title">Версия сервера</string>
+    <string name="server_gpu_unknown">Войдите, чтобы увидеть данные GPU</string>
+    <string name="server_gpu_ok_short">GPU доступен</string>
+    <string name="server_gpu_missing">GPU недоступен</string>
+    <string name="server_test_running">Пинг сервера…</string>
+    <string name="server_test_ok">Сервер доступен</string>
+    <string name="server_test_fail">Нет ответа</string>
+    <string name="server_test_no_url">Сначала укажите URL</string>
+    <string name="server_test_timeout">Сервер не отвечает</string>
+    <string name="dialog_close">Закрыть</string>
+
+    <!--- login / account -->
+    <string name="login_title">Вход</string>
+    <string name="login_subtitle">Подключитесь к своему серверу Fision</string>
+    <string name="login_hint_url">URL сервера</string>
+    <string name="login_hint_user">Имя пользователя</string>
+    <string name="login_hint_pass">Пароль</string>
+    <string name="login_submit">Войти</string>
+    <string name="login_local_mode">Продолжить в локальном режиме</string>
+    <string name="login_status_unauthenticated">Вход не выполнен</string>
+    <string name="login_err_empty_fields">Заполните все поля</string>
+    <string name="login_err_bad_credentials">Неверное имя пользователя или пароль</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="one">Слишком много попыток. Повторите через %d мин.</item>
+        <item quantity="few">Слишком много попыток. Повторите через %d мин.</item>
+        <item quantity="many">Слишком много попыток. Повторите через %d мин.</item>
+        <item quantity="other">Слишком много попыток. Повторите через %d мин.</item>
+    </plurals>
+    <string name="login_err_network">Сервер не отвечает</string>
+    <string name="login_err_bad_url">Неверный URL сервера</string>
+    <string name="login_err_server">Ошибка сервера</string>
+    <string name="login_session_expired">Сеанс истёк, войдите снова</string>
+    <string name="account_url_line">Сервер: %1$s</string>
+    <string name="account_change_password">Сменить пароль</string>
+    <string name="local_mode_import_blocked">Войдите, чтобы обрабатывать новые песни на сервере</string>
+    <string name="change_password_title">Смена пароля</string>
+    <string name="change_password_hint_old">Текущий пароль</string>
+    <string name="change_password_hint_new">Новый пароль</string>
+    <string name="change_password_hint_confirm">Повторите новый пароль</string>
+    <string name="change_password_submit">Обновить</string>
+    <string name="change_password_ok">Пароль обновлён</string>
+    <string name="change_password_err_bad_old">Неверный текущий пароль</string>
+    <string name="change_password_err_bad_new">Новый пароль не подходит</string>
+    <string name="change_password_err_mismatch">Пароли не совпадают</string>
+    <string name="change_password_biometric_title">Подтвердите личность</string>
+    <string name="change_password_biometric_sub">Биометрия или PIN-код устройства</string>
+    <string name="account_change_photo">Сменить фото</string>
+    <string name="account_remove_photo">Удалить фото</string>
+    <string name="crop_hint">Перемещайте и масштабируйте</string>
+    <string name="crop_save">Сохранить</string>
+    <string name="crop_read_fail">Не удалось открыть изображение</string>
+    <string name="crop_save_fail">Не удалось сохранить изображение</string>
+    <string name="crop_upload_ok">Фото обновлено</string>
+    <string name="crop_err_too_large">Изображение слишком большое (макс. 2 МБ)</string>
+    <string name="crop_err_bad_format">Формат изображения не поддерживается</string>
+
+    <!--- import / add song -->
+    <string name="import_title">Добавить песню</string>
+    <string name="import_no_file">Файл не выбран</string>
+    <string name="import_section_separation">Разделение</string>
+    <string name="import_personalized">Своё</string>
+    <string name="import_vocals_always">Вокал</string>
+    <string name="import_stem_guitar">Гитара</string>
+    <string name="import_stem_bass">Бас</string>
+    <string name="import_stem_drums">Ударные</string>
+    <string name="import_stem_piano">Фортепиано</string>
+    <string name="import_stem_brass">Духовые / медные</string>
+    <string name="import_send_short">Загрузить</string>
+    <string name="import_mode_4stem">4 дорожки</string>
+    <string name="import_mode_2stem">2 дорожки</string>
+    <string name="import_change_song">Выбрать другую песню</string>
+    <string name="import_tile_vocals_single">Вокал</string>
+    <string name="import_tile_vocals_split">Соло + бэк</string>
+    <string name="import_tile_drums_full">Общие</string>
+    <string name="import_tile_drums_split">Установка</string>
+    <string name="import_no_server">Сначала укажите URL сервера в настройках</string>
+    <string name="import_uploading">Загрузка…</string>
+    <string name="import_upload_failed">Ошибка загрузки</string>
+    <string name="import_err_unsupported_format">Формат не поддерживается. Используйте MP3, WAV, FLAC, M4A, AAC, OGG, OPUS, AIFF или WMA.</string>
+    <string name="import_err_too_large">Файл слишком большой (макс. 200 МБ)</string>
+    <string name="import_err_internal">Внутренняя ошибка приложения. Она записана в журнал.</string>
+    <string name="import_gpu_warning">На сервере не найден GPU. Обработка пойдёт на CPU (медленно).</string>
+    <string name="import_loading_server_info">Чтение данных сервера…</string>
+
+    <!--- cloud item / delete -->
+    <string name="cloud_state_queued">В очереди…</string>
+    <string name="cloud_state_queued_pos">В очереди (№%1$d)…</string>
+    <string name="cloud_state_running">Обработка…</string>
+    <string name="cloud_state_waiting_gpu">Ожидание GPU…</string>
+    <string name="gpu_timeout_body">GPU всё ещё занят спустя 10 минут. Можно повторить или отменить.</string>
+    <string name="job_timeout_body">Обработка заняла слишком много времени и была отменена. Можно повторить или отменить.</string>
+    <string name="lyrics_timeout">Обработка заняла слишком много времени и была отменена.</string>
+    <string name="gpu_timeout_retry">Повторить</string>
+    <string name="gpu_timeout_cancel">Отмена</string>
+    <string name="cloud_state_downloading">Загрузка %1$d%%</string>
+    <string name="cloud_state_cloud_only">В облаке</string>
+    <string name="cloud_state_locked">Войдите, чтобы слушать</string>
+    <string name="cloud_state_error">Ошибка</string>
+    <string name="cloud_delete_cloud">Удалить из облака</string>
+    <string name="cloud_delete_cloud_confirm">Удалить эту песню и с сервера?</string>
+    <string name="cloud_cancel_queue">Отменить (очередь)</string>
+    <string name="cloud_cancel_queue_confirm">Убрать эту песню из очереди?</string>
+
+    <!-- Lyrics feature -->
+    <string name="lyrics_button_description">Показать текст</string>
+    <string name="lyrics_title_process">Распознать текст</string>
+    <string name="lyrics_card_title">Язык текста</string>
+    <string name="lyrics_card_subtitle_auto">Авто</string>
+    <string name="lyrics_confirm">Подтвердить</string>
+    <string name="lyrics_cancel">Отмена</string>
+    <string name="lyrics_processing">Распознавание текста</string>
+    <string name="lyrics_error">Не удалось распознать текст</string>
+    <string name="lyrics_no_vocals">Вокал ещё не готов</string>
+    <string name="lyrics_reprocess">Распознать заново</string>
+    <string name="lyrics_options_title">Параметры</string>
+    <string name="lyrics_karaoke_mode">Режим караоке</string>
+    <string name="lyrics_karaoke_unavailable">Распознайте заново, чтобы включить</string>
+    <string name="car_karaoke_enable">Режим караоке</string>
+    <string name="car_karaoke_disable">Выключить караоке</string>
+    <string name="car_backing_mute">Убрать бэк-вокал</string>
+    <string name="car_backing_unmute">Вернуть бэк-вокал</string>
+    <string name="lyrics_cancel_dialog_title">Отменить распознавание текста?</string>
+    <string name="lyrics_dialog_yes">Подтвердить</string>
+    <string name="lyrics_dialog_no">Нет</string>
+    <string name="lyrics_lang_auto">Авто</string>
+    <string name="lyrics_lang_en">Английский</string>
+    <string name="lyrics_lang_es">Испанский</string>
+    <string name="lyrics_lang_pt">Португальский</string>
+    <string name="lyrics_lang_ja">Японский</string>
+    <string name="lyrics_lang_ko">Корейский</string>
+    <string name="lyrics_lang_hi">Хинди</string>
+    <string name="lyrics_lang_fr">Французский</string>
+    <string name="lyrics_lang_zh">Китайский</string>
+    <string name="lyrics_lang_de">Немецкий</string>
+    <string name="lyrics_lang_it">Итальянский</string>
+    <string name="lyrics_lang_ar">Арабский</string>
+    <string name="lyrics_lang_ru">Русский</string>
+    <string name="lyrics_lang_tr">Турецкий</string>
+    <string name="lyrics_lang_id">Индонезийский</string>
+    <string name="lyrics_lang_pa">Панджаби</string>
+    <string name="lyrics_lang_sv">Шведский</string>
+    <string name="lyrics_lang_nl">Нидерландский</string>
+    <string name="lyrics_lang_vi">Вьетнамский</string>
+    <string name="lyrics_lang_tl">Тагальский</string>
+    <string name="lyrics_lang_el">Греческий</string>
+    <string name="lyrics_lang_th">Тайский</string>
+    <string name="lyrics_lang_fa">Персидский</string>
+    <string name="lyrics_lang_he">Иврит</string>
+    <string name="lyrics_lang_ta">Тамильский</string>
+    <string name="lyrics_lang_ca">Каталанский</string>
+    <string name="lyrics_lang_uk">Украинский</string>
+    <string name="lyrics_lang_pl">Польский</string>
+
+    <!-- Chord diagrams -->
+    <string name="chord_diagram_piano">Фортепиано</string>
+    <string name="chord_diagram_guitar">Гитара</string>
+    <string name="chord_diagram_ukulele">Укулеле</string>
+    <string name="chord_diagram_zone_open">Открытая</string>
+    <string name="chord_diagram_zone_auto">Авто</string>
+    <string name="chord_diagram_bass">Бас: %1$s</string>
+    <string name="chord_mode_diagrams">Схемы аккордов</string>
+    <string name="chord_mode_carousel">Показать/скрыть аккорды</string>
+
+    <!-- Playlists -->
+    <string name="tab_songs">Песни</string>
+    <string name="tab_playlists">Плейлисты</string>
+    <string name="playlist_new">Новый плейлист</string>
+    <plurals name="playlist_count">
+        <item quantity="one">%d плейлист</item>
+        <item quantity="few">%d плейлиста</item>
+        <item quantity="many">%d плейлистов</item>
+        <item quantity="other">%d плейлиста</item>
+    </plurals>
+    <plurals name="playlist_song_count">
+        <item quantity="one">%d песня</item>
+        <item quantity="few">%d песни</item>
+        <item quantity="many">%d песен</item>
+        <item quantity="other">%d песни</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%d результат</item>
+        <item quantity="few">%d результата</item>
+        <item quantity="many">%d результатов</item>
+        <item quantity="other">%d результата</item>
+    </plurals>
+    <plurals name="playlist_selected_count">
+        <item quantity="one">Выбрана %d</item>
+        <item quantity="few">Выбрано %d</item>
+        <item quantity="many">Выбрано %d</item>
+        <item quantity="other">Выбрано %d</item>
+    </plurals>
+    <string name="playlists_empty">Создайте первый плейлист</string>
+    <string name="songs_empty">Добавьте первую песню</string>
+    <string name="playlists_need_login">Войдите, чтобы пользоваться плейлистами</string>
+    <string name="playlist_reorder">Изменить порядок</string>
+    <string name="playlist_remove_song">Убрать из плейлиста</string>
+    <string name="playlist_edit_title">Изменить плейлист</string>
+    <string name="playlist_title_hint">Название</string>
+    <string name="playlist_add_songs">Добавить песни</string>
+    <string name="playlist_save">Сохранить</string>
+    <string name="playlist_done">Готово</string>
+    <string name="playlist_cancel">Отмена</string>
+    <string name="playlist_back">Назад</string>
+    <string name="playlist_search_hint">Поиск песен</string>
+    <string name="playlist_change_cover">Сменить обложку</string>
+    <string name="playlist_remove_cover">Удалить обложку</string>
+    <string name="playlist_cover_pick">Выбрать на устройстве</string>
+    <string name="playlist_cover_mosaic">Мозаика из песен</string>
+    <string name="playlist_delete">Удалить плейлист</string>
+    <string name="playlist_options">Параметры плейлиста</string>
+    <string name="playlist_delete_confirm">Удалить %s?</string>
+    <string name="playlist_delete_action">Удалить</string>
+    <string name="playlist_deleted">Плейлист удалён</string>
+    <string name="playlist_no_songs_in_cloud">В облаке пока нет песен</string>
+    <string name="playlist_downloading">Загрузка песни…</string>
+    <string name="playlist_empty_songs">В этом плейлисте нет песен</string>
+    <string name="playlist_err_title_empty">Введите название</string>
+    <string name="playlist_err_network">Не удалось связаться с сервером</string>
+    <string name="playlist_err_gone">Этого плейлиста больше нет</string>
+    <string name="playlist_err_cover_too_large">Изображение слишком большое</string>
+    <string name="playlist_err_cover_format">Формат не поддерживается</string>
+    <string name="playlist_err_title_length">Название должно содержать от 1 до %d символов</string>
+    <string name="playlist_err_song_not_found">Одной из песен нет в вашей облачной библиотеке</string>
+    <string name="playlist_err_song_duplicate">Песня повторяется в плейлисте</string>
+    <string name="playlist_err_song_limit">Не больше %d песен в плейлисте</string>
+    <string name="playlist_err_playlist_limit">Не больше %d плейлистов</string>
+    <string name="playlist_err_generic">Ошибка сервера (%d)</string>
+    <string name="crop_use">Использовать</string>
+
+</resources>

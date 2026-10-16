@@ -2,12 +2,10 @@ package com.jotapeveloper.fision;
 
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -16,7 +14,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -66,7 +63,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private EditText et_find;
     private TextView tv_title;
     private TextView tv_SongsCount;
-    private Button b_add;
+    private android.widget.ImageButton b_add;
     private List<String> SongsInDirectory;
     private android.widget.ImageButton b_orderBy;
 
@@ -93,33 +90,22 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private final Map<String, Boolean> builtInFlightByHash = new HashMap<>();
 
     // === Mini-player ===
-    private View miniPlayer;
-    private TextView tvMiniTitle;
-    private TextView tvMiniArtist;
-    private TextView tvMiniTitlePrev, tvMiniArtistPrev;
-    private TextView tvMiniTitleNext, tvMiniArtistNext;
-    private View llMiniCurrent, llMiniPrev, llMiniNext;
-    private View flMiniTextWrap;
-    private android.widget.ImageView ivMiniIcon;
-    private MaterialButton bMiniPlayPause;
-    // Play/pause icon morph state for the mini-player button.
-    private boolean miniPlayIconState = false;   // false = play icon (paused), true = pause icon (playing)
-    private boolean miniPlayIconInitialized = false;
-    private android.widget.ProgressBar pbMiniProgress;
-    private final android.os.Handler miniHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private final Runnable miniProgressTick = new Runnable() {
-        @Override public void run() {
-            tickMiniProgress();
-            miniHandler.postDelayed(this, 250);
-        }
-    };
+    private MiniPlayerController miniPlayer;
 
-    private PlaybackService playbackService;
-    private boolean serviceBound = false;
+    // === Bottom tabs: songs / playlists ===
+    private static final String STATE_TAB = "main_tab";
+    private static final int TAB_SONGS = 0, TAB_PLAYLISTS = 1;
+    private int currentTab = TAB_SONGS;
+    private com.google.android.material.bottomnavigation.BottomNavigationView bnvMain;
+    private View playlistsTab;
+    private RecyclerView rvPlaylists;
+    private TextView tvPlaylistsCount, tvPlaylistsEmpty;
+    private MaterialButton bNewPlaylist;
+    private View llPlaylistsAddFirst;
+    private PlaylistListAdapter playlistAdapter;
+    private final com.jotapeveloper.fision.cloud.PlaylistRepository.Listener playlistListener =
+            this::refreshPlaylistsTab;
 
-    private final PlaybackService.Listener miniListener = new PlaybackService.Listener() {
-        @Override public void onPlaybackChanged() { refreshMiniPlayer(); }
-    };
 
     // === Server state ===
     private ImageView ivCloudStatus;
@@ -146,6 +132,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         @Override public void onConnectivityChanged(boolean reachable) {
             if (isFinishing() || isDestroyed()) return;
             updateCloudStatusIcon(reachable);
+            // Back online: pick up playlist changes made elsewhere.
+            if (reachable) com.jotapeveloper.fision.cloud.PlaylistRepository.get(MainActivity.this).sync();
+            refreshPlaylistsTab();
         }
         @Override public void onRetryableJobError(String hash) {
             if (isFinishing() || isDestroyed()) return;
@@ -258,36 +247,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 || a.downloadPct  != b.downloadPct;
     }
 
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder binder) {
-            playbackService = ((PlaybackService.LocalBinder) binder).getService();
-            serviceBound = true;
-            playbackService.addListener(miniListener);
-            refreshMiniPlayer();
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            if (playbackService != null) playbackService.removeListener(miniListener);
-            playbackService = null;
-            serviceBound = false;
-        }
-    };
-
 
     public File getSongFolder() {
         return SongFolder;
     }
-
-    private BroadcastReceiver languageChangeReceiver = new BroadcastReceiver() {
-
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            // Recreate the activity when the language change broadcast arrives
-            recreate();
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -298,24 +261,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // ready" notifications the moment the user returns to any screen.
         com.jotapeveloper.fision.cloud.AppForegroundState.get(this);
 
-        // load preferences language
-        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String language = sharedPreferences.getString("language", "default_language");
-
-        setAppLocale(language);
-        // Register receiver for language changes
-
-        // Listen to both system LOCALE_CHANGED (device language change) and the
-        // in-app broadcast fired by SettingsActivity when the language preference
-        // is changed from inside the app.
-        IntentFilter langFilter = new IntentFilter(Intent.ACTION_LOCALE_CHANGED);
-        langFilter.addAction("com.jotapeveloper.fision.LANGUAGE_CHANGED");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(languageChangeReceiver, langFilter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(languageChangeReceiver, langFilter);
-        }
+        AppLanguage.migrateLegacy(this);
 
         setContentView(R.layout.activity_main);
 
@@ -361,33 +307,15 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         refreshSongList.setColorSchemeColors(
                 com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
 
-        // Mini-player. It's a BlurBehindLayout: the RV is passed as source so the
-        // mini-player background is a live blur of the list sitting behind it.
-        miniPlayer       = findViewById(R.id.mini_player);
-        if (miniPlayer instanceof BlurBehindLayout) {
-            ((BlurBehindLayout) miniPlayer).setSourceView(rvSongList);
-        }
-        tvMiniTitle      = findViewById(R.id.tv_mini_title);
-        tvMiniArtist     = findViewById(R.id.tv_mini_artist);
-        tvMiniTitlePrev  = findViewById(R.id.tv_mini_titlePrev);
-        tvMiniArtistPrev = findViewById(R.id.tv_mini_artistPrev);
-        tvMiniTitleNext  = findViewById(R.id.tv_mini_titleNext);
-        tvMiniArtistNext = findViewById(R.id.tv_mini_artistNext);
-        llMiniCurrent    = findViewById(R.id.ll_mini_current);
-        llMiniPrev       = findViewById(R.id.ll_mini_prev);
-        llMiniNext       = findViewById(R.id.ll_mini_next);
-        flMiniTextWrap   = findViewById(R.id.fl_mini_textWrap);
-        ivMiniIcon       = findViewById(R.id.iv_mini_icon);
-        bMiniPlayPause   = findViewById(R.id.b_mini_playPause);
-        pbMiniProgress   = findViewById(R.id.pb_mini_progress);
+        // Mini-player: live blur of the list sitting behind it. With the bar
+        // shown, the lists get bottom padding so the last row stays reachable.
+        miniPlayer = new MiniPlayerController(this);
+        miniPlayer.setBlurSource(rvSongList);
+        miniPlayer.setVisibilityListener(visible -> setListsBottomPadding(
+                visible ? MiniPlayerController.listClearancePx(this) : 0));
 
-        bMiniPlayPause.setOnClickListener(v -> {
-            if (playbackService == null) return;
-            if (playbackService.isPlayingOrStarting()) playbackService.pause();
-            else                              playbackService.play();
-        });
-        // Gestures over the text area: tap → open player; lateral fling → switch song
-        attachMiniSwipe();
+        setupTabs(savedInstanceState != null
+                ? savedInstanceState.getInt(STATE_TAB, TAB_SONGS) : TAB_SONGS);
 
         refreshSongList.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
@@ -539,7 +467,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
     }
-    public void buttonAnimation(boolean visible, Button button){
+    public void buttonAnimation(boolean visible, View button){
         // Cross-fade the button while the ConstraintLayout re-lays out its
         // children so the RecyclerView slides into (or out of) the freed slot
         // instead of jumping when the button visibility flips.
@@ -557,7 +485,211 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private View fadeTop, fadeBottom;
 
+    // ---------------------------------------------------------------
+    // Bottom tabs
+    // ---------------------------------------------------------------
+    private void setupTabs(int initialTab) {
+        bnvMain = findViewById(R.id.bnv_main);
+        playlistsTab = findViewById(R.id.cl_playlistsTab);
+        rvPlaylists = findViewById(R.id.rv_playlists);
+        tvPlaylistsCount = findViewById(R.id.tv_playlistsCount);
+        tvPlaylistsEmpty = findViewById(R.id.tv_playlistsEmpty);
+        bNewPlaylist = findViewById(R.id.b_newPlaylist);
+
+        int coverPx = (int) (52 * getResources().getDisplayMetrics().density);
+        playlistAdapter = new PlaylistListAdapter(coverPx, new PlaylistListAdapter.OnPlaylistClick() {
+            @Override public void onClick(com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist p) {
+                Intent i = new Intent(MainActivity.this, PlaylistActivity.class);
+                i.putExtra(PlaylistActivity.EXTRA_PLAYLIST_ID, p.id);
+                startActivity(i);
+            }
+            @Override public void onOptions(com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist p) {
+                showPlaylistOptions(p);
+            }
+        });
+        rvPlaylists.setLayoutManager(new LinearLayoutManager(this));
+        rvPlaylists.setAdapter(playlistAdapter);
+        bNewPlaylist.setOnClickListener(v ->
+                startActivity(new Intent(this, PlaylistEditActivity.class)));
+        llPlaylistsAddFirst = findViewById(R.id.ll_playlistsAddFirst);
+        llPlaylistsAddFirst.setOnClickListener(v ->
+                startActivity(new Intent(this, PlaylistEditActivity.class)));
+
+        bnvMain.setSelectedItemId(initialTab == TAB_PLAYLISTS ? R.id.tab_playlists : R.id.tab_songs);
+        bnvMain.setOnItemSelectedListener(item -> {
+            int tab = item.getItemId() == R.id.tab_playlists ? TAB_PLAYLISTS : TAB_SONGS;
+            if (tab != targetTab) switchTabAnimated(tab);
+            return true;
+        });
+        showTab(initialTab);
+    }
+
+    private static final long TAB_OUT_MS = 120, TAB_IN_MS = 220;
+    /** Bumped on every switch so a late end action of a superseded one is ignored. */
+    private int tabSwitchToken = 0;
+    /** Tab being shown or animated to (currentTab changes mid-animation). */
+    private int targetTab = TAB_SONGS;
+
+    /** Views that make up the content of [tab] (title excluded). */
+    private View[] tabViews(int tab) {
+        return tab == TAB_SONGS
+                ? new View[] { et_find, b_add, tv_SongsCount, b_orderBy, refreshSongList,
+                               findViewById(R.id.ll_songsAddFirst) }
+                : new View[] { playlistsTab };
+    }
+
+    /** Cross-slide between tabs: the old content fades out drifting away from
+     *  the new tab, the new content fades in from its side. The title fades
+     *  with it. */
+    private void switchTabAnimated(int tab) {
+        final int token = ++tabSwitchToken;
+        targetTab = tab;
+        float dx = 24f * getResources().getDisplayMetrics().density;
+        // Moving to the right tab: content travels left, and vice versa.
+        float dir = tab == TAB_PLAYLISTS ? 1f : -1f;
+        View[] out = tabViews(currentTab);
+        View[] in = tabViews(tab);
+        android.view.animation.Interpolator accel = new android.view.animation.AccelerateInterpolator();
+        android.view.animation.Interpolator decel = new android.view.animation.DecelerateInterpolator(1.6f);
+
+        fadeTop.setVisibility(View.INVISIBLE);
+        fadeBottom.setVisibility(View.INVISIBLE);
+        for (View v : out) {
+            v.animate().cancel();
+            v.animate().alpha(0f).translationX(-dir * dx).setDuration(TAB_OUT_MS)
+                    .setInterpolator(accel).start();
+        }
+        tv_title.animate().cancel();
+        tv_title.animate().alpha(0f).setDuration(TAB_OUT_MS).setInterpolator(accel)
+                .withEndAction(() -> {
+                    if (token != tabSwitchToken) return;
+                    for (View v : out) { v.setAlpha(1f); v.setTranslationX(0f); }
+                    showTab(tab);
+                    for (View v : in) {
+                        v.animate().cancel();
+                        v.setAlpha(0f);
+                        v.setTranslationX(dir * dx);
+                        v.animate().alpha(1f).translationX(0f).setDuration(TAB_IN_MS)
+                                .setInterpolator(decel).start();
+                    }
+                    tv_title.animate().alpha(1f).setDuration(TAB_IN_MS)
+                            .setInterpolator(decel).start();
+                }).start();
+    }
+
+    private void showTab(int tab) {
+        // Leaving the songs tab ends a search in progress.
+        if (tab != TAB_SONGS && (et_find.hasFocus() || et_find.length() > 0)) {
+            et_find.clearFocus();
+            et_find.setText("");
+            if (b_add.getVisibility() != View.VISIBLE) buttonAnimation(true, b_add);
+            hideKeyboard();
+        }
+        currentTab = tab;
+        targetTab = tab;
+        boolean songs = tab == TAB_SONGS;
+        int sv = songs ? View.VISIBLE : View.GONE;
+        et_find.setVisibility(sv);
+        b_add.setVisibility(sv);
+        refreshSongList.setVisibility(sv);
+        applySongsEmptyState();
+        if (tvNoResults != null && !songs) tvNoResults.setVisibility(View.GONE);
+        playlistsTab.setVisibility(songs ? View.GONE : View.VISIBLE);
+        tv_title.setText(songs ? R.string.tv_title : R.string.tab_playlists);
+        // Any half-finished switch leaves nothing faded or shifted.
+        for (View v : tabViews(tab)) { v.setAlpha(1f); v.setTranslationX(0f); }
+        if (songs) {
+            updateListFades();
+        } else {
+            fadeTop.setVisibility(View.INVISIBLE);
+            fadeBottom.setVisibility(View.INVISIBLE);
+            refreshPlaylistsTab();
+        }
+        // The mini-player blurs whichever list sits behind it.
+        miniPlayer.setBlurSource(songs ? rvSongList : rvPlaylists);
+    }
+
+    private void hideKeyboard() {
+        android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(et_find.getWindowToken(), 0);
+    }
+
+    /** Repaints the Playlists tab from the repository (cheap; no network). */
+    private void refreshPlaylistsTab() {
+        if (playlistAdapter == null || isFinishing() || isDestroyed()) return;
+        com.jotapeveloper.fision.cloud.PlaylistRepository repo =
+                com.jotapeveloper.fision.cloud.PlaylistRepository.get(this);
+        List<com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist> list = repo.getAll();
+        playlistAdapter.submit(list);
+        tvPlaylistsCount.setText(getResources().getQuantityString(
+                R.plurals.playlist_count, list.size(), list.size()));
+        tvPlaylistsCount.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
+        boolean loggedIn = AuthManager.get(this).isLoggedIn();
+        // Signed out: plain message. Signed in and empty: dashed "add first" card.
+        tvPlaylistsEmpty.setText(R.string.playlists_need_login);
+        tvPlaylistsEmpty.setVisibility(loggedIn ? View.GONE : View.VISIBLE);
+        llPlaylistsAddFirst.setVisibility(loggedIn && list.isEmpty() ? View.VISIBLE : View.GONE);
+        // Creating needs the server; offline the list stays playable.
+        boolean canEdit = repo.canEdit() && list.size() < com.jotapeveloper.fision.cloud.PlaylistRepository.MAX_PLAYLISTS;
+        bNewPlaylist.setEnabled(canEdit);
+        bNewPlaylist.setAlpha(canEdit ? 1f : 0.4f);
+        llPlaylistsAddFirst.setEnabled(canEdit);
+        llPlaylistsAddFirst.setAlpha(canEdit ? 1f : 0.4f);
+        if (currentTab == TAB_PLAYLISTS) miniPlayer.invalidateBlur();
+    }
+
+    /** Playlist ⋮ sheet: edit / delete (both need the server). */
+    private void showPlaylistOptions(com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist p) {
+        com.jotapeveloper.fision.cloud.PlaylistRepository repo =
+                com.jotapeveloper.fision.cloud.PlaylistRepository.get(this);
+        BottomSheetDialog sheet = new BottomSheetDialog(this, R.style.TransparentBottomSheetDialog);
+        View v = getLayoutInflater().inflate(R.layout.modal_sheet_dialog, null);
+        sheet.setContentView(v);
+        ImageView ivCover = v.findViewById(R.id.iv_cover);
+        TextView tvTitle  = v.findViewById(R.id.Title);
+        TextView tvSub    = v.findViewById(R.id.Artist);
+        Button bEdit      = v.findViewById(R.id.b_rename);
+        Button bDelete    = v.findViewById(R.id.b_delete);
+        PlaylistCovers.load(ivCover, p, (int) (140 * getResources().getDisplayMetrics().density));
+        tvTitle.setText(p.title);
+        int n = p.songs.size();
+        tvSub.setText(getResources().getQuantityString(R.plurals.playlist_song_count, n, n));
+        bEdit.setText(R.string.playlist_edit_title);
+        bDelete.setText(R.string.playlist_delete);
+        boolean canEdit = repo.canEdit();
+        for (Button b : new Button[] { bEdit, bDelete }) {
+            b.setEnabled(canEdit);
+            b.setAlpha(canEdit ? 1f : 0.4f);
+        }
+        bEdit.setOnClickListener(x -> {
+            sheet.dismiss();
+            Intent i = new Intent(this, PlaylistEditActivity.class);
+            i.putExtra(PlaylistEditActivity.EXTRA_PLAYLIST_ID, p.id);
+            startActivity(i);
+        });
+        bDelete.setOnClickListener(x -> {
+            sheet.dismiss();
+            BlurDialogs.confirm(this, R.drawable.ic_delete,
+                    getString(R.string.playlist_delete_confirm, p.title),
+                    getString(R.string.playlist_delete_action), getString(R.string.playlist_cancel),
+                    () -> repo.delete(p.id, new com.jotapeveloper.fision.cloud.PlaylistRepository.Result() {
+                        @Override public void onSuccess(@androidx.annotation.Nullable com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist x) {
+                            Toast.makeText(MainActivity.this, R.string.playlist_deleted,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        @Override public void onError(@NonNull com.jotapeveloper.fision.cloud.PlaylistRepository.PlaylistError e) {
+                            Toast.makeText(MainActivity.this,
+                                    com.jotapeveloper.fision.cloud.PlaylistErrors.message(MainActivity.this, e),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }));
+        });
+        sheet.show();
+    }
+
     private void updateListFades() {
+        if (currentTab != TAB_SONGS) return;
         fadeTop.setVisibility(rvSongList.canScrollVertically(-1) ? View.VISIBLE : View.INVISIBLE);
         fadeBottom.setVisibility(rvSongList.canScrollVertically(1) ? View.VISIBLE : View.INVISIBLE);
     }
@@ -693,15 +825,29 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Count line and "No results" notice for the current query. */
     private void updateSearchState(String query) {
-        tv_SongsCount.setText(query.isEmpty()
-                ? SongsInDirectory.size() + " " + getString(R.string.songs)
-                : Songs.length + " " + getString(R.string.results));
+        int n = query.isEmpty() ? SongsInDirectory.size() : Songs.length;
+        tv_SongsCount.setText(getResources().getQuantityString(query.isEmpty()
+                ? R.plurals.playlist_song_count : R.plurals.search_result_count, n, n));
         if (tvNoResults == null) tvNoResults = findViewById(R.id.tv_noResults);
         tvNoResults.setVisibility(!query.isEmpty() && Songs.length == 0
                 ? View.VISIBLE : View.GONE);
+        libraryEmpty = query.isEmpty() && Songs.length == 0;
+        applySongsEmptyState();
     }
 
     private TextView tvNoResults;
+    private View llSongsAddFirst;
+    private boolean libraryEmpty;
+
+    /** Empty library: no count line, dashed "add first song" card instead. */
+    private void applySongsEmptyState() {
+        if (llSongsAddFirst == null) llSongsAddFirst = findViewById(R.id.ll_songsAddFirst);
+        boolean songsTab = currentTab == TAB_SONGS;
+        int countVis = !songsTab ? View.GONE : (libraryEmpty ? View.INVISIBLE : View.VISIBLE);
+        tv_SongsCount.setVisibility(countVis);
+        b_orderBy.setVisibility(countVis);
+        llSongsAddFirst.setVisibility(songsTab && libraryEmpty ? View.VISIBLE : View.GONE);
+    }
 
     private String currentQuery() {
         return et_find != null ? et_find.getText().toString() : "";
@@ -792,7 +938,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 s.setCoverPath(c.coverPath);
             }
             s.cloud = c;
-            if (c.isInFlight()) inFlight.add(s); else regular.add(s);
+            // A download keeps its place: only songs still processing go on top.
+            if (c.isProcessing()) inFlight.add(s); else regular.add(s);
         }
 
         // 3) Final sort by tsForItem — sticky > serverCreated > serverUpdated >
@@ -954,10 +1101,49 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
+    @androidx.annotation.Nullable private Boolean gateLoggedIn;
+
+    /** Without a session the server is out of reach: adding songs is disabled
+     *  (grey button and add-first card) and cloud-only rows show a lock. */
+    private void applySessionGate() {
+        boolean loggedIn = AuthManager.get(this).isLoggedIn();
+        if (b_add != null) {
+            b_add.setImageTintList(android.content.res.ColorStateList.valueOf(
+                    loggedIn ? Color.WHITE : 0xFF4A4A4A));
+            b_add.setEnabled(loggedIn);
+        }
+        if (llSongsAddFirst == null) llSongsAddFirst = findViewById(R.id.ll_songsAddFirst);
+        if (llSongsAddFirst instanceof android.view.ViewGroup) {
+            llSongsAddFirst.setEnabled(loggedIn);
+            android.view.ViewGroup g = (android.view.ViewGroup) llSongsAddFirst;
+            for (int i = 0; i < g.getChildCount(); i++) g.getChildAt(i).setAlpha(loggedIn ? 1f : 0.4f);
+        }
+        // Rows only need a rebind when the session state actually flips.
+        if (gateLoggedIn != null && gateLoggedIn != loggedIn && rvSongList != null) refreshSongList();
+        gateLoggedIn = loggedIn;
+    }
+
+    /** Sign-in prompt for actions that need the server (locked cloud rows). */
+    public void promptLogin() {
+        LoginDialog.show(this, true, new LoginDialog.Callback() {
+            @Override public void onLoggedIn(String u) {
+                refreshToolbarAvatar();
+                refreshCloudStatusIcon();
+                CloudRepository.get(MainActivity.this).notifyConfigChanged();
+                CloudRepository.get(MainActivity.this).startPolling();
+            }
+            @Override public void onLocalMode() {
+                refreshToolbarAvatar();
+                refreshCloudStatusIcon();
+            }
+        });
+    }
+
     /** Swaps the toolbar between the settings gear (no session) and the
      *  circular initial avatar (session active). Both open Settings when tapped;
      *  the avatar exists purely to signal an active identity. */
     private void refreshToolbarAvatar() {
+        applySessionGate();
         if (flAvatar == null || bSettings == null) return;
         String user = AuthManager.get(this).getUsername();
         boolean loggedIn = AuthManager.get(this).isLoggedIn() && !user.isEmpty();
@@ -1205,7 +1391,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             tv.setBackgroundResource(active
                     ? R.drawable.dialog_option_active : R.drawable.dialog_option_inactive);
             tv.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(
-                    MainActivity.this, R.font.yugothic_ui_regular),
+                    MainActivity.this, R.font.noto_sans_regular),
                     active ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         };
         style.accept(optDesc, sortOrder == 0);
@@ -1294,7 +1480,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         } else if (cloudOnly) {
             title.setText(getString(R.string.cloud_delete_cloud_confirm));
         } else {
-            title.setText(getString(R.string.delete_confirm) + " " + displayName + "?");
+            title.setText(getString(R.string.delete_confirm, displayName));
         }
 
         AlertDialog deleteDialog = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
@@ -1328,29 +1514,27 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 CloudRepository.get(this).deleteFromCloud(song.cloud.hash);
             } else {
                 File target = new File(SongFolder, folderName);
-                // When the song is also on the cloud, remember lastModified so after
-                // deletion the entry stays "sticky" at its original position as CLOUD_ONLY.
-                long lm = target.exists() ? target.lastModified() : System.currentTimeMillis();
+                // When the song is also on the cloud, remember its current order date so
+                // after deletion the entry stays "sticky" at its position as CLOUD_ONLY.
+                long lm = SongOrder.timestamp(this, song.cloud, target);
+                if (lm <= 0) lm = System.currentTimeMillis();
                 // When the song has a cloud counterpart, preserve metadata+cover BEFORE
-                // deleting the folder: copies artcover.png to cacheDir/cover_<hash>.png
+                // deleting the folder: copies artcover.png to the hash's sticky cover
                 // and dumps displayTitle/artist into the CloudItem so the CLOUD_ONLY item
                 // keeps showing the same info it had while local.
                 if (song.cloud != null) preserveCloudMetadataFromLocal(target, song.cloud);
                 // When the deleted song is the one playing in the mini-player, stop the
                 // service and clear the UI. Otherwise the mini-player offered "play" on a
                 // non-existent path.
+                PlaybackService playbackService = miniPlayer.getService();
                 boolean wasCurrent = playbackService != null
                         && playbackService.isSongLoaded()
                         && folderName.equals(playbackService.getCurrentSongName());
                 if (wasCurrent) {
                     playbackService.releaseSongAndStop();
-                }
-                // Force the mini-player to GONE immediately, regardless of the async
-                // listener (notifyListeners posts to mainHandler, arrives late) or of a
-                // desynced playbackService.
-                if (wasCurrent && miniPlayer != null) {
-                    miniPlayer.setVisibility(View.GONE);
-                    miniHandler.removeCallbacks(miniProgressTick);
+                    // Hide at once, regardless of the async listener
+                    // (notifyListeners posts to mainHandler, arrives late).
+                    miniPlayer.hideNow();
                 }
                 deleteRecursive(target);
                 deleteSongFromDb(folderName);
@@ -1581,7 +1765,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             if (meta.coverPath != null) {
                 File src = new File(meta.coverPath);
                 if (src.exists()) {
-                    File dst = new File(getCacheDir(), "cover_" + cloud.hash + ".png");
+                    File dst = CloudRepository.get(this).stickyCoverFile(cloud.hash);
                     java.io.FileInputStream  fis = new java.io.FileInputStream(src);
                     java.io.FileOutputStream fos = new java.io.FileOutputStream(dst);
                     byte[] buf = new byte[16 * 1024];
@@ -1616,6 +1800,11 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     public void onBackPressed() {
 
+        // Back from the Playlists tab returns to the songs.
+        if (currentTab == TAB_PLAYLISTS) {
+            bnvMain.setSelectedItemId(R.id.tab_songs);
+            return;
+        }
 
         if(et_find.hasFocus()){
             buttonAnimation(true, b_add);
@@ -1629,17 +1818,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     }
 
-    // configuration
 
-    private void setAppLocale(String languageCode) {
-        Locale locale = new Locale(languageCode);
-        Locale.setDefault(locale);
-
-        Configuration config = new Configuration();
-        config.setLocale(locale);
-
-        getResources().updateConfiguration(config, getBaseContext().getResources().getDisplayMetrics());
-    }
 
     public void openSettings(View view){
         Intent intent = new Intent(this, SettingsActivity.class);
@@ -1649,8 +1828,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Deregister receiver when the activity is destroyed
-        unregisterReceiver(languageChangeReceiver);
     }
 
     @Override
@@ -1660,13 +1837,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // background (recreate re-inflates layouts with the new ?attr/colorPrimary).
         com.jotapeveloper.fision.design.AccentColorManager.get(this)
                 .maybeRecreateForAccent(this);
-        // Bind to the PlaybackService when it is already running
-        Intent svc = new Intent(this, PlaybackService.class);
-        bindService(svc, serviceConnection, 0); // no BIND_AUTO_CREATE: only connects when it already exists
+        miniPlayer.onStart();
 
         // Live server state
         CloudRepository.get(this).addListener(cloudListener);
         CloudRepository.get(this).startPolling();
+        // Sliding session: a fresh TTL on every app start.
+        AuthManager.get(this).refreshSessionOnce();
         AvatarManager.get(this).addListener(avatarListener);
         // One /server/info per visit to the list: seeds the cache for signed-in
         // sessions and refreshes the free VRAM behind the cloud warning. Not a
@@ -1678,286 +1855,66 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Session state may have changed since onCreate (Settings → logout, etc.)
         refreshToolbarAvatar();
         refreshCloudStatusIcon();
+        // Playlists: offline copy now, server changes when the sync lands.
+        com.jotapeveloper.fision.cloud.PlaylistRepository.get(this).addListener(playlistListener);
+        com.jotapeveloper.fision.cloud.PlaylistRepository.get(this).sync();
+        refreshPlaylistsTab();
+        // Expired session: prompt now, or as soon as it happens while visible.
+        AuthManager.get(this).addSessionExpiredListener(sessionExpiredListener);
+        if (AuthManager.get(this).isSessionExpired()) showSessionExpiredLogin();
+    }
+
+    private final AuthManager.SessionExpiredListener sessionExpiredListener =
+            this::showSessionExpiredLogin;
+
+    /** The server rejected the session: asks for the password again, with the
+     *  URL and username prefilled. Shown once per expiry. */
+    private void showSessionExpiredLogin() {
+        refreshToolbarAvatar();
+        refreshCloudStatusIcon();
+        if (isFinishing() || isDestroyed()) return;
+        AuthManager.get(this).acknowledgeSessionExpired();
+        LoginDialog.show(this, true, getString(R.string.login_session_expired),
+                new LoginDialog.Callback() {
+            @Override public void onLoggedIn(String u) {
+                refreshToolbarAvatar();
+                refreshCloudStatusIcon();
+                CloudRepository.get(MainActivity.this).notifyConfigChanged();
+                CloudRepository.get(MainActivity.this).startPolling();
+            }
+            @Override public void onLocalMode() {
+                refreshToolbarAvatar();
+                refreshCloudStatusIcon();
+            }
+        });
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_TAB, currentTab);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        miniHandler.removeCallbacks(miniProgressTick);
-        if (serviceBound) {
-            if (playbackService != null) playbackService.removeListener(miniListener);
-            unbindService(serviceConnection);
-            serviceBound = false;
-        }
+        miniPlayer.onStop();
         CloudRepository.get(this).removeListener(cloudListener);
         CloudRepository.get(this).stopPolling();
         AvatarManager.get(this).removeListener(avatarListener);
         ServerInfoManager.get(this).removeListener(serverInfoListener);
+        com.jotapeveloper.fision.cloud.PlaylistRepository.get(this).removeListener(playlistListener);
+        AuthManager.get(this).removeSessionExpiredListener(sessionExpiredListener);
     }
 
-    // Swaps the mini-player play/pause icon. Uses an AVD morph when animate=true
-    // (state change while the mini-bar is visible), or the static vector when
-    // animate=false (first show / cold start) to avoid firing an animation on entry.
-    private void applyMiniPlayIcon(boolean playing, boolean animate) {
-        if (bMiniPlayPause == null) return;
-        if (miniPlayIconInitialized && miniPlayIconState == playing) return;
-        if (!miniPlayIconInitialized || !animate) {
-            bMiniPlayPause.setIconResource(playing ? R.drawable.avd_ic_pause : R.drawable.avd_ic_play);
-        } else {
-            bMiniPlayPause.setIconResource(playing ? R.drawable.avd_play_to_pause : R.drawable.avd_pause_to_play);
-            android.graphics.drawable.Drawable icon = bMiniPlayPause.getIcon();
-            if (icon instanceof android.graphics.drawable.Animatable) {
-                ((android.graphics.drawable.Animatable) icon).start();
-            }
-        }
-        miniPlayIconState = playing;
-        miniPlayIconInitialized = true;
-    }
-
-    /** Refreshes the mini-player visibility/title/icon based on the service state. */
-    private void refreshMiniPlayer() {
-        if (miniPlayer == null) return;
-        if (playbackService == null || !playbackService.isSongLoaded()) {
-            miniPlayer.setVisibility(View.GONE);
-            miniHandler.removeCallbacks(miniProgressTick);
-            // Without a mini-player, the RV does not need the bottom padding (it looked black at the end).
-            if (rvSongList != null) rvSongList.setPadding(
-                    rvSongList.getPaddingLeft(), rvSongList.getPaddingTop(),
-                    rvSongList.getPaddingRight(), 0);
-            return;
-        }
-        miniPlayer.setVisibility(View.VISIBLE);
-        // With the mini-player visible, apply bottom padding so the mini-player's
-        // rounded corners show items behind and the last one stays reachable.
-        if (rvSongList != null) {
-            int pad = (int) (92f * getResources().getDisplayMetrics().density);
-            rvSongList.setPadding(
-                    rvSongList.getPaddingLeft(), rvSongList.getPaddingTop(),
-                    rvSongList.getPaddingRight(), pad);
-        }
-        SongMetadata meta = playbackService.getCurrentMetadata();
-        String title  = playbackService.getDisplayTitle();
-        String artist = meta != null ? meta.artist : null;
-        String cover  = meta != null ? meta.coverPath : null;
-        String hash   = playbackService.getCurrentSongName();
-        // Fallback to the server-side info when local metadata.txt is missing
-        // and the display fields would collapse to the folder hash / blank.
-        if (hash != null && (title == null || title.equals(hash) || artist == null
-                || cover == null || !new File(cover).exists())) {
-            com.jotapeveloper.fision.cloud.CloudItem ci =
-                    com.jotapeveloper.fision.cloud.CloudRepository.get(this).getByHash(hash);
-            if (ci != null) {
-                if ((title == null || title.equals(hash))
-                        && ci.displayName != null && !ci.displayName.isEmpty()) {
-                    title = ci.displayName;
-                }
-                if ((artist == null || artist.isEmpty())
-                        && ci.artist != null && !ci.artist.isEmpty()) {
-                    artist = ci.artist;
-                }
-                if ((cover == null || !new File(cover).exists())
-                        && ci.coverPath != null && new File(ci.coverPath).exists()) {
-                    cover = ci.coverPath;
-                }
-            }
-        }
-        tvMiniTitle.setText(title);
-        tvMiniArtist.setText(artist != null ? artist : "");
-        tvMiniArtist.setVisibility(artist != null && !artist.isEmpty() ? View.VISIBLE : View.GONE);
-
-        if (cover != null && new File(cover).exists()) {
-            ivMiniIcon.setImageBitmap(android.graphics.BitmapFactory.decodeFile(cover));
-        } else {
-            ivMiniIcon.setImageResource(R.raw.artcover_generic);
-        }
-        applyMiniPlayIcon(playbackService.isPlayingOrStarting(), true);
-        // Refresh prev/next previews in case the song list changed
-        populateMiniPreviews();
-        // Start / restart the progress tick (idempotent)
-        miniHandler.removeCallbacks(miniProgressTick);
-        miniHandler.post(miniProgressTick);
-    }
-
-    /** Updates the mini-player progress bar. Called by miniProgressTick every ~250ms. */
-    private void tickMiniProgress() {
-        if (pbMiniProgress == null) return;
-        if (playbackService == null || !playbackService.isSongLoaded()) return;
-        long durationMs = playbackService.getDurationMs();
-        long currentMs  = playbackService.getCurrentPositionMs();
-        if (durationMs <= 0) { pbMiniProgress.setProgress(0); return; }
-        int promille = (int) ((currentMs * 1000L) / durationMs);
-        if (promille < 0) promille = 0;
-        if (promille > 1000) promille = 1000;
-        pbMiniProgress.setProgress(promille);
-    }
-
-    /** Opens the player for the song already loaded in the service.
-     *  Flag noAutoplay=true: just enters the UI without modifying playback state
-     *  (without this, after song end the player auto-started when tapping the mini-player). */
-    private void openCurrentSongPlayer() {
-        if (playbackService == null || !playbackService.isSongLoaded()) return;
-        Intent player = new Intent(this, PlayerActivity.class);
-        player.putExtra("SongPathString", playbackService.getCurrentSongPath());
-        player.putExtra("SongName",       playbackService.getCurrentSongName());
-        player.putExtra("NoAutoplay",     true);
-        startActivity(player);
-    }
-
-    /** Wires tap (opens player) + drag-follow swipe (switches song) over the
-     *  transparent area. The current text follows the finger; the prev and next
-     *  previews slide alongside, so a leftward drag reveals the next song coming
-     *  in from the right, and vice-versa. */
-    private void attachMiniSwipe() {
-        View swipeArea = findViewById(R.id.v_mini_swipeArea);
-        if (swipeArea == null) return;
-
-        final int touchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
-        final float[] startCoords = {0f, 0f};
-        final long[]  startTime   = {0L};
-        final boolean[] isSwiping = {false};
-
-        swipeArea.setOnTouchListener((v, ev) -> {
-            switch (ev.getActionMasked()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    startCoords[0] = ev.getRawX();
-                    startCoords[1] = ev.getRawY();
-                    startTime[0]   = ev.getEventTime();
-                    isSwiping[0]   = false;
-                    cancelMiniTextAnimations();
-                    // Refresh previews in case the song changed since the last gesture
-                    populateMiniPreviews();
-                    return true;
-                case android.view.MotionEvent.ACTION_MOVE: {
-                    float dx = ev.getRawX() - startCoords[0];
-                    float dy = ev.getRawY() - startCoords[1];
-                    if (!isSwiping[0]) {
-                        if (Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
-                            isSwiping[0] = true;
-                        }
-                    }
-                    if (isSwiping[0]) {
-                        int w = flMiniTextWrap.getWidth();
-                        if (w <= 0) w = 600;
-                        llMiniCurrent.setTranslationX(dx);
-                        llMiniPrev.setTranslationX(-w + dx);
-                        llMiniNext.setTranslationX( w + dx);
-                    }
-                    return true;
-                }
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL: {
-                    float endDx = ev.getRawX() - startCoords[0];
-                    long elapsed = ev.getEventTime() - startTime[0];
-                    if (!isSwiping[0]) {
-                        if (elapsed < 300 && Math.abs(endDx) < touchSlop) {
-                            openCurrentSongPlayer();
-                        }
-                    } else {
-                        int w = flMiniTextWrap.getWidth();
-                        if (w <= 0) w = 600;
-                        float threshold = w * 0.30f;
-                        if (Math.abs(endDx) > threshold) {
-                            commitMiniSongChange(endDx < 0 ? +1 : -1, w);
-                        } else {
-                            snapBackMiniText(w);
-                        }
-                    }
-                    return true;
-                }
-            }
-            return false;
-        });
-    }
-
-    private void cancelMiniTextAnimations() {
-        llMiniCurrent.animate().cancel();
-        llMiniPrev.animate().cancel();
-        llMiniNext.animate().cancel();
-    }
-
-    private void snapBackMiniText(int w) {
-        llMiniCurrent.animate().translationX(0f).setDuration(160).start();
-        llMiniPrev   .animate().translationX(-w).setDuration(160).start();
-        llMiniNext   .animate().translationX( w).setDuration(160).start();
-    }
-
-    /** Animates the current text out and the chosen preview in. At the end it
-     *  snapshots: copies the preview into the "current", loads the song and repositions. */
-    private void commitMiniSongChange(int direction, int w) {
-        if (playbackService == null || !playbackService.isSongLoaded()) { snapBackMiniText(w); return; }
-        File next = computeAdjacentSongFolder(direction);
-        if (next == null) { snapBackMiniText(w); return; }
-        final float exitX = direction > 0 ? -w : w;
-        final View entering = direction > 0 ? llMiniNext : llMiniPrev;
-        // The two animations other than "entering" move to their final positions
-        llMiniCurrent.animate().translationX(exitX).setDuration(160).start();
-        // The other preview (not "entering") leaves the opposite side out of view
-        View other = direction > 0 ? llMiniPrev : llMiniNext;
-        other.animate().translationX(direction > 0 ? -2 * w : 2 * w).setDuration(160).start();
-        entering.animate().translationX(0f).setDuration(160)
-                .withEndAction(() -> {
-                    // Snapshot: the preview that just reached 0 is now the "current"
-                    TextView previewTitle  = direction > 0 ? tvMiniTitleNext  : tvMiniTitlePrev;
-                    TextView previewArtist = direction > 0 ? tvMiniArtistNext : tvMiniArtistPrev;
-                    String tStr = previewTitle.getText().toString();
-                    String aStr = previewArtist.getText().toString();
-                    tvMiniTitle.setText(tStr);
-                    tvMiniArtist.setText(aStr);
-                    tvMiniArtist.setVisibility(aStr.isEmpty() ? View.GONE : View.VISIBLE);
-                    llMiniCurrent.setTranslationX(0f);
-                    // Load, apply the saved mix, then play
-                    if (playbackService != null) playbackService.loadAndPlay(next);
-                    // Recompute and reposition previews for the new current
-                    populateMiniPreviews();
-                }).start();
-    }
-
-    /** Reads prev/next data from disk based on the active sort order and paints them
-     *  into the preview TextViews. Repositions them at ±wrapper.getWidth(). */
-    private void populateMiniPreviews() {
-        if (playbackService == null || !playbackService.isSongLoaded()) return;
-        File prev = computeAdjacentSongFolder(-1);
-        File next = computeAdjacentSongFolder(+1);
-        assignPreview(prev, tvMiniTitlePrev, tvMiniArtistPrev);
-        assignPreview(next, tvMiniTitleNext, tvMiniArtistNext);
-        int w = flMiniTextWrap.getWidth();
-        if (w <= 0) {
-            // The wrapper has not been measured yet; defer to the next layout pass
-            flMiniTextWrap.post(this::positionMiniPreviews);
-        } else {
-            positionMiniPreviews();
+    /** Bottom padding of both tab lists, so the last row clears the mini-player. */
+    private void setListsBottomPadding(int px) {
+        for (RecyclerView rv : new RecyclerView[] { rvSongList, rvPlaylists }) {
+            if (rv != null) rv.setPadding(rv.getPaddingLeft(), rv.getPaddingTop(),
+                    rv.getPaddingRight(), px);
         }
     }
 
-    private void positionMiniPreviews() {
-        int w = flMiniTextWrap.getWidth();
-        if (w <= 0) w = 600;
-        llMiniPrev.setTranslationX(-w);
-        llMiniNext.setTranslationX( w);
-    }
-
-    /** Reads metadata.txt from the folder and paints the preview TextViews. */
-    private void assignPreview(File folder, TextView title, TextView artist) {
-        if (folder == null) {
-            title.setText(""); artist.setText(""); artist.setVisibility(View.GONE);
-            return;
-        }
-        String name = folder.getName();
-        SongMetadata meta = SongMetadata.read(folder);
-        String t = meta.displayTitle != null ? meta.displayTitle : name;
-        String a = meta.artist != null ? meta.artist : "";
-        title.setText(t);
-        artist.setText(a);
-        artist.setVisibility(a.isEmpty() ? View.GONE : View.VISIBLE);
-    }
-
-    /** Song [direction] steps from the current one in library order. */
-    private File computeAdjacentSongFolder(int direction) {
-        if (playbackService == null) return null;
-        String currentPath = playbackService.getCurrentSongPath();
-        if (currentPath == null) return null;
-        return SongOrder.adjacent(this, new File(currentPath), direction);
-    }
 }
 
 

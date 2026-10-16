@@ -26,6 +26,7 @@ public class ServerPrefs {
     private static final String KEY_USER       = "server_user";
     private static final String KEY_LOCAL_MODE = "local_mode";
     private static final String KEY_FIRST_RUN  = "first_run";
+    private static final String KEY_SESSION_EXPIRED = "session_expired";
 
     private final SharedPreferences plain;
     private final SharedPreferences secure;
@@ -103,6 +104,16 @@ public class ServerPrefs {
 
     public void setFirstRunCompleted() {
         plain.edit().putBoolean(KEY_FIRST_RUN, false).apply();
+    }
+
+    /** Set when the server rejected the stored token: the next screen able to
+     *  sign in asks for the password again. Cleared on login or local mode. */
+    public boolean isSessionExpired() {
+        return plain.getBoolean(KEY_SESSION_EXPIRED, false);
+    }
+
+    public void setSessionExpired(boolean expired) {
+        plain.edit().putBoolean(KEY_SESSION_EXPIRED, expired).apply();
     }
 
     /** True when a login was completed and the token has not been wiped. */

@@ -70,6 +70,9 @@ public class SettingsActivity extends AppCompatActivity
     private static final String ID_LOGOUT    = "logout";
     private static final String ID_GITHUB    = "github";
     private static final String GITHUB_URL   = "https://github.com/jotapemj/FisionApp-Android";
+    private static final String ID_DONATE    = "donate";
+    private static final String DONATION_URL =
+            "https://www.paypal.com/donate/?hosted_button_id=7XGEUCU59RRE4";
 
     private RecyclerView rv;
     private SettingsAdapter adapter;
@@ -138,7 +141,16 @@ public class SettingsActivity extends AppCompatActivity
         String email = auth.isLoggedIn() ? sp.getUrl() : "";
         items.add(SettingsItem.header(ID_ACCOUNT, user, email));
 
-        // Section: Server
+        // Section: Server, only with a session (no server to ask otherwise;
+        // the account header above is the way to sign in).
+        if (auth.isLoggedIn()) addServerSection(auth);
+
+        // Section: App
+        addAppAndAboutSections(auth);
+        adapter.notifyDataSetChanged();
+    }
+
+    private void addServerSection(AuthManager auth) {
         items.add(SettingsItem.section("sec_server",
                 getString(R.string.settings_section_server)));
         SettingsItem gpuCard = SettingsItem.card(ID_GPU, R.drawable.ic_gpu,
@@ -163,8 +175,9 @@ public class SettingsActivity extends AppCompatActivity
         items.add(SettingsItem.card(ID_TEST, R.drawable.ic_signal,
                 getString(R.string.server_test_title),
                 getString(R.string.server_test_summary)));
+    }
 
-        // Section: App
+    private void addAppAndAboutSections(AuthManager auth) {
         items.add(SettingsItem.section("sec_app",
                 getString(R.string.settings_section_app)));
         items.add(SettingsItem.card(ID_DESIGN, R.drawable.ic_design,
@@ -185,10 +198,16 @@ public class SettingsActivity extends AppCompatActivity
                 null));
 
         SettingsItem github = SettingsItem.card(ID_GITHUB, R.drawable.ic_github,
-                getString(R.string.settings_donate_title),
+                getString(R.string.settings_github_title),
                 null);
         github.externalLink = true;
         items.add(github);
+
+        SettingsItem donate = SettingsItem.card(ID_DONATE, R.drawable.ic_volunteer_activism,
+                getString(R.string.settings_donate_title),
+                null);
+        donate.externalLink = true;
+        items.add(donate);
 
         // Optional sign-out card only when there is an active session
         if (auth.isLoggedIn()) {
@@ -198,7 +217,6 @@ public class SettingsActivity extends AppCompatActivity
             logout.iconTintOverride = R.color.cloud_offline;
             items.add(logout);
         }
-        adapter.notifyDataSetChanged();
     }
 
     private CharSequence gpuSubtitle() {
@@ -228,14 +246,7 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     private CharSequence currentLanguageLabel() {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        String code = sp.getString("language", Locale.getDefault().getLanguage());
-        String[] entries = getResources().getStringArray(R.array.lang_entries);
-        String[] values = getResources().getStringArray(R.array.lang_entries_values);
-        for (int i = 0; i < values.length; i++) {
-            if (values[i].equalsIgnoreCase(code)) return entries[i];
-        }
-        return code;
+        return getResources().getStringArray(R.array.lang_entries)[AppLanguage.currentIndex()];
     }
 
     // ---------------- click dispatch ----------------
@@ -250,13 +261,14 @@ public class SettingsActivity extends AppCompatActivity
             case ID_TEST:     runConnectionTest(); break;
             case ID_ABOUT:    showAboutDialog();   break;
             case ID_LOGOUT:   onLogoutClicked();   break;
-            case ID_GITHUB:   openGithub();        break;
+            case ID_GITHUB:   openUrl(GITHUB_URL);   break;
+            case ID_DONATE:   openUrl(DONATION_URL); break;
         }
     }
 
-    private void openGithub() {
+    private void openUrl(String url) {
         try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL));
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
         } catch (Throwable t) {
@@ -427,7 +439,7 @@ public class SettingsActivity extends AppCompatActivity
             row.setText(entries[i]);
             row.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
             row.setTypeface(
-                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
+                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular),
                     idx == checked ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
             row.setTextColor(idx == checked ? primary : white);
             row.setBackgroundResource(idx == checked
@@ -462,13 +474,7 @@ public class SettingsActivity extends AppCompatActivity
 
     private void onLanguageClicked() {
         String[] entries = getResources().getStringArray(R.array.lang_entries);
-        String[] values  = getResources().getStringArray(R.array.lang_entries_values);
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        String current = sp.getString("language", Locale.getDefault().getLanguage());
-        int checked = 0;
-        for (int i = 0; i < values.length; i++) {
-            if (values[i].equalsIgnoreCase(current)) { checked = i; break; }
-        }
+        int checked = AppLanguage.currentIndex();
 
         // Same look and feel as every other single-choice dialog in the app
         // (single_choice_dialog + chip rows + activity blur).
@@ -498,7 +504,7 @@ public class SettingsActivity extends AppCompatActivity
             row.setText(entries[i]);
             row.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
             row.setTypeface(
-                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.yugothic_ui_regular),
+                    androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular),
                     idx == checked ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
             row.setTextColor(idx == checked ? primary : white);
             row.setBackgroundResource(idx == checked
@@ -517,13 +523,8 @@ public class SettingsActivity extends AppCompatActivity
             row.setLayoutParams(lp);
             row.setOnClickListener(v -> {
                 dlg.dismiss();
-                String chosen = values[idx];
-                sp.edit().putString("language", chosen).apply();
-                updateLocale(chosen);
-                Intent i2 = new Intent("com.jotapeveloper.fision.LANGUAGE_CHANGED");
-                i2.setPackage(getPackageName());
-                sendBroadcast(i2);
-                recreate();
+                // AppCompat recreates the open activities in the new language.
+                if (idx != checked) AppLanguage.set(AppLanguage.TAGS[idx]);
             });
             opts.addView(row);
         }
@@ -532,14 +533,6 @@ public class SettingsActivity extends AppCompatActivity
         dlg.setOnDismissListener(d -> removeActivityBlur());
         bCancel.setOnClickListener(v -> dlg.dismiss());
         dlg.show();
-    }
-
-    private void updateLocale(String languageCode) {
-        Locale locale = new Locale(languageCode);
-        Locale.setDefault(locale);
-        Configuration config = new Configuration();
-        config.setLocale(locale);
-        getResources().updateConfiguration(config, getResources().getDisplayMetrics());
     }
 
     // ---------------- account dialog (same look as before) ----------------

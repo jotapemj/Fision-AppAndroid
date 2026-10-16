@@ -27,6 +27,9 @@ import java.io.InputStream;
 public class CropAvatarActivity extends AppCompatActivity {
 
     public static final String EXTRA_SOURCE_URI = "source_uri";
+    /** Square playlist cover: the JPEG is returned (EXTRA_RESULT_PATH), not uploaded. */
+    public static final String EXTRA_SQUARE_COVER = "square_cover";
+    public static final String EXTRA_RESULT_PATH = "result_path";
     private static final int OUT_SIZE_PX = 512;
     private static final int JPEG_QUALITY = 85;
     private static final int MAX_SOURCE_SIDE = 2048;   // safety cap before decoding
@@ -35,6 +38,7 @@ public class CropAvatarActivity extends AppCompatActivity {
     private ProgressBar spinner;
     private MaterialButton bSave;
     private MaterialButton bCancel;
+    private boolean squareCover;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +62,9 @@ public class CropAvatarActivity extends AppCompatActivity {
             finish();
             return;
         }
+        squareCover = getIntent().getBooleanExtra(EXTRA_SQUARE_COVER, false);
+        cropView.setSquare(squareCover);
+        if (squareCover) bSave.setText(R.string.crop_use);
         cropView.setBitmap(bm);
 
         bCancel.setOnClickListener(v -> finish());
@@ -70,7 +77,8 @@ public class CropAvatarActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.crop_read_fail, Toast.LENGTH_LONG).show();
             return;
         }
-        File jpeg = new File(getCacheDir(), "avatar_upload.jpg");
+        File jpeg = new File(getCacheDir(),
+                squareCover ? "playlist_cover_upload.jpg" : "avatar_upload.jpg");
         try (FileOutputStream fos = new FileOutputStream(jpeg)) {
             out.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, fos);
         } catch (Exception e) {
@@ -78,6 +86,13 @@ public class CropAvatarActivity extends AppCompatActivity {
             return;
         } finally {
             out.recycle();
+        }
+
+        // Playlist cover: the editor uploads it together with the playlist.
+        if (squareCover) {
+            setResult(RESULT_OK, new Intent().putExtra(EXTRA_RESULT_PATH, jpeg.getAbsolutePath()));
+            finish();
+            return;
         }
 
         String user = AuthManager.get(this).getUsername();

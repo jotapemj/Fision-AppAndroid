@@ -129,6 +129,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
      *  type changes (not when the DOWNLOADING % rises). */
     private String computeSubtitleKind(SongListData item) {
         CloudItem c = item.cloud;
+        if (isLocked(c)) return "locked";
         if (c != null) {
             switch (c.state) {
                 case QUEUED:      return "queued";
@@ -173,17 +174,29 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         holder.boundKey = item.getTitle();
         applyCloudOverlay(holder, item.cloud, sameSong);
 
-        holder.options.setOnClickListener(view ->
-                ParentActivity.showBottomDialog(item));
+        holder.options.setOnClickListener(view -> openOptions(item));
 
         holder.itemView.setOnLongClickListener(view -> {
-            ParentActivity.showBottomDialog(item);
+            openOptions(item);
             return true;
         });
     }
 
+    /** Song options; a locked cloud row asks to sign in instead. */
+    private void openOptions(SongListData item) {
+        if (isLocked(item.cloud)) ParentActivity.promptLogin();
+        else ParentActivity.showBottomDialog(item);
+    }
+
+    /** Cloud song with no local copy while signed out: it needs the server. */
+    private boolean isLocked(CloudItem c) {
+        return c != null && !c.isLocal() && c.state != null
+                && !com.jotapeveloper.fision.cloud.AuthManager.get(context).isLoggedIn();
+    }
+
     private String computeSubtitle(SongListData item) {
         CloudItem c = item.cloud;
+        if (isLocked(c)) return context.getString(R.string.cloud_state_locked);
         if (c != null) {
             switch (c.state) {
                 case QUEUED:
@@ -202,6 +215,14 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
     }
 
     private void applyCloudOverlay(ViewHolder h, CloudItem c, boolean animate) {
+        boolean locked = isLocked(c);
+        if (h.ivLock != null) h.ivLock.setVisibility(locked ? View.VISIBLE : View.GONE);
+        if (locked) {
+            fadeDim(h, true, animate);
+            h.pbSpinner.setVisibility(View.GONE);
+            if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
+            return;
+        }
         if (c == null || c.state == CloudItem.State.LOCAL_AND_CLOUD
                       || c.state == CloudItem.State.LOCAL_ONLY) {
             fadeDim(h, false, animate);
@@ -288,6 +309,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         View vCoverDim;
         CoverFillWaveView vCoverWave;
         ProgressBar pbSpinner;
+        View ivLock;
         String lastSubtitleKind = "";
 
         public ViewHolder(@NonNull View itemView) {
@@ -300,6 +322,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             vCoverDim  = itemView.findViewById(R.id.v_cover_dim);
             vCoverWave = itemView.findViewById(R.id.v_cover_wave);
             pbSpinner  = itemView.findViewById(R.id.pb_cover_spinner);
+            ivLock     = itemView.findViewById(R.id.iv_cover_lock);
             itemView.setOnClickListener(this);
         }
 
@@ -310,6 +333,10 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             SongListData item = listData[pos];
             CloudItem c = item.cloud;
 
+            if (isLocked(c)) {
+                ParentActivity.promptLogin();
+                return;
+            }
             if (c != null) {
                 if (c.state == CloudItem.State.CLOUD_ONLY) {
                     DownloadManagerLite.get(context).start(c.hash);
@@ -334,6 +361,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             MainActivity object = (MainActivity) context;
             File SongFolder = object.getSongFolder();
             File SongPath = new File(SongFolder, listData[pos].getTitle());
+            PlayQueue.playFromLibrary();
             Intent player = new Intent(context, PlayerActivity.class);
             player.putExtra("SongPathString", SongPath.getAbsolutePath());
             player.putExtra("SongName", listData[pos].getTitle());

@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_title">F I S I O N</string>
     <string name="app_name">Fision</string>
     <string name="tv_title">Songs</string>
     <string name="tv_title_search">Search song</string>
@@ -7,8 +6,6 @@
     <string name="b_add">Add</string>
     <string name="no_results">No results</string>
     <string name="tv_SongsCount">25 songs</string>
-    <string name="results">results</string>
-    <string name="songs">songs</string>
 
     <string name="tvTitle">Song title here</string>
     <string name="tvSubtitle">More info here</string>
@@ -29,7 +26,7 @@
 
     <string name="b_delete">Delete song</string>
     <string name="b_edit_info">Edit information</string>
-    <string name="delete_confirm">Eliminar</string>
+    <string name="delete_confirm">Delete %s?</string>
     <string name="song_info_title">Song information</string>
     <string name="rename_hint_song">Title</string>
     <string name="rename_hint_artist">Artist</string>
@@ -63,8 +60,8 @@
     <string name="metronome_half_variant_a">A</string>
     <string name="metronome_half_variant_b">B</string>
 
-    <!--- playlist continuation -->
-    <string name="drawer_switch_playlist">Play next song when this one ends</string>
+    <!--- autoplay of the next song -->
+    <string name="drawer_switch_autoplay_next">Play next song when this one ends</string>
     <string name="drawer_switch_nebula">Animated background</string>
     <string name="drawer_switch_nebula_haptics">Haptic beat</string>
     <string name="b_repeat_description">Repeat mode</string>
@@ -198,7 +195,6 @@
     <!--- settings -->
 
     <string name="title_activity_settings">Settings Activity</string>
-    <string name="settings_title">Settings</string>
     <string name="settings_toolbar_title">Settings</string>
     <string name="gpu_dialog_title_ok">GPU available</string>
     <string name="gpu_dialog_title_missing">GPU unavailable</string>
@@ -213,8 +209,8 @@
     <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB free</string>
     <string name="gpu_vram_low_body">GPU busy. Jobs will wait for free VRAM.</string>
     <string name="server_vram_low">Low free GPU memory on the server</string>
-    <string name="settings_donate_title">View on GitHub</string>
-    <string name="settings_donate_subtitle">Source code, issues and roadmap</string>
+    <string name="settings_github_title">View on GitHub</string>
+    <string name="settings_donate_title">Support the project</string>
     <string name="licenses_title">Licenses</string>
     <string name="licenses_intro">Open-source components used by Fision.</string>
     <string name="license_meta_fmt">%1$s · %2$s</string>
@@ -242,7 +238,6 @@
     <string name="settings_section_app">App</string>
     <string name="settings_section_about">About</string>
     <string name="settings_language_title">Language</string>
-    <string name="design_section_title">Design</string>
     <string name="design_title">Design</string>
     <string name="design_summary">Accent color and song colors</string>
     <string name="design_accent_title">Accent color</string>
@@ -254,51 +249,13 @@
     <string name="performance_audio3d_scene">3D scene (full)</string>
     <string name="performance_audio3d_flat">Flat view (light)</string>
     <string name="settings_language_dialog_title">Choose language</string>
+    <string name="settings_language_system">System default</string>
     <string name="settings_logout_title">Sign out</string>
-    <string name="settings_logout_subtitle">End your session</string>
-    <string name="settings_account_subtitle_local">Tap to sign in or continue local</string>
 
     <!--- Fision server -->
-    <string name="server_section_title">Fision Server</string>
-    <string name="server_url_title">Server URL</string>
-    <string name="server_url_summary">e.g. http://192.168.1.50:8000</string>
-    <string name="server_token_title">Token</string>
-    <string name="server_token_summary">Tap to view or edit (requires biometrics)</string>
-    <string name="about_section_title">About</string>
     <string name="about_title">About Fision</string>
-    <string name="about_summary">Version, developer and open-source credits</string>
     <string name="about_developer">Jotapeveloper 2026</string>
     <string name="about_version_fmt">v%1$s</string>
-    <string name="about_libraries_title">Open-source libraries</string>
-    <string name="about_libraries_body"><![CDATA[<b>Oboe</b> · Google · Apache 2.0
-Low-latency audio stream on Android.
-
-<b>SoundTouch</b> · Olli Parviainen · LGPL 2.1
-Real-time pitch shift and tempo change.
-
-<b>dr_flac</b> · David Reid (mackron) · MIT / Public Domain
-Single-header FLAC decoder.
-
-<b>chords-db</b> · David Rubert · MIT
-Guitar and ukulele chord shapes.
-
-<b>KEMAR HRTF dataset</b> · MIT Media Lab
-Head-related impulse responses for the Audio 3D mode. Free for research and personal use.
-
-<b>Material Components</b> · Google · Apache 2.0
-UI components, buttons, dialogs.
-
-<b>AndroidX / Room</b> · Google · Apache 2.0
-Persistence, biometrics, transitions, preferences.
-
-<b>OkHttp / Retrofit</b> · Square · Apache 2.0
-HTTP client and server API bindings.]]></string>
-    <string name="server_token_set">Token set</string>
-    <string name="server_token_unset">Not set</string>
-    <string name="server_token_dialog_title">Token</string>
-    <string name="server_token_hint">Paste the token from the server</string>
-    <string name="server_auth_required">Authentication required to edit the token</string>
-    <string name="server_auth_subtitle">Biometrics or device PIN</string>
     <string name="server_auth_unavailable">Biometrics not available on this device</string>
     <string name="server_status_online">Server online</string>
     <string name="server_status_offline">Server offline</string>
@@ -336,15 +293,9 @@ HTTP client and server API bindings.]]></string>
     <string name="login_err_network">No response from server</string>
     <string name="login_err_bad_url">Invalid server URL</string>
     <string name="login_err_server">Server error</string>
-    <string name="account_title">Account</string>
-    <string name="account_summary_local">Local mode · tap to sign in</string>
-    <string name="account_summary_logged">Signed in as %1$s</string>
-    <string name="account_dialog_title">Account</string>
+    <string name="login_session_expired">Session expired, please sign in again</string>
     <string name="account_url_line">Server: %1$s</string>
     <string name="account_change_password">Change password</string>
-    <string name="account_logout">Sign out</string>
-    <string name="account_switch_account">Switch account</string>
-    <string name="local_mode_banner">Local mode. Sign in for cloud features.</string>
     <string name="local_mode_import_blocked">Sign in to process new songs on the server</string>
     <string name="change_password_title">Change password</string>
     <string name="change_password_hint_old">Current password</string>
@@ -369,25 +320,15 @@ HTTP client and server API bindings.]]></string>
 
     <!--- import / add song -->
     <string name="import_title">Add song</string>
-    <string name="import_pick_audio">Choose audio file</string>
     <string name="import_no_file">No file chosen</string>
     <string name="import_section_separation">Separation</string>
-    <string name="import_classic">Classic</string>
     <string name="import_personalized">Personalized</string>
-    <string name="import_classic_4stem">Vocals + Drums + Bass + Others</string>
-    <string name="import_classic_2stem">Vocals + Instrumental</string>
     <string name="import_vocals_always">Vocals</string>
-    <string name="import_vocals_single">Vocals</string>
-    <string name="import_vocals_split">Lead / Choirs</string>
-    <string name="import_drums_full">General percussion</string>
-    <string name="import_drums_split">Split percussion</string>
     <string name="import_stem_guitar">Guitar</string>
     <string name="import_stem_bass">Bass</string>
     <string name="import_stem_drums">Percussion</string>
     <string name="import_stem_piano">Piano</string>
     <string name="import_stem_brass">Winds / Brass</string>
-    <string name="import_hint_other">The rest of instruments will be mixed into a single stem</string>
-    <string name="import_hint_drums_split">The identified drum kit will be split into its main components: kick, snare, toms, hi-hat, cymbal and ride. Other percussion may be discarded.</string>
     <string name="import_send_short">Upload</string>
     <string name="import_mode_4stem">4 stems</string>
     <string name="import_mode_2stem">2 stems</string>
@@ -396,7 +337,6 @@ HTTP client and server API bindings.]]></string>
     <string name="import_tile_vocals_split">Lead + choir</string>
     <string name="import_tile_drums_full">General</string>
     <string name="import_tile_drums_split">Drum kit</string>
-    <string name="import_selected_header_placeholder">Select an audio file</string>
     <string name="import_no_server">Set the server URL in Settings first</string>
     <string name="import_uploading">Uploading…</string>
     <string name="import_upload_failed">Upload failed</string>
@@ -418,6 +358,7 @@ HTTP client and server API bindings.]]></string>
     <string name="gpu_timeout_cancel">Cancel</string>
     <string name="cloud_state_downloading">Downloading %1$d%%</string>
     <string name="cloud_state_cloud_only">In the cloud</string>
+    <string name="cloud_state_locked">Sign in to use it</string>
     <string name="cloud_state_error">Error</string>
     <string name="cloud_delete_cloud">Delete from cloud</string>
     <string name="cloud_delete_cloud_confirm">Delete this song from the server too?</string>
@@ -438,6 +379,10 @@ HTTP client and server API bindings.]]></string>
     <string name="lyrics_options_title">Options</string>
     <string name="lyrics_karaoke_mode">Karaoke mode</string>
     <string name="lyrics_karaoke_unavailable">Reprocess to enable</string>
+    <string name="car_karaoke_enable">Karaoke mode</string>
+    <string name="car_karaoke_disable">Turn off karaoke</string>
+    <string name="car_backing_mute">Mute backing vocals</string>
+    <string name="car_backing_unmute">Bring back backing vocals</string>
     <string name="lyrics_cancel_dialog_title">Cancel lyrics process?</string>
     <string name="lyrics_dialog_yes">Confirm</string>
     <string name="lyrics_dialog_no">No</string>
@@ -479,5 +424,63 @@ HTTP client and server API bindings.]]></string>
     <string name="chord_diagram_bass">Bass: %1$s</string>
     <string name="chord_mode_diagrams">Chord diagrams</string>
     <string name="chord_mode_carousel">Show/hide chords</string>
+
+    <!-- Playlists -->
+    <string name="tab_songs">Songs</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="playlist_new">New playlist</string>
+    <plurals name="playlist_count">
+        <item quantity="one">%d playlist</item>
+        <item quantity="other">%d playlists</item>
+    </plurals>
+    <plurals name="playlist_song_count">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%d result</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+    <plurals name="playlist_selected_count">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <string name="playlists_empty">Create your first playlist</string>
+    <string name="songs_empty">Add your first song</string>
+    <string name="playlists_need_login">Sign in to use playlists</string>
+    <string name="playlist_reorder">Reorder</string>
+    <string name="playlist_remove_song">Remove from playlist</string>
+    <string name="playlist_edit_title">Edit playlist</string>
+    <string name="playlist_title_hint">Title</string>
+    <string name="playlist_add_songs">Add songs</string>
+    <string name="playlist_save">Save</string>
+    <string name="playlist_done">Done</string>
+    <string name="playlist_cancel">Cancel</string>
+    <string name="playlist_back">Back</string>
+    <string name="playlist_search_hint">Search songs</string>
+    <string name="playlist_change_cover">Change cover</string>
+    <string name="playlist_remove_cover">Remove cover</string>
+    <string name="playlist_cover_pick">Choose from device</string>
+    <string name="playlist_cover_mosaic">Song mosaic</string>
+    <string name="playlist_delete">Delete playlist</string>
+    <string name="playlist_options">Playlist options</string>
+    <string name="playlist_delete_confirm">Delete %s?</string>
+    <string name="playlist_delete_action">Delete</string>
+    <string name="playlist_deleted">Playlist deleted</string>
+    <string name="playlist_no_songs_in_cloud">No songs in the cloud yet</string>
+    <string name="playlist_downloading">Downloading the song…</string>
+    <string name="playlist_empty_songs">This playlist has no songs</string>
+    <string name="playlist_err_title_empty">Write a title</string>
+    <string name="playlist_err_network">Could not reach the server</string>
+    <string name="playlist_err_gone">This playlist no longer exists</string>
+    <string name="playlist_err_cover_too_large">Image too large</string>
+    <string name="playlist_err_cover_format">Unsupported format</string>
+    <string name="playlist_err_title_length">The title must have 1 to %d characters</string>
+    <string name="playlist_err_song_not_found">A song is not in your cloud library</string>
+    <string name="playlist_err_song_duplicate">A song is repeated in the playlist</string>
+    <string name="playlist_err_song_limit">Maximum %d songs per playlist</string>
+    <string name="playlist_err_playlist_limit">Maximum %d playlists</string>
+    <string name="playlist_err_generic">Server error (%d)</string>
+    <string name="crop_use">Use</string>
 
 </resources>

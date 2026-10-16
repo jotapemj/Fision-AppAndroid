@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One playlist: artwork, title, count and its songs in play order.
+     The header floats over the top of the list (which reserves its height as
+     top padding) and collapses while the list scrolls; the small title in the
+     bar takes over once it is gone. -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_playlistSongs"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toBottomOf="@+id/v_playlistBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/ll_playlistHeader"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toBottomOf="@+id/v_playlistBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <FrameLayout
+            android:id="@+id/fl_playlistHeroCover"
+            android:layout_width="160dp"
+            android:layout_height="160dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/cover_clip_bg"
+            android:clipToOutline="true">
+
+            <ImageView
+                android:id="@+id/iv_playlistHeroCover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+
+        <!-- Placeholder: reserves the title's room in the header. The visible
+             title is tv_playlistFloatTitle, which can travel into the bar. -->
+        <TextView
+            android:id="@+id/tv_playlistHeroTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginTop="16dp"
+            android:visibility="invisible"
+            android:gravity="center"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:fontFamily="@font/noto_sans_regular"
+            android:textColor="@color/AppWhite"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/tv_playlistHeroCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/noto_sans_regular"
+            android:textColor="@color/AppDarkGrey"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_playlistSongsEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/playlist_empty_songs"
+        android:fontFamily="@font/noto_sans_regular"
+        android:textColor="#8A8A8A"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@+id/ll_playlistHeader"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Edge fades, shown only while songs remain beyond that edge -->
+    <View
+        android:id="@+id/v_playlistFadeTop"
+        android:layout_width="0dp"
+        android:layout_height="28dp"
+        android:background="@drawable/list_fade_top"
+        android:visibility="invisible"
+        app:layout_constraintTop_toBottomOf="@+id/v_playlistBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <View
+        android:id="@+id/v_playlistFadeBottom"
+        android:layout_width="0dp"
+        android:layout_height="28dp"
+        android:background="@drawable/list_fade_bottom"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Top bar: opaque so the collapsing header slides under it -->
+    <View
+        android:id="@+id/v_playlistBar"
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:background="#000000"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageButton
+        android:id="@+id/ib_playlistBack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:background="?selectableItemBackgroundBorderless"
+        android:contentDescription="@string/playlist_back"
+        android:src="@drawable/ic_back"
+        app:tint="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/ib_playlistDelete"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="8dp"
+        android:background="?selectableItemBackgroundBorderless"
+        android:contentDescription="@string/playlist_delete"
+        android:src="@drawable/ic_delete"
+        app:tint="#FFFFFF"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/ib_playlistBack" />
+
+    <ImageButton
+        android:id="@+id/ib_playlistEdit"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?selectableItemBackgroundBorderless"
+        android:contentDescription="@string/playlist_edit_title"
+        android:src="@drawable/ic_edit"
+        app:tint="#FFFFFF"
+        app:layout_constraintEnd_toStartOf="@+id/ib_playlistDelete"
+        app:layout_constraintTop_toTopOf="@+id/ib_playlistBack" />
+
+    <!-- Small title, faded in once the header has collapsed -->
+    <TextView
+        android:id="@+id/tv_playlistBarTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:alpha="0"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:fontFamily="@font/noto_sans_regular"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        app:layout_constraintStart_toEndOf="@+id/ib_playlistBack"
+        app:layout_constraintEnd_toStartOf="@+id/ib_playlistEdit"
+        app:layout_constraintTop_toTopOf="@+id/ib_playlistBack"
+        app:layout_constraintBottom_toBottomOf="@+id/ib_playlistBack" />
+
+    <!-- Visible title: sits over the header placeholder and, while the list
+         scrolls, shrinks and travels into the bar (drawn above it). -->
+    <TextView
+        android:id="@+id/tv_playlistFloatTitle"
+        android:alpha="0"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:gravity="center"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:fontFamily="@font/noto_sans_regular"
+        android:textColor="@color/AppWhite"
+        android:textSize="24sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <include
+        layout="@layout/mini_player"
+        android:layout_width="0dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -105,6 +105,15 @@ public class LicenseCatalog {
             "Original dataset available at:\n" +
             "https://sound.media.mit.edu/resources/KEMAR.html";
 
+    private static final String LIC_OFL =
+            "This Font Software is licensed under the SIL Open Font License,\n" +
+            "Version 1.1. The font may be used, studied, modified and\n" +
+            "redistributed freely, embedded in software, as long as it is not\n" +
+            "sold by itself and the copyright notice and license are kept.\n" +
+            "The license text travels inside the font file and in licenses/\n" +
+            "of the source repository.\n\n" +
+            "Full text and FAQ: https://openfontlicense.org";
+
     // ---- Entries ---------------------------------------------------------
     private static final List<LicenseEntry> ENTRIES = new ArrayList<>();
     static {
@@ -148,6 +157,20 @@ public class LicenseCatalog {
                 "Gson", "Google",
                 "Apache 2.0", "https://github.com/google/gson",
                 LIC_APACHE_2_0));
+        ENTRIES.add(new LicenseEntry(
+                "3D head model (Audio 3D)", "Meshy",
+                "CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/",
+                "The listener head model used in the 3D audio scene was generated\n" +
+                "with Meshy (https://www.meshy.ai) and is licensed under the Creative\n" +
+                "Commons Attribution 4.0 International License (CC BY 4.0)."));
+        ENTRIES.add(new LicenseEntry(
+                "Noto Sans", "The Noto Project Authors",
+                "SIL OFL 1.1", "https://github.com/notofonts/latin-greek-cyrillic",
+                "Copyright 2022 The Noto Project Authors\n\n" + LIC_OFL));
+        ENTRIES.add(new LicenseEntry(
+                "MusGlyphs", "Dan Kreider",
+                "SIL OFL 1.1", "https://www.notationcentral.com/product/musglyphs/",
+                "Copyright (c) Dan Kreider, 2021\n\n" + LIC_OFL));
     }
 
     public static List<LicenseEntry> all() { return ENTRIES; }

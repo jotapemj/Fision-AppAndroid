@@ -155,7 +155,7 @@ public class ImportStemTileAdapter extends RecyclerView.Adapter<ImportStemTileAd
     private void styleOption(TextView tv, boolean active, int accent, float density) {
         if (baseFont == null) {
             baseFont = androidx.core.content.res.ResourcesCompat.getFont(
-                    tv.getContext(), R.font.yugothic_ui_regular);
+                    tv.getContext(), R.font.noto_sans_regular);
         }
         android.graphics.drawable.GradientDrawable bg =
                 new android.graphics.drawable.GradientDrawable();

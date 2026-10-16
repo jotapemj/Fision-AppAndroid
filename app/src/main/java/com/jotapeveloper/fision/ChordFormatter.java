@@ -10,7 +10,7 @@ package com.jotapeveloper.fision;
  * - Always capitalized; in Latin "Do, Re, Mi..." with the first letter uppercase.
  * - Inverted bass ("C/G") is processed as root and bass separately.
  * - Character ';' in the suffix: marks the start of a superscript for the
- *   mus_glyphs font (American). In Latin it renders with yugothic_ui_regular, which
+ *   mus_glyphs font (American). In Latin it renders with noto_sans_regular, which
  *   does not understand ';', so it is stripped from the output.
  */
 public final class ChordFormatter {
@@ -70,7 +70,7 @@ public final class ChordFormatter {
         String newRoot;
         if (latin) {
             newRoot = preferFlat ? LATIN_FLAT[newIdx] : LATIN_SHARP[newIdx];
-            // Latin notation → yugothic_ui_regular does not interpret ';' as a
+            // Latin notation → noto_sans_regular does not interpret ';' as a
             // superscript marker. Strip it so it reads correctly.
             suffix = suffix.replace(";", "");
         } else {

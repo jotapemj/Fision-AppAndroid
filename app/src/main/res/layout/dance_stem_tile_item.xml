@@ -55,7 +55,7 @@
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:text="swing"
             android:textSize="13sp"
             android:textStyle="bold"

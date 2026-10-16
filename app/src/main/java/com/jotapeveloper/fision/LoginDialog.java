@@ -35,6 +35,12 @@ public class LoginDialog {
     private LoginDialog() {}
 
     public static void show(Activity host, boolean allowLocalMode, Callback cb) {
+        show(host, allowLocalMode, null, cb);
+    }
+
+    /** [notice]: shown above the fields from the start (e.g. session expired). */
+    public static void show(Activity host, boolean allowLocalMode,
+                            @androidx.annotation.Nullable String notice, Callback cb) {
         View v = host.getLayoutInflater().inflate(R.layout.login_dialog, null);
         TextInputEditText etUrl  = v.findViewById(R.id.et_loginUrl);
         TextInputEditText etUser = v.findViewById(R.id.et_loginUser);
@@ -50,6 +56,11 @@ public class LoginDialog {
         if (!prevUrl.isEmpty()) etUrl.setText(prevUrl);
         String prevUser = prefs.getUsername();
         if (!prevUser.isEmpty()) etUser.setText(prevUser);
+        if (notice != null) {
+            tvError.setText(notice);
+            tvError.setVisibility(View.VISIBLE);
+            if (!prevUser.isEmpty()) etPass.requestFocus();
+        }
 
         AlertDialog dlg = new AlertDialog.Builder(host, R.style.Theme_Fision_BlurDialog)
                 .setView(v)

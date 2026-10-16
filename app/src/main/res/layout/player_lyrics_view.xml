@@ -44,7 +44,7 @@
         android:textColor="@color/AppWhite"
         android:textSize="28sp"
         android:textStyle="bold"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -105,7 +105,7 @@
                     android:textColor="@color/AppWhite"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:fontFamily="@font/yugothic_ui_regular" />
+                    android:fontFamily="@font/noto_sans_regular" />
 
                 <TextView
                     android:id="@+id/tv_lyricsCardSubtitle"
@@ -115,7 +115,7 @@
                     android:text="@string/lyrics_card_subtitle_auto"
                     android:textColor="#B0B0B0"
                     android:textSize="13sp"
-                    android:fontFamily="@font/yugothic_ui_regular" />
+                    android:fontFamily="@font/noto_sans_regular" />
             </LinearLayout>
 
             <ImageView
@@ -191,7 +191,7 @@
             android:textColor="@color/AppWhite"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:layout_marginBottom="20dp" />
 
         <com.jotapeveloper.fision.LyricsSkeletonView

@@ -45,6 +45,8 @@ public class BlurBehindLayout extends ConstraintLayout {
     @Nullable private RenderNode renderNode;
     private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private boolean capturing = false;   // guard against recursion source.draw -> onDraw
+    /** Screen colour under the source (every host screen is black). */
+    private int backdropColor = Color.BLACK;
     private final int[] myLoc  = new int[2];
     private final int[] srcLoc = new int[2];
 
@@ -114,7 +116,9 @@ public class BlurBehindLayout extends ConstraintLayout {
             bitmapCanvas = new Canvas(bitmap);
         }
         if (bitmapCanvas == null) return;
-        bitmap.eraseColor(Color.TRANSPARENT);
+        // Opaque backdrop: rows without their own fill would otherwise blur over
+        // transparency and let the sharp content behind show through.
+        bitmap.eraseColor(backdropColor);
 
         // Compute the offset between the source and this view in window coordinates.
         getLocationInWindow(myLoc);

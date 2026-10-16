@@ -187,13 +187,23 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
 
         bSend.setOnClickListener(v -> onSendClicked());
 
-        // Reprocess mode: hash passed via intent extra
-        reprocessHash = getIntent().getStringExtra(EXTRA_REPROCESS_HASH);
+        // Shared from another app: only the audio stream is taken from it.
+        Uri shared = sharedAudioUri();
+        // Reprocess mode: hash passed via intent extra (in-app only)
+        reprocessHash = isShareEntry() ? null : getIntent().getStringExtra(EXTRA_REPROCESS_HASH);
         if (reprocessHash != null) {
             applyReprocessMode();
         } else if (savedInstanceState != null
                 && savedInstanceState.getParcelable(STATE_URI) != null) {
             setSelectedUri(savedInstanceState.getParcelable(STATE_URI));
+        } else if (isShareEntry()) {
+            if (shared == null) {
+                android.widget.Toast.makeText(this, R.string.import_err_unsupported_format,
+                        android.widget.Toast.LENGTH_LONG).show();
+                finish();
+                return;
+            }
+            setSelectedUri(shared);
         } else if (getIntent().getData() != null) {
             setSelectedUri(getIntent().getData());
         } else if (savedInstanceState == null) {
@@ -210,6 +220,26 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
                 com.jotapeveloper.fision.cloud.ServerInfoManager.get(this);
         applyServerInfoState();
         if (!infoMgr.isLoaded()) infoMgr.refresh();
+    }
+
+    /** True when opened through the exported share alias (ShareToFision). */
+    private boolean isShareEntry() {
+        android.content.ComponentName c = getIntent().getComponent();
+        return c != null && c.getClassName().endsWith(".ShareToFision");
+    }
+
+    /** Audio stream of an ACTION_SEND from the share alias, or null. Only
+     *  content URIs: the read grant comes with the share. */
+    @androidx.annotation.Nullable
+    private Uri sharedAudioUri() {
+        if (!isShareEntry() || !Intent.ACTION_SEND.equals(getIntent().getAction())) return null;
+        Uri uri;
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM, Uri.class);
+        } else {
+            uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+        }
+        return uri != null && "content".equals(uri.getScheme()) ? uri : null;
     }
 
     /** Keeps the chosen song across recreation (e.g. an accent change). */
@@ -939,12 +969,15 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
         return new LocalMeta(title, artist, coverPath);
     }
 
-    /** Moves cover_pending_*.png to cover_<hash>.png to associate it with the final item. */
+    /** Moves cover_pending_*.png to the hash's sticky cover so it survives restarts. */
     private String renameCoverForHash(String pendingPath, String hash) {
         if (pendingPath == null || hash == null) return pendingPath;
         java.io.File src = new java.io.File(pendingPath);
         if (!src.exists()) return null;
-        java.io.File dst = new java.io.File(getCacheDir(), "cover_" + hash + ".png");
+        java.io.File dst = com.jotapeveloper.fision.cloud.CloudRepository.get(this)
+                .stickyCoverFile(hash);
+        //noinspection ResultOfMethodCallIgnored
+        dst.delete();
         if (src.renameTo(dst)) return dst.getAbsolutePath();
         return pendingPath;
     }

@@ -64,6 +64,15 @@ public class CircularCropView extends View {
         scaleDetector = new ScaleGestureDetector(ctx, new ScaleListener());
     }
 
+    /** Square window (playlist covers) instead of the circle (avatars). The
+     *  framed region and the output are square in both cases. */
+    private boolean square = false;
+
+    public void setSquare(boolean square) {
+        this.square = square;
+        invalidate();
+    }
+
     public void setBitmap(Bitmap bm) {
         this.bitmap = bm;
         if (getWidth() > 0 && getHeight() > 0) resetMatrix();
@@ -137,11 +146,13 @@ public class CircularCropView extends View {
         // Dark overlay everywhere, then punch a circular hole out of it
         int save = canvas.saveLayer(null, null);
         canvas.drawRect(0, 0, getWidth(), getHeight(), overlayPaint);
-        canvas.drawOval(circle, clearPaint);
+        if (square) canvas.drawRect(circle, clearPaint);
+        else        canvas.drawOval(circle, clearPaint);
         canvas.restoreToCount(save);
 
         // Thin ring for aesthetics
-        canvas.drawOval(circle, ringPaint);
+        if (square) canvas.drawRect(circle, ringPaint);
+        else        canvas.drawOval(circle, ringPaint);
     }
 
     @Override

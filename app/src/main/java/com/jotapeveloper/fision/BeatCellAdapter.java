@@ -33,9 +33,9 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     private int     semitonesShift  = 0;
 
     // Cached typefaces (lazy). mus_glyphs interprets ';' as superscript (American);
-    // yugothic_ui_regular is readable for the Latin syllables (Do, Re, ...).
+    // noto_sans_regular is readable for the Latin syllables (Do, Re, ...).
     private android.graphics.Typeface tfMusGlyphs;
-    private android.graphics.Typeface tfYuGothic;
+    private android.graphics.Typeface tfLatin;
 
     // Colors
     private static final int COLOR_BASE      = Color.parseColor("#262626");
@@ -150,11 +150,11 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     /** Returns the typeface for the active notation (lazy + cached). */
     private android.graphics.Typeface typefaceForCurrent() {
         if (latinNotation) {
-            if (tfYuGothic == null) {
-                tfYuGothic = androidx.core.content.res.ResourcesCompat.getFont(
-                        context, R.font.yugothic_ui_regular);
+            if (tfLatin == null) {
+                tfLatin = androidx.core.content.res.ResourcesCompat.getFont(
+                        context, R.font.noto_sans_regular);
             }
-            return tfYuGothic;
+            return tfLatin;
         }
         if (tfMusGlyphs == null) {
             tfMusGlyphs = androidx.core.content.res.ResourcesCompat.getFont(

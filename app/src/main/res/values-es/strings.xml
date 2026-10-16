@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_title">F I S I O N</string>
     <string name="app_name">Fision</string>
     <string name="tv_title">Canciones</string>
     <string name="tv_title_search">Buscar canción</string>
@@ -8,7 +7,6 @@
     <string name="no_results">Sin resultados</string>
     <string name="tv_SongsCount">25 canciones</string>
 
-    <string name="results">resultados</string>
 
     <string name="tvTitle">Título de canción aquí</string>
     <string name="tvSubtitle">Más info aquí</string>
@@ -30,7 +28,7 @@
     <string name="b_delete">Borrar canción</string>
     <string name="b_edit_info">Editar información</string>
 
-    <string name="delete_confirm">Eliminar</string>
+    <string name="delete_confirm">¿Eliminar %s?</string>
     <string name="song_info_title">Información de la canción</string>
     <string name="rename_hint_song">Título</string>
     <string name="rename_hint_artist">Artista</string>
@@ -64,8 +62,8 @@
     <string name="metronome_half_variant_a">A</string>
     <string name="metronome_half_variant_b">B</string>
 
-    <!--- playlist continuation -->
-    <string name="drawer_switch_playlist">Reproducir la siguiente al terminar</string>
+    <!--- autoplay of the next song -->
+    <string name="drawer_switch_autoplay_next">Reproducir la siguiente al terminar</string>
     <string name="drawer_switch_nebula">Fondo animado</string>
     <string name="drawer_switch_nebula_haptics">Vibración al ritmo</string>
     <string name="b_repeat_description">Modo repetición</string>
@@ -139,7 +137,7 @@
     <string name="export_permission_continue">Abrir Ajustes</string>
 
     <string name="helpline_icon">Icono de ayuda</string>
-    <string name="tv_alertDialog_text">Borrar [SONG TITLE]?</string>
+    <string name="tv_alertDialog_text">¿Borrar [SONG TITLE]?</string>
     <string name="YES">BORRAR</string>
     <string name="NO">@android:string/cancel</string>
 
@@ -195,7 +193,6 @@
     <string name="pitch_display_zero">0</string>
     <string name="pitch_display_signed">%1$+d</string>
 
-    <string name="settings_title">Ajustes</string>
     <string name="title_activity_settings">Pantalla de ajustes</string>
     <string name="settings_toolbar_title">Ajustes</string>
     <string name="gpu_dialog_title_ok">GPU disponible</string>
@@ -211,8 +208,8 @@
     <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB libres</string>
     <string name="gpu_vram_low_body">GPU ocupada. Los trabajos esperarán VRAM libre.</string>
     <string name="server_vram_low">Poca memoria de GPU libre en el servidor</string>
-    <string name="settings_donate_title">Ver en GitHub</string>
-    <string name="settings_donate_subtitle">Código fuente, issues y roadmap</string>
+    <string name="settings_github_title">Ver en GitHub</string>
+    <string name="settings_donate_title">Apoya el proyecto</string>
     <string name="licenses_title">Licencias</string>
     <string name="licenses_intro">Componentes open source utilizados por Fision.</string>
     <string name="license_meta_fmt">%1$s · %2$s</string>
@@ -240,7 +237,6 @@
     <string name="settings_section_app">Aplicación</string>
     <string name="settings_section_about">Acerca de</string>
     <string name="settings_language_title">Idioma</string>
-    <string name="design_section_title">Diseño</string>
     <string name="design_title">Diseño</string>
     <string name="design_summary">Color de acento y colores de la canción</string>
     <string name="design_accent_title">Color de acento</string>
@@ -252,52 +248,13 @@
     <string name="performance_audio3d_scene">Escena 3D (completa)</string>
     <string name="performance_audio3d_flat">Vista plana (ligera)</string>
     <string name="settings_language_dialog_title">Elegir idioma</string>
+    <string name="settings_language_system">Idioma del sistema</string>
     <string name="settings_logout_title">Cerrar sesión</string>
-    <string name="settings_logout_subtitle">Finalizar tu sesión</string>
-    <string name="settings_account_subtitle_local">Toca para iniciar sesión o continuar en local</string>
-    <string name="songs">canciones</string>
 
     <!--- Fision server -->
-    <string name="server_section_title">Servidor Fision</string>
-    <string name="server_url_title">URL del servidor</string>
-    <string name="server_url_summary">Ej: http://192.168.1.50:8000</string>
-    <string name="server_token_title">Token Bearer</string>
-    <string name="server_token_summary">Toca para ver o editar (requiere huella/PIN)</string>
-    <string name="about_section_title">Acerca de</string>
     <string name="about_title">Acerca de Fision</string>
-    <string name="about_summary">Versión, desarrollador y créditos open-source</string>
     <string name="about_developer">Jotapeveloper 2026</string>
     <string name="about_version_fmt">v%1$s</string>
-    <string name="about_libraries_title">Librerías open-source</string>
-    <string name="about_libraries_body"><![CDATA[<b>Oboe</b> · Google · Apache 2.0
-Audio de baja latencia en Android.
-
-<b>SoundTouch</b> · Olli Parviainen · LGPL 2.1
-Pitch shift y cambio de tempo en tiempo real.
-
-<b>dr_flac</b> · David Reid (mackron) · MIT / Dominio público
-Decoder FLAC single-header.
-
-<b>chords-db</b> · David Rubert · MIT
-Posiciones de acordes de guitarra y ukelele.
-
-<b>KEMAR HRTF dataset</b> · MIT Media Lab
-Respuestas impulsivas para el modo Audio 3D. Libre para investigación y uso personal.
-
-<b>Material Components</b> · Google · Apache 2.0
-Componentes de UI, botones, diálogos.
-
-<b>AndroidX / Room</b> · Google · Apache 2.0
-Persistencia, biometría, transiciones, preferencias.
-
-<b>OkHttp / Retrofit</b> · Square · Apache 2.0
-Cliente HTTP y bindings al servidor.]]></string>
-    <string name="server_token_set">Token configurado</string>
-    <string name="server_token_unset">Sin configurar</string>
-    <string name="server_token_dialog_title">Token Bearer</string>
-    <string name="server_token_hint">Pega el token del servidor</string>
-    <string name="server_auth_required">Autenticación requerida para editar el token</string>
-    <string name="server_auth_subtitle">Huella o PIN del dispositivo</string>
     <string name="server_auth_unavailable">Biometría no disponible en este dispositivo</string>
     <string name="server_status_online">Servidor en línea</string>
     <string name="server_status_offline">Servidor sin conexión</string>
@@ -336,15 +293,9 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="login_err_network">No hay respuesta del servidor</string>
     <string name="login_err_bad_url">URL del servidor no válida</string>
     <string name="login_err_server">Error del servidor</string>
-    <string name="account_title">Cuenta</string>
-    <string name="account_summary_local">Modo local · toca para iniciar sesión</string>
-    <string name="account_summary_logged">Conectado como %1$s</string>
-    <string name="account_dialog_title">Cuenta</string>
+    <string name="login_session_expired">Sesión caducada, vuelve a entrar</string>
     <string name="account_url_line">Servidor: %1$s</string>
     <string name="account_change_password">Cambiar contraseña</string>
-    <string name="account_logout">Cerrar sesión</string>
-    <string name="account_switch_account">Cambiar de cuenta</string>
-    <string name="local_mode_banner">Modo local. Inicia sesión para funciones en la nube.</string>
     <string name="local_mode_import_blocked">Inicia sesión para procesar canciones nuevas en el servidor</string>
     <string name="change_password_title">Cambiar contraseña</string>
     <string name="change_password_hint_old">Contraseña actual</string>
@@ -369,25 +320,15 @@ Cliente HTTP y bindings al servidor.]]></string>
 
     <!--- import / add song -->
     <string name="import_title">Añadir canción</string>
-    <string name="import_pick_audio">Elegir archivo de audio</string>
     <string name="import_no_file">Ningún archivo elegido</string>
     <string name="import_section_separation">Separación</string>
-    <string name="import_classic">Clásica</string>
     <string name="import_personalized">Personalizada</string>
-    <string name="import_classic_4stem">Voz + Batería + Bajo + Otros</string>
-    <string name="import_classic_2stem">Voz + Instrumental</string>
     <string name="import_vocals_always">Voces</string>
-    <string name="import_vocals_single">Voces</string>
-    <string name="import_vocals_split">Voz/Voces principales, Coros</string>
-    <string name="import_drums_full">Percusión general</string>
-    <string name="import_drums_split">Batería separada</string>
     <string name="import_stem_guitar">Guitarra</string>
     <string name="import_stem_bass">Bajo</string>
     <string name="import_stem_drums">Percusión</string>
     <string name="import_stem_piano">Piano</string>
     <string name="import_stem_brass">Vientos / Metales</string>
-    <string name="import_hint_other">El resto de instrumentos irán mezclados en un solo stem</string>
-    <string name="import_hint_drums_split">La batería identificada en la canción será separada en sus componentes principales: bombo, caja, toms, hi-hat, platillo y ride. El resto de percusión podría ser descartada.</string>
     <string name="import_send_short">Subir</string>
     <string name="import_mode_4stem">4 stems</string>
     <string name="import_mode_2stem">2 stems</string>
@@ -396,7 +337,6 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="import_tile_vocals_split">Principal + coros</string>
     <string name="import_tile_drums_full">General</string>
     <string name="import_tile_drums_split">Batería</string>
-    <string name="import_selected_header_placeholder">Selecciona un archivo de audio</string>
     <string name="import_no_server">Configura primero la URL del servidor en Ajustes</string>
     <string name="import_uploading">Subiendo…</string>
     <string name="import_upload_failed">Subida fallida</string>
@@ -418,6 +358,7 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="gpu_timeout_cancel">Cancelar</string>
     <string name="cloud_state_downloading">Descargando %1$d%%</string>
     <string name="cloud_state_cloud_only">En la nube</string>
+    <string name="cloud_state_locked">Inicia sesión para usarla</string>
     <string name="cloud_state_error">Error</string>
     <string name="cloud_delete_cloud">Borrar de la nube</string>
     <string name="cloud_delete_cloud_confirm">¿Borrar también esta canción del servidor?</string>
@@ -438,6 +379,10 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="lyrics_options_title">Opciones</string>
     <string name="lyrics_karaoke_mode">Modo karaoke</string>
     <string name="lyrics_karaoke_unavailable">Reprocesa para habilitar</string>
+    <string name="car_karaoke_enable">Modo karaoke</string>
+    <string name="car_karaoke_disable">Quitar modo karaoke</string>
+    <string name="car_backing_mute">Quitar coros</string>
+    <string name="car_backing_unmute">Recuperar coros</string>
     <string name="lyrics_cancel_dialog_title">¿Cancelar proceso de letra?</string>
     <string name="lyrics_dialog_yes">Confirmar</string>
     <string name="lyrics_dialog_no">No</string>
@@ -479,5 +424,67 @@ Cliente HTTP y bindings al servidor.]]></string>
     <string name="chord_diagram_bass">Bajo: %1$s</string>
     <string name="chord_mode_diagrams">Diagramas de acordes</string>
     <string name="chord_mode_carousel">Mostrar/ocultar acordes</string>
+
+    <!-- Playlists -->
+    <string name="tab_songs">Canciones</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="playlist_new">Nueva playlist</string>
+    <plurals name="playlist_count">
+        <item quantity="one">%d playlist</item>
+        <item quantity="many">%d playlists</item>
+        <item quantity="other">%d playlists</item>
+    </plurals>
+    <plurals name="playlist_song_count">
+        <item quantity="one">%d canción</item>
+        <item quantity="many">%d canciones</item>
+        <item quantity="other">%d canciones</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%d resultado</item>
+        <item quantity="many">%d resultados</item>
+        <item quantity="other">%d resultados</item>
+    </plurals>
+    <plurals name="playlist_selected_count">
+        <item quantity="one">%d seleccionada</item>
+        <item quantity="many">%d seleccionadas</item>
+        <item quantity="other">%d seleccionadas</item>
+    </plurals>
+    <string name="playlists_empty">Crea tu primera playlist</string>
+    <string name="songs_empty">Añade tu primera canción</string>
+    <string name="playlists_need_login">Inicia sesión para usar playlists</string>
+    <string name="playlist_reorder">Reordenar</string>
+    <string name="playlist_remove_song">Quitar de la playlist</string>
+    <string name="playlist_edit_title">Editar playlist</string>
+    <string name="playlist_title_hint">Título</string>
+    <string name="playlist_add_songs">Añadir canciones</string>
+    <string name="playlist_save">Guardar</string>
+    <string name="playlist_done">Listo</string>
+    <string name="playlist_cancel">Cancelar</string>
+    <string name="playlist_back">Atrás</string>
+    <string name="playlist_search_hint">Buscar canciones</string>
+    <string name="playlist_change_cover">Cambiar portada</string>
+    <string name="playlist_remove_cover">Quitar portada</string>
+    <string name="playlist_cover_pick">Elegir del dispositivo</string>
+    <string name="playlist_cover_mosaic">Mosaico de canciones</string>
+    <string name="playlist_delete">Eliminar playlist</string>
+    <string name="playlist_options">Opciones de la playlist</string>
+    <string name="playlist_delete_confirm">¿Eliminar %s?</string>
+    <string name="playlist_delete_action">Eliminar</string>
+    <string name="playlist_deleted">Playlist eliminada</string>
+    <string name="playlist_no_songs_in_cloud">Aún no hay canciones en la nube</string>
+    <string name="playlist_downloading">Descargando la canción…</string>
+    <string name="playlist_empty_songs">Esta playlist no tiene canciones</string>
+    <string name="playlist_err_title_empty">Escribe un título</string>
+    <string name="playlist_err_network">No se pudo contactar con el servidor</string>
+    <string name="playlist_err_gone">Esta playlist ya no existe</string>
+    <string name="playlist_err_cover_too_large">Imagen demasiado grande</string>
+    <string name="playlist_err_cover_format">Formato no soportado</string>
+    <string name="playlist_err_title_length">El título debe tener entre 1 y %d caracteres</string>
+    <string name="playlist_err_song_not_found">Una canción no está en tu biblioteca de la nube</string>
+    <string name="playlist_err_song_duplicate">Hay una canción repetida en la playlist</string>
+    <string name="playlist_err_song_limit">Máximo %d canciones por playlist</string>
+    <string name="playlist_err_playlist_limit">Máximo %d playlists</string>
+    <string name="playlist_err_generic">Error del servidor (%d)</string>
+    <string name="crop_use">Usar</string>
 
 </resources>

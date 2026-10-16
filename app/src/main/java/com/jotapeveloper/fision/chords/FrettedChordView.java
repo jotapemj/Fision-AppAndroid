@@ -41,7 +41,7 @@ public class FrettedChordView extends View {
         line.setStrokeCap(Paint.Cap.ROUND);
         fill.setColor(Color.WHITE);
         Typeface bold = null;
-        try { bold = ResourcesCompat.getFont(c, R.font.yugothic_ui_regular); } catch (Exception ignored) {}
+        try { bold = ResourcesCompat.getFont(c, R.font.noto_sans_regular); } catch (Exception ignored) {}
         fingerText.setColor(Color.BLACK);
         fingerText.setTextAlign(Paint.Align.CENTER);
         fingerText.setTypeface(Typeface.create(bold != null ? bold : Typeface.DEFAULT, Typeface.BOLD));

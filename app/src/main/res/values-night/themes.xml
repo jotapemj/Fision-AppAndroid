@@ -48,7 +48,7 @@
         <item name="android:backgroundTint">@color/button_background_color</item>
         <item name="android:strokeColor">@color/button_stroke_color</item>
         <item name="android:textColor">@color/button_text_color</item>
-        <item name="android:fontFamily">@font/yugothic_ui_regular</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
     </style>
 
 </resources>

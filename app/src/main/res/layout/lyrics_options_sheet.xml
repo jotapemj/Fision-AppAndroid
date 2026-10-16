@@ -25,7 +25,7 @@
         android:textColor="@color/AppWhite"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:fontFamily="@font/yugothic_ui_regular" />
+        android:fontFamily="@font/noto_sans_regular" />
 
     <LinearLayout
         android:id="@+id/row_lyricsKaraoke"
@@ -60,7 +60,7 @@
                 android:text="@string/lyrics_karaoke_mode"
                 android:textColor="@color/AppWhite"
                 android:textSize="15sp"
-                android:fontFamily="@font/yugothic_ui_regular" />
+                android:fontFamily="@font/noto_sans_regular" />
 
             <TextView
                 android:id="@+id/tv_lyricsKaraokeSubtitle"
@@ -70,7 +70,7 @@
                 android:text="@string/lyrics_karaoke_unavailable"
                 android:textColor="@color/lyrics_line_dim"
                 android:textSize="12sp"
-                android:fontFamily="@font/yugothic_ui_regular"
+                android:fontFamily="@font/noto_sans_regular"
                 android:visibility="gone" />
         </LinearLayout>
 
@@ -110,6 +110,6 @@
             android:text="@string/lyrics_reprocess"
             android:textColor="@color/AppWhite"
             android:textSize="15sp"
-            android:fontFamily="@font/yugothic_ui_regular" />
+            android:fontFamily="@font/noto_sans_regular" />
     </LinearLayout>
 </LinearLayout>

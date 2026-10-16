@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Create / edit a playlist: cover, title and songs (drag to reorder). -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <ImageButton
+        android:id="@+id/ib_peClose"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:background="?selectableItemBackgroundBorderless"
+        android:contentDescription="@string/playlist_cancel"
+        android:src="@drawable/ic_close"
+        app:tint="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_peHeader"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:fontFamily="@font/noto_sans_regular"
+        android:textColor="@color/AppWhite"
+        android:textSize="20sp"
+        app:layout_constraintStart_toEndOf="@+id/ib_peClose"
+        app:layout_constraintEnd_toStartOf="@+id/b_peSave"
+        app:layout_constraintTop_toTopOf="@+id/ib_peClose"
+        app:layout_constraintBottom_toBottomOf="@+id/ib_peClose" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_peSave"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:minHeight="0dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:text="@string/playlist_save"
+        android:textColor="#FFFFFF"
+        android:fontFamily="@font/noto_sans_regular"
+        app:backgroundTint="?attr/colorPrimary"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/ib_peClose"
+        app:layout_constraintBottom_toBottomOf="@+id/ib_peClose" />
+
+    <!-- Cover: tap for the cover options; the badge marks it as editable. -->
+    <FrameLayout
+        android:id="@+id/fl_peCover"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="16dp"
+        android:contentDescription="@string/playlist_change_cover"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ib_peClose">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/cover_clip_bg"
+            android:clipToOutline="true">
+
+            <ImageView
+                android:id="@+id/iv_peCover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="end|bottom"
+            android:layout_marginEnd="6dp"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/avatar_edit_badge_bg"
+            android:padding="6dp"
+            android:src="@drawable/ic_edit"
+            android:importantForAccessibility="no"
+            app:tint="#FFFFFF" />
+    </FrameLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_peTitle"
+        style="@style/Widget.Fision.TextInputLayout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="20dp"
+        android:hint="@string/playlist_title_hint"
+        app:counterEnabled="true"
+        app:counterMaxLength="100"
+        app:layout_constraintStart_toEndOf="@+id/fl_peCover"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/fl_peCover">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_peTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textCapSentences"
+            android:maxLength="100"
+            android:maxLines="1"
+            android:imeOptions="actionDone"
+            android:textColor="@color/AppWhite"
+            android:theme="@style/EditTextHandleTheme"
+            android:textCursorDrawable="@drawable/cursor_primary" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:id="@+id/tv_peSongsHeader"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="12dp"
+        android:fontFamily="@font/noto_sans_regular"
+        android:textColor="@color/AppDarkGrey"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/b_peAddSongs"
+        app:layout_constraintTop_toTopOf="@+id/b_peAddSongs"
+        app:layout_constraintBottom_toBottomOf="@+id/b_peAddSongs" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_peAddSongs"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:text="@string/playlist_add_songs"
+        android:textColor="@color/AppWhite"
+        android:fontFamily="@font/noto_sans_regular"
+        app:icon="@drawable/ic_add"
+        app:iconTint="#FFFFFF"
+        app:iconSize="18dp"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/fl_peCover" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_peSongs"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toBottomOf="@+id/b_peAddSongs"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <include
+        layout="@layout/mini_player"
+        android:layout_width="0dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <!-- Saving veil -->
+    <FrameLayout
+        android:id="@+id/fl_peBusy"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#99000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminateTint="?attr/colorPrimary" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fision</string>
-    <string name="app_title">F I S I O N</string>
     <string name="tv_title">Cançons</string>
     <string name="tv_title_search">Cerca cançó</string>
     <string name="te_find">Troba a la biblioteca</string>
     <string name="b_add">Afegir</string>
     <string name="no_results">Cap resultat</string>
     <string name="tv_SongsCount">25 cançons</string>
-    <string name="results">resultats</string>
-    <string name="songs">cançons</string>
     <string name="tvTitle">Títol de la cançó aquí</string>
     <string name="tvSubtitle">Més informació aquí</string>
     <string name="tv_chord">F#</string>
@@ -25,7 +22,7 @@
     <string name="b_settings_description">Botó de configuració</string>
     <string name="b_delete">Suprimir la cançó</string>
     <string name="b_edit_info">Editar informació</string>
-    <string name="delete_confirm">Eliminar</string>
+    <string name="delete_confirm">Vols eliminar %s?</string>
     <string name="song_info_title">Informació de la cançó</string>
     <string name="rename_hint_song">Títol</string>
     <string name="rename_hint_artist">Artista</string>
@@ -57,7 +54,7 @@
     <string name="metronome_half_variant_a">A</string>
     <string name="metronome_half_variant_b">B</string>
 
-    <string name="drawer_switch_playlist">Reprodueix la següent en acabar</string>
+    <string name="drawer_switch_autoplay_next">Reprodueix la següent en acabar</string>
     <string name="drawer_switch_nebula">Fons animat</string>
     <string name="drawer_switch_nebula_haptics">Vibració al ritme</string>
     <string name="b_repeat_description">Mode de repetició</string>
@@ -177,7 +174,6 @@
     <string name="pitch_display_zero">0</string>
     <string name="pitch_display_signed">%1$+d</string>
     <string name="title_activity_settings">Pantalla de configuració</string>
-    <string name="settings_title">Configuració</string>
     <string name="settings_toolbar_title">Configuració</string>
     <string name="gpu_dialog_title_ok">GPU disponible</string>
     <string name="gpu_dialog_title_missing">GPU no disponible</string>
@@ -192,8 +188,8 @@
     <string name="vram_free_of_total_fmt">%1$.1f / %2$d GB lliures</string>
     <string name="gpu_vram_low_body">GPU ocupada. Els treballs esperaran VRAM lliure.</string>
     <string name="server_vram_low">Poca memòria de GPU lliure al servidor</string>
-    <string name="settings_donate_title">Veure a GitHub</string>
-    <string name="settings_donate_subtitle">Codi font, issues i roadmap</string>
+    <string name="settings_github_title">Veure a GitHub</string>
+    <string name="settings_donate_title">Dona suport al projecte</string>
     <string name="licenses_title">Llicències</string>
     <string name="licenses_intro">Components open source utilitzats per Fision.</string>
     <string name="license_meta_fmt">%1$s · %2$s</string>
@@ -221,7 +217,6 @@
     <string name="settings_section_app">Aplicació</string>
     <string name="settings_section_about">Sobre</string>
     <string name="settings_language_title">Idioma</string>
-    <string name="design_section_title">Disseny</string>
     <string name="design_title">Disseny</string>
     <string name="design_summary">Color d\'accent i colors de la cançó</string>
     <string name="design_accent_title">Color d\'accent</string>
@@ -233,51 +228,13 @@
     <string name="performance_audio3d_scene">Escena 3D (completa)</string>
     <string name="performance_audio3d_flat">Vista plana (lleugera)</string>
     <string name="settings_language_dialog_title">Tria idioma</string>
+    <string name="settings_language_system">Idioma del sistema</string>
     <string name="settings_logout_title">Tanca sessió</string>
-    <string name="settings_logout_subtitle">Finalitza la sessió</string>
-    <string name="settings_account_subtitle_local">Toca per iniciar sessió o continuar en local</string>
 
     <!--- Fision server -->
-    <string name="server_section_title">Servidor Fision</string>
-    <string name="server_url_title">URL del servidor</string>
-    <string name="server_url_summary">Ex: http://192.168.1.50:8000</string>
-    <string name="server_token_title">Token</string>
-    <string name="server_token_summary">Toca per veure o editar (cal empremta/PIN)</string>
-    <string name="about_section_title">Sobre</string>
     <string name="about_title">Sobre Fision</string>
-    <string name="about_summary">Versió, desenvolupador i crèdits open-source</string>
     <string name="about_developer">Jotapeveloper 2026</string>
     <string name="about_version_fmt">v%1$s</string>
-    <string name="about_libraries_title">Llibreries open-source</string>
-    <string name="about_libraries_body"><![CDATA[<b>Oboe</b> · Google · Apache 2.0
-Àudio de baixa latència a Android.
-
-<b>SoundTouch</b> · Olli Parviainen · LGPL 2.1
-Canvi de pitch i tempo en temps real.
-
-<b>dr_flac</b> · David Reid (mackron) · MIT / Domini públic
-Descodificador FLAC de capçalera única.
-
-<b>chords-db</b> · David Rubert · MIT
-Posicions d\'acords de guitarra i ukulele.
-
-<b>KEMAR HRTF dataset</b> · MIT Media Lab
-Respostes impulsives per al mode Audio 3D. Lliure per a recerca i ús personal.
-
-<b>Material Components</b> · Google · Apache 2.0
-Components d\'UI, botons, diàlegs.
-
-<b>AndroidX / Room</b> · Google · Apache 2.0
-Persistència, biometria, transicions, preferències.
-
-<b>OkHttp / Retrofit</b> · Square · Apache 2.0
-Client HTTP i bindings al servidor.]]></string>
-    <string name="server_token_set">Token configurat</string>
-    <string name="server_token_unset">Sense configurar</string>
-    <string name="server_token_dialog_title">Token</string>
-    <string name="server_token_hint">Enganxa el token del servidor</string>
-    <string name="server_auth_required">Autenticació requerida per editar el token</string>
-    <string name="server_auth_subtitle">Empremta o PIN del dispositiu</string>
     <string name="server_auth_unavailable">Biometria no disponible en aquest dispositiu</string>
     <string name="server_status_online">Servidor en línia</string>
     <string name="server_status_offline">Servidor sense connexió</string>
@@ -316,15 +273,9 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="login_err_network">Sense resposta del servidor</string>
     <string name="login_err_bad_url">URL del servidor no vàlida</string>
     <string name="login_err_server">Error del servidor</string>
-    <string name="account_title">Compte</string>
-    <string name="account_summary_local">Mode local · toca per iniciar sessió</string>
-    <string name="account_summary_logged">Connectat com a %1$s</string>
-    <string name="account_dialog_title">Compte</string>
+    <string name="login_session_expired">La sessió ha caducat, torna a entrar</string>
     <string name="account_url_line">Servidor: %1$s</string>
     <string name="account_change_password">Canvia la contrasenya</string>
-    <string name="account_logout">Tanca la sessió</string>
-    <string name="account_switch_account">Canvia de compte</string>
-    <string name="local_mode_banner">Mode local. Inicia sessió per a les funcions al núvol.</string>
     <string name="local_mode_import_blocked">Inicia sessió per processar cançons noves al servidor</string>
     <string name="change_password_title">Canviar contrasenya</string>
     <string name="change_password_hint_old">Contrasenya actual</string>
@@ -349,25 +300,15 @@ Client HTTP i bindings al servidor.]]></string>
 
     <!--- import / add song -->
     <string name="import_title">Afegir cançó</string>
-    <string name="import_pick_audio">Triar arxiu d\'àudio</string>
     <string name="import_no_file">Cap arxiu triat</string>
     <string name="import_section_separation">Separació</string>
-    <string name="import_classic">Clàssica</string>
     <string name="import_personalized">Personalitzada</string>
-    <string name="import_classic_4stem">Veu + Bateria + Baix + Altres</string>
-    <string name="import_classic_2stem">Veu + Instrumental</string>
     <string name="import_vocals_always">Veus</string>
-    <string name="import_vocals_single">Veus</string>
-    <string name="import_vocals_split">Veu/Veus principals, Cors</string>
-    <string name="import_drums_full">Percussió general</string>
-    <string name="import_drums_split">Bateria separada</string>
     <string name="import_stem_guitar">Guitarra</string>
     <string name="import_stem_bass">Baix</string>
     <string name="import_stem_drums">Percussió</string>
     <string name="import_stem_piano">Piano</string>
     <string name="import_stem_brass">Vent / Metalls</string>
-    <string name="import_hint_other">La resta d\'instruments es barrejaran en un sol stem</string>
-    <string name="import_hint_drums_split">La bateria identificada a la cançó es separarà en els seus components principals: bombo, caixa, toms, hi-hat, plat i ride. La resta de percussió podria ser descartada.</string>
     <string name="import_send_short">Pujar</string>
     <string name="import_mode_4stem">4 stems</string>
     <string name="import_mode_2stem">2 stems</string>
@@ -376,7 +317,6 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="import_tile_vocals_split">Principal + cors</string>
     <string name="import_tile_drums_full">General</string>
     <string name="import_tile_drums_split">Bateria</string>
-    <string name="import_selected_header_placeholder">Selecciona un fitxer d\'àudio</string>
     <string name="import_no_server">Configura primer la URL del servidor a Ajustaments</string>
     <string name="import_uploading">Pujant…</string>
     <string name="import_upload_failed">Pujada fallida</string>
@@ -398,6 +338,7 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="gpu_timeout_cancel">Cancel·lar</string>
     <string name="cloud_state_downloading">Descarregant %1$d%%</string>
     <string name="cloud_state_cloud_only">Al núvol</string>
+    <string name="cloud_state_locked">Inicia sessió per fer-la servir</string>
     <string name="cloud_state_error">Error</string>
     <string name="cloud_delete_cloud">Esborrar del núvol</string>
     <string name="cloud_delete_cloud_confirm">Vols esborrar la cançó també del servidor?</string>
@@ -418,6 +359,10 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="lyrics_options_title">Opcions</string>
     <string name="lyrics_karaoke_mode">Mode karaoke</string>
     <string name="lyrics_karaoke_unavailable">Reprocessa per habilitar</string>
+    <string name="car_karaoke_enable">Mode karaoke</string>
+    <string name="car_karaoke_disable">Treu el mode karaoke</string>
+    <string name="car_backing_mute">Treu els cors</string>
+    <string name="car_backing_unmute">Recupera els cors</string>
     <string name="lyrics_cancel_dialog_title">Cancel·lar el procés de la lletra?</string>
     <string name="lyrics_dialog_yes">Confirmar</string>
     <string name="lyrics_dialog_no">No</string>
@@ -459,4 +404,65 @@ Client HTTP i bindings al servidor.]]></string>
     <string name="chord_diagram_bass">Baix: %1$s</string>
     <string name="chord_mode_diagrams">Diagrames d\'acords</string>
     <string name="chord_mode_carousel">Mostrar/amagar acords</string>
+
+    <!-- Playlists -->
+    <string name="tab_songs">Cançons</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="playlist_new">Nova playlist</string>
+    <plurals name="playlist_count">
+        <item quantity="one">%d playlist</item>
+        <item quantity="many">%d playlists</item>
+        <item quantity="other">%d playlists</item>
+    </plurals>
+    <plurals name="playlist_song_count">
+        <item quantity="one">%d cançó</item>
+        <item quantity="many">%d cançons</item>
+        <item quantity="other">%d cançons</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%d resultat</item>
+        <item quantity="other">%d resultats</item>
+    </plurals>
+    <plurals name="playlist_selected_count">
+        <item quantity="one">%d seleccionada</item>
+        <item quantity="many">%d seleccionades</item>
+        <item quantity="other">%d seleccionades</item>
+    </plurals>
+    <string name="playlists_empty">Crea la teva primera playlist</string>
+    <string name="songs_empty">Afegeix la teva primera cançó</string>
+    <string name="playlists_need_login">Inicia sessió per fer servir les playlists</string>
+    <string name="playlist_reorder">Reordenar</string>
+    <string name="playlist_remove_song">Treure de la playlist</string>
+    <string name="playlist_edit_title">Editar playlist</string>
+    <string name="playlist_title_hint">Títol</string>
+    <string name="playlist_add_songs">Afegir cançons</string>
+    <string name="playlist_save">Desar</string>
+    <string name="playlist_done">Fet</string>
+    <string name="playlist_cancel">Cancel·lar</string>
+    <string name="playlist_back">Enrere</string>
+    <string name="playlist_search_hint">Cerca cançons</string>
+    <string name="playlist_change_cover">Canviar la portada</string>
+    <string name="playlist_remove_cover">Treure la portada</string>
+    <string name="playlist_cover_pick">Tria del dispositiu</string>
+    <string name="playlist_cover_mosaic">Mosaic de cançons</string>
+    <string name="playlist_delete">Eliminar la playlist</string>
+    <string name="playlist_options">Opcions de la playlist</string>
+    <string name="playlist_delete_confirm">Vols eliminar %s?</string>
+    <string name="playlist_delete_action">Eliminar</string>
+    <string name="playlist_deleted">Playlist eliminada</string>
+    <string name="playlist_no_songs_in_cloud">Encara no hi ha cançons al núvol</string>
+    <string name="playlist_downloading">Baixant la cançó…</string>
+    <string name="playlist_empty_songs">Aquesta playlist no té cançons</string>
+    <string name="playlist_err_title_empty">Escriu un títol</string>
+    <string name="playlist_err_network">No s\'ha pogut contactar amb el servidor</string>
+    <string name="playlist_err_gone">Aquesta playlist ja no existeix</string>
+    <string name="playlist_err_cover_too_large">Imatge massa gran</string>
+    <string name="playlist_err_cover_format">Format no compatible</string>
+    <string name="playlist_err_title_length">El títol ha de tenir entre 1 i %d caràcters</string>
+    <string name="playlist_err_song_not_found">Una cançó no és a la teva biblioteca del núvol</string>
+    <string name="playlist_err_song_duplicate">Hi ha una cançó repetida a la playlist</string>
+    <string name="playlist_err_song_limit">Màxim %d cançons per playlist</string>
+    <string name="playlist_err_playlist_limit">Màxim %d playlists</string>
+    <string name="playlist_err_generic">Error del servidor (%d)</string>
+    <string name="crop_use">Fer servir</string>
 </resources>

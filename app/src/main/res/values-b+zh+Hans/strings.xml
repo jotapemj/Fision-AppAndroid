@@ -1,0 +1,450 @@
+<resources>
+    <string name="tv_title">歌曲</string>
+    <string name="tv_title_search">搜索歌曲</string>
+    <string name="te_find">在曲库中搜索</string>
+    <string name="b_add">添加</string>
+    <string name="no_results">无结果</string>
+    <string name="tv_SongsCount">25 首歌曲</string>
+
+    <string name="tvTitle">歌曲标题</string>
+    <string name="tvSubtitle">更多信息</string>
+
+    <string name="tv_SongTitle">歌曲标题</string>
+
+    <string name="b_play_description">播放</string>
+    <string name="b_next_description">下一首</string>
+    <string name="b_previous_description">上一首</string>
+    <string name="b_seconds_back_description">后退 5 秒</string>
+    <string name="b_seconds_forward_description">前进 5 秒</string>
+    <string name="b_settings_description">设置</string>
+
+    <string name="b_delete">删除歌曲</string>
+    <string name="b_edit_info">编辑信息</string>
+    <string name="delete_confirm">删除“%s”？</string>
+    <string name="song_info_title">歌曲信息</string>
+    <string name="rename_hint_song">标题</string>
+    <string name="rename_hint_artist">艺人</string>
+    <string name="save">保存</string>
+    <string name="song_info_added">添加日期</string>
+    <string name="song_info_format">格式</string>
+    <string name="song_info_size">占用空间</string>
+    <string name="song_info_duration">时长</string>
+    <string name="song_info_stems">分轨</string>
+
+    <!--- player side drawer -->
+    <string name="drawer_options_title">选项</string>
+    <string name="drawer_item_chords">和弦</string>
+    <string name="chords_dialog_title">和弦版本</string>
+    <string name="chords_basic">基础</string>
+    <string name="chords_advanced">高级</string>
+    <string name="drawer_item_cifrado">记谱系统</string>
+    <string name="cifrado_dialog_title">记谱系统</string>
+    <string name="cifrado_american">字母（A、B、C、D、E、F、G）</string>
+    <string name="cifrado_latin">唱名（Do、Re、Mi、Fa、Sol、La、Si）</string>
+    <string name="drawer_switch_transposition">随音高移调</string>
+
+    <!--- accidentals (flat/sharp) -->
+    <string name="drawer_item_notation">变音记号</string>
+    <string name="notation_dialog_title">变音记号</string>
+    <string name="notation_flat">降号（♭）</string>
+    <string name="notation_sharp">升号（♯）</string>
+
+    <!--- autoplay of the next song -->
+    <string name="drawer_switch_autoplay_next">播完后播放下一首</string>
+    <string name="drawer_switch_nebula">动态背景</string>
+    <string name="drawer_switch_nebula_haptics">节拍振动</string>
+    <string name="b_repeat_description">循环模式</string>
+
+    <!--- sound on downbeat -->
+    <string name="drawer_switch_downbeat">强拍提示音</string>
+    <string name="drawer_item_downbeat_sound">声音</string>
+    <string name="downbeat_sound_dialog_title">强拍提示音</string>
+    <string name="downbeat_sound_clap">拍手</string>
+    <string name="downbeat_sound_glass">玻璃</string>
+    <string name="downbeat_sound_metronomebell">节拍器铃</string>
+    <string name="downbeat_sound_snap">响指</string>
+    <string name="downbeat_sound_stick">鼓棒</string>
+    <string name="downbeat_sound_synthbella">合成铃 A</string>
+    <string name="downbeat_sound_synthbellb">合成铃 B</string>
+    <string name="downbeat_sound_synthsquarea">合成方波 A</string>
+    <string name="downbeat_sound_synthsquareb">合成方波 B</string>
+    <string name="downbeat_sound_synthsquarec">合成方波 C</string>
+    <string name="downbeat_sound_tongue">弹舌</string>
+    <string name="downbeat_sound_weird">怪声</string>
+    <string name="downbeat_sound_whistle">哨声</string>
+
+    <!--- export -->
+    <string name="drawer_item_export">导出</string>
+    <string name="drawer_item_reprocess">重新处理</string>
+    <string name="import_reprocess_short">重新处理</string>
+    <string name="import_reprocess_title">重新处理歌曲</string>
+    <string name="reprocess_success">已将重新处理请求发送到服务器</string>
+    <string name="reprocess_missing_input">服务器上已没有原始音频</string>
+    <string name="reprocess_failed">重新处理失败</string>
+    <string name="reprocess_busy">这首歌曲正在处理中</string>
+    <string name="audio3d_title">3D 音频</string>
+    <string name="audio3d_info_title">3D 音频</string>
+    <string name="audio3d_info_body">实验性双耳空间化。在俯视图中，每件乐器都被放置在听者周围。HRTF 卷积（头相关传递函数，MIT 的 KEMAR 数据集）重现头部、耳朵和肩膀的自然滤波，以模拟方向、高度和距离。需要佩戴耳机才能体验效果。</string>
+    <string name="audio3d_legend_drag"><![CDATA[<b>拖动</b> · 位置]]></string>
+    <string name="audio3d_legend_tap"><![CDATA[<b>轻触</b> · 选择]]></string>
+    <string name="audio3d_legend_double"><![CDATA[<b>双击</b> · 全向]]></string>
+    <string name="audio3d_legend_long"><![CDATA[<b>长按</b> · 静音]]></string>
+    <string name="audio3d_legend_reset"><![CDATA[<b>重置</b> · 初始位置]]></string>
+    <string name="stems_dance_title">分轨之舞</string>
+    <string name="stems_dance_start">开始</string>
+    <string name="stems_dance_speed">速度</string>
+    <string name="stems_dance_distance">距离</string>
+    <string name="stems_dance_osc_speed">波动速度</string>
+    <string name="dl_notif_progress_single">正在下载 %1$d%%</string>
+    <string name="dl_notif_progress_multi">正在下载 %1$d/%2$d · %3$d%%</string>
+    <string name="dl_notif_ready">可以播放了</string>
+    <string name="drawer_item_reset">恢复默认</string>
+    <string name="drawer_reset_dialog_title">重置</string>
+    <string name="drawer_reset_dialog_body">这首歌曲的所有设置（分轨、音高、速度、节拍器、和弦和 3D）都将恢复为默认值。是否继续？</string>
+    <string name="drawer_reset_dialog_cancel">取消</string>
+    <string name="export_dialog_title">导出</string>
+    <string name="export_choice_mixdown">保存当前混音</string>
+    <string name="export_choice_separate">分别保存各分轨</string>
+    <string name="export_volume_default">默认音量</string>
+    <string name="export_volume_current">当前混音音量</string>
+    <string name="export_format_dialog_title">输出格式</string>
+    <string name="export_volume_dialog_title">音量来源</string>
+    <string name="export_progress_title">正在导出…</string>
+    <string name="export_done">导出完成</string>
+    <string name="export_failed">导出失败</string>
+    <string name="export_save">保存</string>
+    <string name="export_stem_button_desc">导出分轨</string>
+    <string name="export_back">返回</string>
+    <string name="export_include_metronome">在混音中包含节拍器</string>
+    <string name="export_permission_title">需要存储权限</string>
+    <string name="export_permission_body">要保存导出文件，请允许 Fision 访问所有文件。系统设置将会打开：为 Fision 开启访问权限后返回。</string>
+    <string name="export_permission_continue">打开设置</string>
+
+    <string name="helpline_icon">提示对话框图标</string>
+    <string name="tv_alertDialog_text">删除 [歌曲标题]？</string>
+    <string name="YES">删除</string>
+
+    <string name="title_bass">贝斯</string>
+    <string name="title_drums">鼓</string>
+    <string name="title_other">其他乐器</string>
+    <string name="title_vocals">人声</string>
+    <string name="title_main_vocals">主唱</string>
+    <string name="title_chorus">和声</string>
+    <string name="title_accompaniment">伴奏</string>
+    <string name="title_guitar">吉他</string>
+    <string name="title_piano">钢琴</string>
+    <string name="title_winds">管乐</string>
+
+    <!--- stem context menu -->
+    <string name="stem_menu_solo">独奏</string>
+    <string name="stem_menu_mute">静音</string>
+    <string name="title_kick">底鼓</string>
+    <string name="title_snare">军鼓</string>
+    <string name="title_hh">踩镲</string>
+    <string name="title_crash">强音镲</string>
+    <string name="title_ride">叮叮镲</string>
+    <string name="title_toms">通鼓</string>
+    <string name="title_perc">打击乐</string>
+    <string name="title_drumset">架子鼓</string>
+
+    <!--- order by -->
+    <string name="order_by_title">排序方式</string>
+    <string name="order_by_date_desc">添加日期（最新在前）</string>
+    <string name="order_by_date_asc">添加日期（最早在前）</string>
+
+    <string name="pan_l">左</string>
+    <string name="pan_r">右</string>
+    <string name="pan_title">声像</string>
+
+    <!--- metronome -->
+    <string name="tv_metronome_title">动态节拍器</string>
+    <string name="tv_metronome_volume">音量</string>
+    <string name="tv_metronome_speed">播放速度</string>
+
+    <string name="tempo_local_hud_html">本段速度为 &lt;b&gt;%1$d BPM&lt;/b&gt;</string>
+    <string name="tempo_restore_desc">恢复原始速度</string>
+    <string name="pitch_restore_desc">恢复原始音高</string>
+
+    <!--- pitch -->
+    <string name="tv_pitch_title">移调</string>
+    <string name="tv_pitch_semitones">半音</string>
+
+    <!--- settings -->
+    <string name="title_activity_settings">设置</string>
+    <string name="settings_toolbar_title">设置</string>
+    <string name="gpu_dialog_title_ok">GPU 可用</string>
+    <string name="gpu_dialog_title_missing">GPU 不可用</string>
+    <string name="gpu_dialog_title_unknown">无法获取服务器信息</string>
+    <string name="gpu_dialog_label_driver">驱动</string>
+    <string name="gpu_dialog_refresh">刷新</string>
+    <string name="gpu_dialog_close">返回</string>
+    <string name="gpu_dialog_no_gpu_body">服务器未提供 GPU。任务将在 CPU 上运行。</string>
+    <string name="gpu_dialog_no_data">登录后即可获取此信息。</string>
+    <string name="vram_free_of_total_fmt">可用 %1$.1f / %2$d GB</string>
+    <string name="gpu_vram_low_body">GPU 繁忙。任务将等待空闲显存。</string>
+    <string name="server_vram_low">服务器 GPU 可用显存不足</string>
+    <string name="settings_github_title">在 GitHub 上查看</string>
+    <string name="settings_donate_title">支持本项目</string>
+    <string name="licenses_title">许可证</string>
+    <string name="licenses_intro">Fision 使用的开源组件。</string>
+    <string name="license_detail_visit">访问项目</string>
+    <string name="about_view_licenses">查看许可证</string>
+    <string name="avatar_studio_title">选择你的头像</string>
+    <string name="avatar_studio_male">男</string>
+    <string name="avatar_studio_female">女</string>
+    <string name="avatar_studio_color_figure">人物颜色</string>
+    <string name="avatar_studio_color_bg">背景颜色</string>
+    <string name="avatar_studio_from_device">从设备中选择</string>
+    <string name="avatar_studio_apply">应用</string>
+    <string name="avatar_instrument_base">基础</string>
+    <string name="avatar_instrument_vocals">人声</string>
+    <string name="avatar_instrument_piano">钢琴</string>
+    <string name="avatar_instrument_bass">贝斯</string>
+    <string name="avatar_instrument_drums">鼓</string>
+    <string name="avatar_instrument_trumpet">小号</string>
+    <string name="avatar_instrument_guitar">吉他</string>
+    <string name="avatar_instrument_winds">管乐</string>
+    <string name="avatar_instrument_other">其他</string>
+    <string name="settings_header_local_title">本地模式</string>
+    <string name="settings_header_local_email">登录以与 Fision 服务器同步</string>
+    <string name="settings_section_server">服务器</string>
+    <string name="settings_section_app">应用</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_language_title">语言</string>
+    <string name="design_title">外观</string>
+    <string name="design_summary">强调色和歌曲配色</string>
+    <string name="design_accent_title">强调色</string>
+    <string name="design_song_colors_title">使用歌曲配色</string>
+    <string name="design_song_colors_summary">播放器从封面中取色</string>
+    <string name="close">关闭</string>
+    <string name="performance_title">性能</string>
+    <string name="performance_audio3d_title">3D 音频视图</string>
+    <string name="performance_audio3d_scene">3D 场景（完整）</string>
+    <string name="performance_audio3d_flat">平面视图（轻量）</string>
+    <string name="settings_language_dialog_title">选择语言</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_logout_title">退出登录</string>
+
+    <!--- Fision server -->
+    <string name="about_title">关于 Fision</string>
+    <string name="server_auth_unavailable">此设备不支持生物识别</string>
+    <string name="server_status_online">服务器在线</string>
+    <string name="server_status_offline">服务器离线</string>
+    <string name="server_test_title">测试连接</string>
+    <string name="server_test_summary">手动 ping 已配置的服务器以检查连接</string>
+    <string name="server_gpu_title">GPU 状态</string>
+    <string name="server_version_title">服务器版本</string>
+    <string name="server_gpu_unknown">登录后可查看 GPU 信息</string>
+    <string name="server_gpu_ok_short">GPU 可用</string>
+    <string name="server_gpu_missing">GPU 不可用</string>
+    <string name="server_test_running">正在 ping 服务器…</string>
+    <string name="server_test_ok">服务器可访问</string>
+    <string name="server_test_fail">无响应</string>
+    <string name="server_test_no_url">请先设置 URL</string>
+    <string name="server_test_timeout">服务器无响应</string>
+    <string name="dialog_close">关闭</string>
+
+    <!--- login / account -->
+    <string name="login_title">登录</string>
+    <string name="login_subtitle">连接到你的 Fision 服务器</string>
+    <string name="login_hint_url">服务器 URL</string>
+    <string name="login_hint_user">用户名</string>
+    <string name="login_hint_pass">密码</string>
+    <string name="login_submit">登录</string>
+    <string name="login_local_mode">以本地模式继续</string>
+    <string name="login_status_unauthenticated">未登录</string>
+    <string name="login_err_empty_fields">请填写所有字段</string>
+    <string name="login_err_bad_credentials">用户名或密码错误</string>
+    <plurals name="login_err_too_many_attempts">
+        <item quantity="other">尝试次数过多，请在 %d 分钟后重试。</item>
+    </plurals>
+    <string name="login_err_network">服务器无响应</string>
+    <string name="login_err_bad_url">服务器 URL 无效</string>
+    <string name="login_err_server">服务器错误</string>
+    <string name="login_session_expired">会话已过期，请重新登录</string>
+    <string name="account_url_line">服务器：%1$s</string>
+    <string name="account_change_password">修改密码</string>
+    <string name="local_mode_import_blocked">登录后才能在服务器上处理新歌曲</string>
+    <string name="change_password_title">修改密码</string>
+    <string name="change_password_hint_old">当前密码</string>
+    <string name="change_password_hint_new">新密码</string>
+    <string name="change_password_hint_confirm">确认新密码</string>
+    <string name="change_password_submit">更新</string>
+    <string name="change_password_ok">密码已更新</string>
+    <string name="change_password_err_bad_old">当前密码错误</string>
+    <string name="change_password_err_bad_new">新密码无效</string>
+    <string name="change_password_err_mismatch">两次输入的密码不一致</string>
+    <string name="change_password_biometric_title">确认你的身份</string>
+    <string name="change_password_biometric_sub">生物识别或设备 PIN 码</string>
+    <string name="account_change_photo">更换照片</string>
+    <string name="account_remove_photo">移除照片</string>
+    <string name="crop_hint">拖动和双指缩放以调整</string>
+    <string name="crop_save">保存</string>
+    <string name="crop_read_fail">无法打开图片</string>
+    <string name="crop_save_fail">无法保存图片</string>
+    <string name="crop_upload_ok">照片已更新</string>
+    <string name="crop_err_too_large">图片过大（最大 2 MB）</string>
+    <string name="crop_err_bad_format">不支持的图片格式</string>
+
+    <!--- import / add song -->
+    <string name="import_title">添加歌曲</string>
+    <string name="import_no_file">未选择文件</string>
+    <string name="import_section_separation">分离</string>
+    <string name="import_personalized">自定义</string>
+    <string name="import_vocals_always">人声</string>
+    <string name="import_stem_guitar">吉他</string>
+    <string name="import_stem_bass">贝斯</string>
+    <string name="import_stem_drums">打击乐</string>
+    <string name="import_stem_piano">钢琴</string>
+    <string name="import_stem_brass">木管 / 铜管</string>
+    <string name="import_send_short">上传</string>
+    <string name="import_mode_4stem">4 轨</string>
+    <string name="import_mode_2stem">2 轨</string>
+    <string name="import_change_song">选择其他歌曲</string>
+    <string name="import_tile_vocals_single">人声</string>
+    <string name="import_tile_vocals_split">主唱 + 和声</string>
+    <string name="import_tile_drums_full">整体</string>
+    <string name="import_tile_drums_split">架子鼓</string>
+    <string name="import_no_server">请先在设置中填写服务器 URL</string>
+    <string name="import_uploading">正在上传…</string>
+    <string name="import_upload_failed">上传失败</string>
+    <string name="import_err_unsupported_format">不支持的格式。请使用 MP3、WAV、FLAC、M4A、AAC、OGG、OPUS、AIFF 或 WMA。</string>
+    <string name="import_err_too_large">文件过大（最大 200 MB）</string>
+    <string name="import_err_internal">应用内部错误，已记录。</string>
+    <string name="import_gpu_warning">服务器上未检测到 GPU。将使用 CPU 处理（较慢）。</string>
+    <string name="import_loading_server_info">正在读取服务器信息…</string>
+
+    <!--- cloud item / delete -->
+    <string name="cloud_state_queued">排队中…</string>
+    <string name="cloud_state_queued_pos">排队中（第 %1$d 位）…</string>
+    <string name="cloud_state_running">处理中…</string>
+    <string name="cloud_state_waiting_gpu">等待 GPU…</string>
+    <string name="gpu_timeout_body">10 分钟后 GPU 仍然繁忙。你可以重试或取消。</string>
+    <string name="job_timeout_body">处理时间过长，已被取消。你可以重试或取消。</string>
+    <string name="lyrics_timeout">处理时间过长，已被取消。</string>
+    <string name="gpu_timeout_retry">重试</string>
+    <string name="gpu_timeout_cancel">取消</string>
+    <string name="cloud_state_downloading">正在下载 %1$d%%</string>
+    <string name="cloud_state_cloud_only">在云端</string>
+    <string name="cloud_state_locked">登录后即可使用</string>
+    <string name="cloud_state_error">错误</string>
+    <string name="cloud_delete_cloud">从云端删除</string>
+    <string name="cloud_delete_cloud_confirm">同时从服务器删除这首歌曲？</string>
+    <string name="cloud_cancel_queue">取消（排队）</string>
+    <string name="cloud_cancel_queue_confirm">将这首歌曲移出队列？</string>
+
+    <!-- Lyrics feature -->
+    <string name="lyrics_button_description">显示歌词</string>
+    <string name="lyrics_title_process">识别歌词</string>
+    <string name="lyrics_card_title">歌词语言</string>
+    <string name="lyrics_card_subtitle_auto">自动</string>
+    <string name="lyrics_confirm">确认</string>
+    <string name="lyrics_cancel">取消</string>
+    <string name="lyrics_processing">正在识别歌词</string>
+    <string name="lyrics_error">无法识别歌词</string>
+    <string name="lyrics_no_vocals">人声尚未就绪</string>
+    <string name="lyrics_reprocess">重新识别</string>
+    <string name="lyrics_options_title">选项</string>
+    <string name="lyrics_karaoke_mode">卡拉 OK 模式</string>
+    <string name="lyrics_karaoke_unavailable">重新识别后可启用</string>
+    <string name="car_karaoke_enable">卡拉 OK 模式</string>
+    <string name="car_karaoke_disable">关闭卡拉 OK</string>
+    <string name="car_backing_mute">关闭和声</string>
+    <string name="car_backing_unmute">恢复和声</string>
+    <string name="lyrics_cancel_dialog_title">取消歌词识别？</string>
+    <string name="lyrics_dialog_yes">确认</string>
+    <string name="lyrics_dialog_no">否</string>
+    <string name="lyrics_lang_auto">自动</string>
+    <string name="lyrics_lang_en">英语</string>
+    <string name="lyrics_lang_es">西班牙语</string>
+    <string name="lyrics_lang_pt">葡萄牙语</string>
+    <string name="lyrics_lang_ja">日语</string>
+    <string name="lyrics_lang_ko">韩语</string>
+    <string name="lyrics_lang_hi">印地语</string>
+    <string name="lyrics_lang_fr">法语</string>
+    <string name="lyrics_lang_zh">中文</string>
+    <string name="lyrics_lang_de">德语</string>
+    <string name="lyrics_lang_it">意大利语</string>
+    <string name="lyrics_lang_ar">阿拉伯语</string>
+    <string name="lyrics_lang_ru">俄语</string>
+    <string name="lyrics_lang_tr">土耳其语</string>
+    <string name="lyrics_lang_id">印度尼西亚语</string>
+    <string name="lyrics_lang_pa">旁遮普语</string>
+    <string name="lyrics_lang_sv">瑞典语</string>
+    <string name="lyrics_lang_nl">荷兰语</string>
+    <string name="lyrics_lang_vi">越南语</string>
+    <string name="lyrics_lang_tl">他加禄语</string>
+    <string name="lyrics_lang_el">希腊语</string>
+    <string name="lyrics_lang_th">泰语</string>
+    <string name="lyrics_lang_fa">波斯语</string>
+    <string name="lyrics_lang_he">希伯来语</string>
+    <string name="lyrics_lang_ta">泰米尔语</string>
+    <string name="lyrics_lang_ca">加泰罗尼亚语</string>
+    <string name="lyrics_lang_uk">乌克兰语</string>
+    <string name="lyrics_lang_pl">波兰语</string>
+
+    <!-- Chord diagrams -->
+    <string name="chord_diagram_piano">钢琴</string>
+    <string name="chord_diagram_guitar">吉他</string>
+    <string name="chord_diagram_ukulele">尤克里里</string>
+    <string name="chord_diagram_zone_open">开放</string>
+    <string name="chord_diagram_zone_auto">自动</string>
+    <string name="chord_diagram_bass">低音：%1$s</string>
+    <string name="chord_mode_diagrams">和弦图</string>
+    <string name="chord_mode_carousel">显示/隐藏和弦</string>
+
+    <!-- Playlists -->
+    <string name="tab_songs">歌曲</string>
+    <string name="tab_playlists">歌单</string>
+    <string name="playlist_new">新建歌单</string>
+    <plurals name="playlist_count">
+        <item quantity="other">%d 个歌单</item>
+    </plurals>
+    <plurals name="playlist_song_count">
+        <item quantity="other">%d 首歌曲</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="other">%d 个结果</item>
+    </plurals>
+    <plurals name="playlist_selected_count">
+        <item quantity="other">已选择 %d 项</item>
+    </plurals>
+    <string name="playlists_empty">创建你的第一个歌单</string>
+    <string name="songs_empty">添加你的第一首歌曲</string>
+    <string name="playlists_need_login">登录后即可使用歌单</string>
+    <string name="playlist_reorder">调整顺序</string>
+    <string name="playlist_remove_song">从歌单中移除</string>
+    <string name="playlist_edit_title">编辑歌单</string>
+    <string name="playlist_title_hint">标题</string>
+    <string name="playlist_add_songs">添加歌曲</string>
+    <string name="playlist_save">保存</string>
+    <string name="playlist_done">完成</string>
+    <string name="playlist_cancel">取消</string>
+    <string name="playlist_back">返回</string>
+    <string name="playlist_search_hint">搜索歌曲</string>
+    <string name="playlist_change_cover">更换封面</string>
+    <string name="playlist_remove_cover">移除封面</string>
+    <string name="playlist_cover_pick">从设备中选择</string>
+    <string name="playlist_cover_mosaic">歌曲拼贴</string>
+    <string name="playlist_delete">删除歌单</string>
+    <string name="playlist_options">歌单选项</string>
+    <string name="playlist_delete_confirm">删除“%s”？</string>
+    <string name="playlist_delete_action">删除</string>
+    <string name="playlist_deleted">歌单已删除</string>
+    <string name="playlist_no_songs_in_cloud">云端还没有歌曲</string>
+    <string name="playlist_downloading">正在下载歌曲…</string>
+    <string name="playlist_empty_songs">这个歌单还没有歌曲</string>
+    <string name="playlist_err_title_empty">请输入标题</string>
+    <string name="playlist_err_network">无法连接服务器</string>
+    <string name="playlist_err_gone">这个歌单已不存在</string>
+    <string name="playlist_err_cover_too_large">图片过大</string>
+    <string name="playlist_err_cover_format">不支持的格式</string>
+    <string name="playlist_err_title_length">标题长度须为 1 到 %d 个字符</string>
+    <string name="playlist_err_song_not_found">有歌曲不在你的云端曲库中</string>
+    <string name="playlist_err_song_duplicate">歌单中有重复的歌曲</string>
+    <string name="playlist_err_song_limit">每个歌单最多 %d 首歌曲</string>
+    <string name="playlist_err_playlist_limit">最多 %d 个歌单</string>
+    <string name="playlist_err_generic">服务器错误（%d）</string>
+    <string name="crop_use">使用</string>
+
+</resources>

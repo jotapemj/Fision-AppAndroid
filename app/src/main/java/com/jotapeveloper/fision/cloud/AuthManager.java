@@ -104,6 +104,7 @@ public class AuthManager {
         String outgoing = prefs.getUsername();
         prefs.setLocalMode(true);
         prefs.setFirstRunCompleted();
+        prefs.setSessionExpired(false);
         // Wipe any lingering token so the ApiClient does not try to auth
         prefs.setToken("");
         prefs.setUsername("");
@@ -111,6 +112,7 @@ public class AuthManager {
         CloudRepository.get(appCtx).notifyConfigChanged();
         AvatarManager.get(appCtx).clearLocal(outgoing);
         ServerInfoManager.get(appCtx).clear();
+        PlaylistRepository.get(appCtx).clear();
     }
 
     /** Attempts a login against the given URL and stores everything on success. */
@@ -140,6 +142,7 @@ public class AuthManager {
                     prefs.setUsername(uname);
                     prefs.setLocalMode(false);
                     prefs.setFirstRunCompleted();
+                    prefs.setSessionExpired(false);
                     ApiClient.get(appCtx).notifyConfigChanged();
                     CloudRepository.get(appCtx).notifyConfigChanged();
                     // Pull the avatar into the local cache so the toolbar can
@@ -151,6 +154,9 @@ public class AuthManager {
                     // Cache /server/info so Settings and Import can immediately
                     // reflect GPU availability without another round-trip.
                     ServerInfoManager.get(appCtx).refresh();
+                    // The user's playlists, for the Playlists tab.
+                    PlaylistRepository.get(appCtx).clear();
+                    PlaylistRepository.get(appCtx).sync();
                     main.post(() -> cb.onSuccess(uname));
                 } else {
                     int code = r.code();
@@ -210,6 +216,78 @@ public class AuthManager {
         });
     }
 
+    private boolean refreshedThisProcess;
+
+    /**
+     * Renews the token once per app start, so a session used at least once per
+     * TTL never expires. A 401 goes through the regular expired-session path
+     * (ApiClient interceptor); network errors keep the current token.
+     */
+    public void refreshSessionOnce() {
+        if (refreshedThisProcess) return;
+        ServerPrefs prefs = ServerPrefs.get(appCtx);
+        if (!prefs.isLoggedIn()) return;
+        FisionApi api = ApiClient.get(appCtx).api();
+        if (api == null) return;
+        refreshedThisProcess = true;
+        String sent = prefs.getToken();
+        api.refresh().enqueue(new Callback<LoginResponse>() {
+            @Override public void onResponse(Call<LoginResponse> c, Response<LoginResponse> r) {
+                if (!r.isSuccessful() || r.body() == null || r.body().token == null) {
+                    if (r.code() != 401) refreshedThisProcess = false;
+                    return;
+                }
+                String tok = r.body().token;
+                main.post(() -> {
+                    // A login or logout in between wins over this response.
+                    if (!sent.equals(prefs.getToken())) return;
+                    prefs.setToken(tok);
+                    ApiClient.get(appCtx).notifyConfigChanged();
+                });
+            }
+            @Override public void onFailure(Call<LoginResponse> c, Throwable t) {
+                Log.w(TAG, "token refresh failed, keeping the current token", t);
+                refreshedThisProcess = false;
+            }
+        });
+    }
+
+    /** Notified on the main thread when the server rejects the session. */
+    public interface SessionExpiredListener { void onSessionExpired(); }
+
+    private final java.util.Set<SessionExpiredListener> expiredListeners =
+            new java.util.concurrent.CopyOnWriteArraySet<>();
+
+    public void addSessionExpiredListener(SessionExpiredListener l) { expiredListeners.add(l); }
+    public void removeSessionExpiredListener(SessionExpiredListener l) { expiredListeners.remove(l); }
+
+    public boolean isSessionExpired() { return ServerPrefs.get(appCtx).isSessionExpired(); }
+
+    /** The prompt for an expired session is being shown: do not show it again. */
+    public void acknowledgeSessionExpired() { ServerPrefs.get(appCtx).setSessionExpired(false); }
+
+    /**
+     * A request authenticated with [rejectedToken] got 401: the token expired or
+     * was revoked. Drops it (polling stops, nothing keeps resending it), keeps
+     * URL and username to prefill the login and flags the session as expired.
+     * Responses for an older token (already replaced by a new login) are ignored.
+     * Called from OkHttp threads.
+     */
+    void onUnauthorized(String rejectedToken) {
+        main.post(() -> {
+            ServerPrefs prefs = ServerPrefs.get(appCtx);
+            String current = prefs.getToken();
+            if (current.isEmpty() || !current.equals(rejectedToken)) return;
+            Log.w(TAG, "session rejected by the server (401), sign-in required");
+            prefs.setToken("");
+            prefs.setSessionExpired(true);
+            ApiClient.get(appCtx).notifyConfigChanged();
+            CloudRepository.get(appCtx).notifyConfigChanged();
+            ServerInfoManager.get(appCtx).clear();
+            for (SessionExpiredListener l : expiredListeners) l.onSessionExpired();
+        });
+    }
+
     /** Wipes the token/username and switches to local mode. The URL is kept
      *  so the login dialog can pre-fill it next time. The avatar cache for the
      *  outgoing user is dropped so the next login starts from a clean slate. */
@@ -219,9 +297,11 @@ public class AuthManager {
         prefs.setToken("");
         prefs.setUsername("");
         prefs.setLocalMode(true);
+        prefs.setSessionExpired(false);
         ApiClient.get(appCtx).notifyConfigChanged();
         CloudRepository.get(appCtx).notifyConfigChanged();
         AvatarManager.get(appCtx).clearLocal(outgoing);
         ServerInfoManager.get(appCtx).clear();
+        PlaylistRepository.get(appCtx).clear();
     }
 }

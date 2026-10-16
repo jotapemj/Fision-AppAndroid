@@ -484,6 +484,8 @@ public class CloudRepository {
                 synchronized (CloudRepository.this) { items.remove(hash); }
                 clearStickyMetadata(hash);
                 notifyChanged();
+                // The server drops the song from every playlist: counts change.
+                PlaylistRepository.get(appCtx).sync();
             }
             @Override public void onFailure(Call<Map<String, Object>> c, Throwable t) {
                 Log.w(TAG, "deleteLibrary failed", t);
@@ -589,6 +591,8 @@ public class CloudRepository {
                 it = new CloudItem(e.hash);
                 items.put(e.hash, it);
             }
+            // Before the server fields: a readable sticky title beats a bare filename.
+            applyPersistedSticky(it);
             // displayName preference: title from meta.json > nombre (filename) > hash.
             // When the server sends a readable title, it wins absolutely.
             if (e.title != null && !e.title.isEmpty()) {
@@ -917,6 +921,36 @@ public class CloudRepository {
                 .remove(KEY_STICKY_PREFIX + "cover_"  + hash)
                 .remove(KEY_STICKY_PREFIX + "ts_"     + hash)
                 .apply();
+        //noinspection ResultOfMethodCallIgnored
+        stickyCoverFile(hash).delete();
+    }
+
+    /** Kept cover of a song with no local folder (import in progress or
+     *  deleted locally). In filesDir: cacheDir can be purged by the system. */
+    @NonNull
+    public java.io.File stickyCoverFile(@NonNull String hash) {
+        java.io.File dir = new java.io.File(appCtx.getFilesDir(), "sticky_covers");
+        //noinspection ResultOfMethodCallIgnored
+        dir.mkdirs();
+        return new java.io.File(dir, hash + ".png");
+    }
+
+    /** Fills title, artist and cover the server does not provide (yet) from
+     *  the persisted sticky data. Covers in-flight imports, which have no
+     *  sticky order date and so are not restored at boot. */
+    private void applyPersistedSticky(CloudItem it) {
+        if (it.displayName == null || it.displayName.isEmpty()) {
+            String t = prefs.getString(KEY_STICKY_PREFIX + "title_" + it.hash, null);
+            if (t != null) it.displayName = t;
+        }
+        if (it.artist == null || it.artist.isEmpty()) {
+            String a = prefs.getString(KEY_STICKY_PREFIX + "artist_" + it.hash, null);
+            if (a != null) it.artist = a;
+        }
+        if (it.coverPath == null || !new java.io.File(it.coverPath).exists()) {
+            String c = prefs.getString(KEY_STICKY_PREFIX + "cover_" + it.hash, null);
+            if (c != null && new java.io.File(c).exists()) it.coverPath = c;
+        }
     }
 
     /** Restores sticky metadata when the repo boots. Creates CloudItems with the info so

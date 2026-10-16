@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {db_settings.class, db_SongParameters.class}, version = 7)
+@Database(entities = {db_settings.class, db_SongParameters.class, db_Playlist.class}, version = 8)
 public abstract class AppDatabase extends RoomDatabase {
 
     // Static field for the singleton database instance
@@ -18,6 +18,7 @@ public abstract class AppDatabase extends RoomDatabase {
     // Abstract methods to access the DAOs
     public abstract DAO_db_settings DAO_db_settings();
     public abstract DAO_db_SongParameters DAO_db_SongParameters();
+    public abstract DAO_db_Playlist DAO_db_Playlist();
 
     /** v3 → v4: adds the `Chords basic mode` (boolean) column without losing data. */
     static final Migration MIGRATION_3_4 = new Migration(3, 4) {
@@ -60,6 +61,17 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** v7 → v8: offline copy of the server playlists. New table only. */
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `playlists` ("
+                    + "`id` TEXT NOT NULL, `title` TEXT, `listIndex` INTEGER NOT NULL, "
+                    + "`hasCover` INTEGER NOT NULL, `createdAt` TEXT, `updatedAt` TEXT, "
+                    + "`songsJson` TEXT, PRIMARY KEY(`id`))");
+        }
+    };
+
     // Static method to obtain the database instance
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -67,7 +79,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "app_database")  // database name
-                            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                             .fallbackToDestructiveMigration()  // fallback if explicit migration fails
                             .build();
                 }

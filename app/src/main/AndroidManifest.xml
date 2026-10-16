@@ -84,6 +84,51 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
+        <!-- Share target: audio shared from other apps opens the import at the
+             separation picker. Only the shared stream is read from this entry. -->
+        <activity-alias
+            android:name=".ShareToFision"
+            android:targetActivity=".ImportActivity"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/mpeg" />
+                <data android:mimeType="audio/mp3" />
+                <data android:mimeType="audio/wav" />
+                <data android:mimeType="audio/x-wav" />
+                <data android:mimeType="audio/wave" />
+                <data android:mimeType="audio/flac" />
+                <data android:mimeType="audio/x-flac" />
+                <data android:mimeType="audio/mp4" />
+                <data android:mimeType="audio/x-m4a" />
+                <data android:mimeType="audio/m4a" />
+                <data android:mimeType="audio/aac" />
+                <data android:mimeType="audio/ogg" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="audio/opus" />
+                <data android:mimeType="audio/aiff" />
+                <data android:mimeType="audio/x-aiff" />
+                <data android:mimeType="audio/x-ms-wma" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- PlaylistActivity: one playlist and its songs -->
+        <activity
+            android:name=".PlaylistActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <!-- PlaylistEditActivity: create / edit a playlist -->
+        <activity
+            android:name=".PlaylistEditActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
         <!-- CropAvatarActivity: circular crop for the profile picture -->
         <activity
             android:name=".CropAvatarActivity"
@@ -122,6 +167,16 @@
             android:name=".cloud.FisionDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Per-app UI language below Android 13: AppCompat stores and restores it. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
 
         <!-- Song covers for Android Auto (read access granted per URI). -->
         <provider

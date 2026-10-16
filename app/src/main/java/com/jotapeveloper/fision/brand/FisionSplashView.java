@@ -11,16 +11,13 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
-import android.graphics.Rect;
 import android.graphics.Shader;
-import android.graphics.Typeface;
+import android.graphics.Path;
 import android.os.SystemClock;
 import android.view.View;
 
 import androidx.annotation.Nullable;
-import androidx.core.content.res.ResourcesCompat;
 
-import com.jotapeveloper.fision.R;
 
 /**
  * Animated splash: the nucleus (with its note) fades in growing, the neutron
@@ -83,14 +80,14 @@ public class FisionSplashView extends View {
     private final Paint solid = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bg = new Paint();
     private final Paint word = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Rect tmp = new Rect();
     private long startMs = -1;
     private boolean finished;
     @Nullable private Runnable onFinished;
 
     // Layout (px), recomputed on size change.
-    private float logoLeft, logoTop, logoScale, wordTop, wordSize, wordGap;
+    private float logoLeft, logoTop, logoScale, wordTop, wordScale, wordGap;
     private final float[] glyphW = new float[WORD.length()];
+    private final Path[] glyphs = new Path[WORD.length()];
 
     public FisionSplashView(Context c) {
         super(c);
@@ -107,10 +104,8 @@ public class FisionSplashView extends View {
         gradR.setXfermode(srcIn);
         solid.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP));
 
-        Typeface tf = null;
-        try { tf = ResourcesCompat.getFont(c, R.font.good_times_rg); } catch (Exception ignored) {}
-        word.setTypeface(tf != null ? tf : Typeface.DEFAULT);
         word.setColor(Color.WHITE);
+        for (int i = 0; i < WORD.length(); i++) glyphs[i] = FisionWordmark.glyph(WORD.charAt(i));
     }
 
     /** Neutron center x at fission time [tf] (same motion as FisionRenderer). */
@@ -137,15 +132,11 @@ public class FisionSplashView extends View {
         // Logo square and wordmark, both 80% of the width, centered as a group.
         float logoW = 0.8f * w;
         logoScale = logoW / 512f;
-        word.setTextSize(100f);
-        word.getTextBounds("F", 0, 1, tmp);
-        wordSize = 100f * (WORD_CAP * logoW) / Math.max(1, tmp.height());
-        word.setTextSize(wordSize);
-        word.getTextBounds("F", 0, 1, tmp);
-        float capH = tmp.height();
+        float capH = WORD_CAP * logoW;
+        wordScale = capH / FisionWordmark.CAP;
         float sum = 0f;
         for (int i = 0; i < WORD.length(); i++) {
-            glyphW[i] = word.measureText(WORD, i, i + 1);
+            glyphW[i] = FisionWordmark.advance(WORD.charAt(i)) * wordScale;
             sum += glyphW[i];
         }
         wordGap = (logoW - sum) / (WORD.length() - 1);
@@ -216,8 +207,13 @@ public class FisionSplashView extends View {
         if (wa > 0f) {
             word.setAlpha(Math.round(255 * wa));
             float x = logoLeft;
+            float capH = FisionWordmark.CAP * wordScale;
             for (int i = 0; i < WORD.length(); i++) {
-                c.drawText(WORD, i, i + 1, x, wordTop, word);
+                c.save();
+                c.translate(x, wordTop - capH);
+                c.scale(wordScale, wordScale);
+                c.drawPath(glyphs[i], word);
+                c.restore();
                 x += glyphW[i] + wordGap;
             }
         }

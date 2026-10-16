@@ -91,7 +91,6 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     private MediaSessionCompat mediaSession;
     private NotificationCompat.Builder builder;
     private NotificationManagerCompat notificationManager;
-    private PlaybackStateCompat.Builder stateBuilder;
 
     // === Audio focus ===
     private AudioManager audioManager;
@@ -126,19 +125,21 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     private final Set<Listener> listeners = new HashSet<>();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    // === Repeat + playlist continuation ===
+    // === Repeat + autoplay of the next song ===
     public enum RepeatMode { OFF, ALL, ONE }
-    private static final String PREFS_SONGS       = "prefs_songs";
-    private static final String KEY_REPEAT_MODE   = "repeat_mode";
-    private static final String KEY_PLAYLIST_MODE = "playlist_mode";
+    private static final String PREFS_SONGS        = "prefs_songs";
+    private static final String KEY_REPEAT_MODE    = "repeat_mode";
+    private static final String KEY_AUTOPLAY_NEXT  = "autoplay_next";
+    /** Former key of KEY_AUTOPLAY_NEXT, migrated on first read. */
+    private static final String KEY_AUTOPLAY_NEXT_LEGACY = "playlist_mode";
     private RepeatMode repeatMode  = RepeatMode.OFF;
-    private boolean playlistMode   = false;
+    private boolean autoplayNext   = false;
     /** ONE mode plays the song one extra time; this flag latches after that
      *  extra pass so the following end triggers a stop instead of another loop. */
     private boolean repeatOneUsed  = false;
 
     public RepeatMode getRepeatMode()   { return repeatMode; }
-    public boolean isPlaylistMode()     { return playlistMode; }
+    public boolean isAutoplayNext()     { return autoplayNext; }
     public void setRepeatMode(RepeatMode m) {
         if (m == null) m = RepeatMode.OFF;
         repeatMode = m;
@@ -146,17 +147,21 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         getSharedPreferences(PREFS_SONGS, MODE_PRIVATE).edit()
                 .putInt(KEY_REPEAT_MODE, m.ordinal()).apply();
     }
-    public void setPlaylistMode(boolean enabled) {
-        playlistMode = enabled;
+    public void setAutoplayNext(boolean enabled) {
+        autoplayNext = enabled;
         getSharedPreferences(PREFS_SONGS, MODE_PRIVATE).edit()
-                .putBoolean(KEY_PLAYLIST_MODE, enabled).apply();
+                .putBoolean(KEY_AUTOPLAY_NEXT, enabled).apply();
     }
     private void loadRepeatPrefs() {
         android.content.SharedPreferences p = getSharedPreferences(PREFS_SONGS, MODE_PRIVATE);
         int mode = p.getInt(KEY_REPEAT_MODE, 0);
         if (mode < 0 || mode >= RepeatMode.values().length) mode = 0;
         repeatMode   = RepeatMode.values()[mode];
-        playlistMode = p.getBoolean(KEY_PLAYLIST_MODE, false);
+        if (!p.contains(KEY_AUTOPLAY_NEXT) && p.contains(KEY_AUTOPLAY_NEXT_LEGACY)) {
+            p.edit().putBoolean(KEY_AUTOPLAY_NEXT, p.getBoolean(KEY_AUTOPLAY_NEXT_LEGACY, false))
+                    .remove(KEY_AUTOPLAY_NEXT_LEGACY).apply();
+        }
+        autoplayNext = p.getBoolean(KEY_AUTOPLAY_NEXT, false);
         repeatOneUsed = false;
     }
 
@@ -319,19 +324,22 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         if (mediaId == null || mediaId.contains("/") || mediaId.contains("\\")) return;
         File folder = new File(songsRoot(), mediaId);
         if (!folder.isDirectory()) return;
+        PlayQueue.playFromLibrary();
+        setCarMode(true);
         ensureStartedService();
         if (isCurrentSong(folder.getAbsolutePath()) && engine != null) {
             // Same song (possibly set up by the Player with 3D on): restart it
-            // with the playback-only mix.
+            // with the car mix.
             for (Integer t : stemTracks.values()) {
                 engine.setTrack3DEnabled(t, false);
                 engine.setTrack3DMuted(t, false);
             }
             seekTo(0);
-            applySavedSongSettings(folder.getName().hashCode(), this::play);
+            applyCarMix();
+            play();
             return;
         }
-        loadAndPlay(folder);
+        loadWithSessionMix(folder);
     }
 
     // Started (not only bound): Android Auto binds the browser, and a bound-only
@@ -484,6 +492,8 @@ public class PlaybackService extends MediaBrowserServiceCompat {
      */
     public void loadSongAsync(String songPath, String songName, int songId,
                               java.util.function.Consumer<Boolean> done) {
+        // The Player drives the engine from now on.
+        setCarMode(false);
         loadSongAsync(songPath, songName, songId, false, done);
     }
 
@@ -800,13 +810,21 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         // Skips without a song (or while one is still loading) do nothing.
         if (currentSongPath == null) return;
         File target = SongOrder.adjacent(this, new File(currentSongPath), delta);
-        if (target != null) loadAndPlay(target);
+        if (target != null) loadWithSessionMix(target);
     }
 
-    /** Loads a song in the background, applies its saved mix, then plays.
-     *  Used by the skips without an Activity and by Android Auto. The session
-     *  reports BUFFERING while the stems decode. */
+    /** Phone-side load (mini-player swipe): leaves the car mode, then loads
+     *  and plays with the saved mix. */
     public void loadAndPlay(File folder) {
+        setCarMode(false);
+        loadWithSessionMix(folder);
+    }
+
+    /** Loads a song in the background, applies the mix of the current session
+     *  (car mix in Android Auto, saved mix otherwise), then plays. Used by the
+     *  skips without an Activity and by Android Auto. The session reports
+     *  BUFFERING while the stems decode. */
+    private void loadWithSessionMix(File folder) {
         final String path = folder.getAbsolutePath();
         final String name = folder.getName();
         final int    id   = name.hashCode();
@@ -818,10 +836,14 @@ public class PlaybackService extends MediaBrowserServiceCompat {
                 notifyListeners();
                 return;
             }
-            applySavedSongSettings(id, () -> {
-                // Still wanted: no pause and no newer load in between.
-                if (startPending) play();
-            });
+            // Still wanted: no pause and no newer load in between.
+            Runnable start = () -> { if (startPending) play(); };
+            if (carMode) {
+                applyCarMix();
+                start.run();
+            } else {
+                applySavedSongSettings(id, start);
+            }
         });
     }
 
@@ -881,9 +903,115 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         }
     }
 
+    // ---- Android Auto ----
+    // A song picked in the car plays every stem at the default level, with an
+    // optional karaoke toggle that drops the main vocals and another one for the
+    // backing vocals. Toggles fade in/out. Nothing is saved: the mode ends when
+    // the phone UI loads a song or the service stops.
+    private static final String ACTION_CAR_KARAOKE = "com.jotapeveloper.fision.CAR_KARAOKE";
+    private static final String ACTION_CAR_BACKING = "com.jotapeveloper.fision.CAR_BACKING";
+    private static final float CAR_STEM_GAIN = 0.75f;
+    private static final long CAR_FADE_MS = 500;
+    private static final long CAR_FADE_STEP_MS = 15;
+    private boolean carMode;
+    private boolean carKaraoke;
+    private boolean carNoBacking;
+    // Current gain and running fade per car-toggled stem.
+    private static final class CarFade {
+        final float from, to; final long startMs;
+        CarFade(float from, float to, long startMs) { this.from = from; this.to = to; this.startMs = startMs; }
+    }
+    private final java.util.Map<String, Float> carGain = new java.util.HashMap<>();
+    private final java.util.Map<String, CarFade> carFades = new java.util.HashMap<>();
+
+    private void setCarMode(boolean on) {
+        if (carMode == on) return;
+        carMode = on;
+        carKaraoke = false;
+        carNoBacking = false;
+        cancelCarFades();
+        refreshPlaybackState();
+    }
+
+    private float carTargetGain(String stem) {
+        if (carKaraoke && "vocals".equals(stem)) return 0f;
+        if (carNoBacking && "vocals2".equals(stem)) return 0f;
+        return CAR_STEM_GAIN;
+    }
+
+    /** Default mix for the car: every stem at the default level and centered,
+     *  original tempo and pitch; toggled vocals muted. Applied without fade. */
+    private void applyCarMix() {
+        if (engine == null) return;
+        cancelCarFades();
+        for (java.util.Map.Entry<String, Integer> e : stemTracks.entrySet()) {
+            float g = carTargetGain(e.getKey());
+            carGain.put(e.getKey(), g);
+            engine.setVolume(e.getValue(), g, g);
+            engine.setTempo(e.getValue(), 1f);
+            if (StemSpec.isPitched(e.getKey())) engine.setPitch(e.getValue(), 0f);
+        }
+        if (metronomeTrack >= 0)       engine.setTempo(metronomeTrack, 1f);
+        if (metronomeHalfTrack >= 0)   engine.setTempo(metronomeHalfTrack, 1f);
+        if (metronomeDoubleTrack >= 0) engine.setTempo(metronomeDoubleTrack, 1f);
+    }
+
+    private void toggleCarKaraoke() {
+        if (!carMode || engine == null) return;
+        carKaraoke = !carKaraoke;
+        fadeCarStem("vocals");
+        refreshPlaybackState();
+    }
+
+    private void toggleCarBacking() {
+        if (!carMode || engine == null) return;
+        carNoBacking = !carNoBacking;
+        fadeCarStem("vocals2");
+        refreshPlaybackState();
+    }
+
+    /** Fades a stem from its current gain to its car target (smoothstep). */
+    private void fadeCarStem(String stem) {
+        if (!stemTracks.containsKey(stem)) return;
+        Float cur = carGain.get(stem);
+        float from = cur != null ? cur : CAR_STEM_GAIN;
+        carFades.put(stem, new CarFade(from, carTargetGain(stem), android.os.SystemClock.uptimeMillis()));
+        mainHandler.removeCallbacks(carFadeTick);
+        mainHandler.post(carFadeTick);
+    }
+
+    private void cancelCarFades() {
+        carFades.clear();
+        mainHandler.removeCallbacks(carFadeTick);
+    }
+
+    private final Runnable carFadeTick = new Runnable() {
+        @Override public void run() {
+            if (engine == null) { cancelCarFades(); return; }
+            long now = android.os.SystemClock.uptimeMillis();
+            java.util.Iterator<java.util.Map.Entry<String, CarFade>> it = carFades.entrySet().iterator();
+            while (it.hasNext()) {
+                java.util.Map.Entry<String, CarFade> e = it.next();
+                CarFade f = e.getValue();
+                float t = Math.min(1f, (now - f.startMs) / (float) CAR_FADE_MS);
+                float s = t * t * (3f - 2f * t);
+                float g = f.from + (f.to - f.from) * s;
+                carGain.put(e.getKey(), g);
+                Integer id = stemTracks.get(e.getKey());
+                if (id != null) engine.setVolume(id, g, g);
+                if (t >= 1f) it.remove();
+            }
+            if (!carFades.isEmpty()) mainHandler.postDelayed(this, CAR_FADE_STEP_MS);
+        }
+    };
+
     /** Releases the song and stops the foreground service. */
     public void releaseSongAndStop() {
         startPending = false;
+        carMode = false;
+        carKaraoke = false;
+        carNoBacking = false;
+        cancelCarFades();
         releaseInternal();
         stopForeground(true);
         notificationManager.cancel(NOTIF_ID);
@@ -954,17 +1082,12 @@ public class PlaybackService extends MediaBrowserServiceCompat {
             @Override public void onStop()  { pause(); }
             @Override public void onSkipToNext()     { skipToNext(); }
             @Override public void onSkipToPrevious() { skipToPrevious(); }
+            @Override public void onCustomAction(String action, Bundle extras) {
+                if (ACTION_CAR_KARAOKE.equals(action)) toggleCarKaraoke();
+                else if (ACTION_CAR_BACKING.equals(action)) toggleCarBacking();
+            }
         });
-        stateBuilder = new PlaybackStateCompat.Builder()
-                .setActions(PlaybackStateCompat.ACTION_PLAY
-                        | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
-                        | PlaybackStateCompat.ACTION_PAUSE
-                        | PlaybackStateCompat.ACTION_STOP
-                        | PlaybackStateCompat.ACTION_PLAY_PAUSE
-                        | PlaybackStateCompat.ACTION_SEEK_TO
-                        | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
-        mediaSession.setPlaybackState(stateBuilder.build());
+        updatePlaybackState(PlaybackStateCompat.STATE_NONE);
         // Born inactive: loading a song does not make Fision the system's
         // active player; play() claims the session. No media button receiver
         // either, so the system cannot restart the app with a MEDIA_PLAY key
@@ -1125,7 +1248,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
             return EndOfSongResult.STOPPED;
         }
         // Repeat OFF branch.
-        if (playlistMode) {
+        if (autoplayNext) {
             dispatchSkip(+1);
             return EndOfSongResult.ADVANCED_NEXT;
         }
@@ -1227,12 +1350,45 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         return cachedCoverBitmap;
     }
 
+    private static final long SESSION_ACTIONS = PlaybackStateCompat.ACTION_PLAY
+            | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+            | PlaybackStateCompat.ACTION_PAUSE
+            | PlaybackStateCompat.ACTION_STOP
+            | PlaybackStateCompat.ACTION_PLAY_PAUSE
+            | PlaybackStateCompat.ACTION_SEEK_TO
+            | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+            | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+
+    private int lastSessionState = PlaybackStateCompat.STATE_NONE;
+
     public void updatePlaybackState(int state) {
-        if (mediaSession == null || stateBuilder == null) return;
+        if (mediaSession == null) return;
+        lastSessionState = state;
         long pos = engine != null ? engine.getCurrentPositionMs() : 0;
-        stateBuilder.setState(state, pos, isPlaying ? 1f : 0f);
-        mediaSession.setPlaybackState(stateBuilder.build());
+        PlaybackStateCompat.Builder b = new PlaybackStateCompat.Builder()
+                .setActions(SESSION_ACTIONS)
+                .setState(state, pos, isPlaying ? 1f : 0f);
+        // Karaoke button only in the car, and only for songs with main vocals.
+        if (carMode && stemTracks.containsKey("vocals")) {
+            b.addCustomAction(new PlaybackStateCompat.CustomAction.Builder(
+                    ACTION_CAR_KARAOKE,
+                    getString(carKaraoke ? R.string.car_karaoke_disable : R.string.car_karaoke_enable),
+                    carKaraoke ? R.drawable.ic_car_karaoke_on : R.drawable.ic_car_karaoke_off)
+                    .build());
+        }
+        // Backing-vocals button only when the song carries vocals2.
+        if (carMode && stemTracks.containsKey("vocals2")) {
+            b.addCustomAction(new PlaybackStateCompat.CustomAction.Builder(
+                    ACTION_CAR_BACKING,
+                    getString(carNoBacking ? R.string.car_backing_unmute : R.string.car_backing_mute),
+                    carNoBacking ? R.drawable.ic_car_backing_on : R.drawable.ic_car_backing_off)
+                    .build());
+        }
+        mediaSession.setPlaybackState(b.build());
     }
+
+    /** Re-publishes the last state (custom actions changed). */
+    private void refreshPlaybackState() { updatePlaybackState(lastSessionState); }
 
     private Notification buildNotification(int playbackState) {
         Intent intent = new Intent(this, PlayerActivity.class);

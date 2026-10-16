@@ -45,7 +45,7 @@ public class PianoChordView extends View {
         label.setColor(Color.WHITE);
         label.setTextAlign(Paint.Align.CENTER);
         Typeface tf = null;
-        try { tf = ResourcesCompat.getFont(c, R.font.yugothic_ui_regular); } catch (Exception ignored) {}
+        try { tf = ResourcesCompat.getFont(c, R.font.noto_sans_regular); } catch (Exception ignored) {}
         label.setTypeface(Typeface.create(tf != null ? tf : Typeface.DEFAULT, Typeface.BOLD));
     }
 

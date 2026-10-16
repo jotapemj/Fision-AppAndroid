@@ -5,4 +5,6 @@
     <!-- Records the accent id applied to an Activity theme so we can detect
          stale themes on the next onResume and trigger recreate. -->
     <item name="accent_applied_tag" type="id" />
+    <!-- Artwork key bound to a playlist cover view (drops late results) -->
+    <item name="tag_playlist_cover_key" type="id" />
 </resources>

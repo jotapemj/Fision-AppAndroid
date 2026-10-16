@@ -1,7 +1,10 @@
 # Fision Android
 
 <div align="center">
-  <img src="./docs/screenshots/title.png" width="400" alt="Main view of Fision App">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/screenshots/title_dark.png">
+    <img src="./docs/screenshots/title_light.png" width="400" alt="Fision logo">
+  </picture>
 </div>
 
 Android client for the Fision ecosystem. Plays multitrack songs prepared by the
@@ -45,6 +48,14 @@ The magic starts with the fision of your music.
 - Multi-user server access with signed sessions and per-account profile
   avatar. Local-only mode is available for offline use.
 - Song library with sort, search, edit, and delete.
+- Playlists stored on the server, with custom or automatic mosaic covers
+  and an offline copy for playback without connection.
+- Share an audio file from any app straight into the separation picker.
+- Android Auto support with a default mix and temporary karaoke and
+  backing-vocals toggles.
+- Interface in English, Spanish, Catalan, Ukrainian, Brazilian Portuguese,
+  French, German, Italian, Russian, and Simplified Chinese, selectable per
+  app or following the system language.
 - Repeat modes (off, all, one) and continuous playlist that advances to the
   next song when the current one ends.
 - Reprocess a song on the server with a different separation setup without
@@ -90,6 +101,10 @@ otherwise the import screen shows a warning banner explaining that
 processing will fall back to CPU and take longer. While the server
 info is being fetched, the send button is disabled behind a loading
 overlay so no request is issued with a wrong device value.
+
+Audio files can also be sent from other apps through the system share
+sheet: choosing Fision opens this screen with the shared file already
+selected, ready to pick the separation configuration.
 
 The audio is streamed to the server without loading the whole file
 into memory, and a progress dialog shows the upload percentage with a
@@ -191,6 +206,17 @@ read-only information block with details of the underlying files:
 - Total size on disk.
 - Duration.
 - Number of stems detected.
+
+### Playlists
+
+The main screen has two tabs: Songs and Playlists. Playlists live on the
+Fision server and are mirrored locally, so they can be played without a
+connection; creating, editing, and deleting require the server to be
+reachable. Each playlist has a title, an ordered list of songs that can
+be rearranged by dragging, and an optional square cover. Without a
+custom cover, a mosaic is built from the covers of its first songs.
+Opening a song from a playlist makes the previous and next controls,
+autoplay, and the mini player follow the playlist order.
 
 ### Sort by
 
@@ -343,9 +369,9 @@ options.
 - **Animated background**: fades in an ambient nebula effect behind the
   player. Colours are derived from the current cover art and pulse on
   every beat. See the section below.
-- **Reset to default**: resets every stem volume to 75, every stem pan
-  to 0, and exits solo mode if active. Pitch, tempo, and metronome
-  settings are left untouched.
+- **Reset to default**: returns the whole song to its defaults: every
+  stem volume to 75 and pan to 0 (leaving solo mode), pitch 0, tempo 1x,
+  metronome off with its default settings, and 3D audio off.
 - **Reprocess**: reopens the import activity prefilled with the current
   configuration and lets you re-run the pipeline on the same input
   file with different options. When the server finishes, the new ZIP
@@ -556,6 +582,16 @@ usual controls work everywhere:
 - The system notification with play, pause, previous, and next.
 - Bluetooth headset buttons.
 - Car head units and lock-screen media controls.
+
+### Android Auto
+
+Fision appears as a media app in Android Auto and lists the songs
+downloaded on the phone. In the car the saved per-song mix is not used:
+every stem plays at the default level, with original pitch and tempo.
+Two temporary toggles are available on the playback screen: karaoke
+mode, which removes the main vocals, and a backing-vocals toggle shown
+when the song has a separate backing-vocals stem. Both fade in and out
+and nothing is saved.
 
 The main screen shows a mini player at the bottom whenever a song is
 loaded. Tapping it opens the full player. Swiping left or right on it

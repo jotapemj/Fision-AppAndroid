@@ -67,7 +67,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:text="@string/audio3d_title"
             android:textColor="@color/AppWhite"
             android:textSize="16sp"
@@ -113,7 +113,7 @@
         android:paddingTop="3dp"
         android:paddingBottom="3dp"
         android:background="@drawable/elevation_tooltip_bg"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         android:textColor="@color/AppWhite"
         android:textSize="12sp"
         android:textStyle="bold"
@@ -154,7 +154,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:fontFamily="@font/noto_sans_regular"
                     android:text="@string/stems_dance_speed"
                     android:textColor="@color/AppWhite"
                     android:textSize="11sp" />
@@ -183,7 +183,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/yugothic_ui_regular"
+                    android:fontFamily="@font/noto_sans_regular"
                     android:text="@string/stems_dance_distance"
                     android:textColor="@color/AppWhite"
                     android:textSize="11sp" />

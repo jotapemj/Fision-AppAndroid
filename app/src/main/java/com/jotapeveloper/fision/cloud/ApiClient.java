@@ -112,7 +112,9 @@ public class ApiClient {
     }
 
     /** Injects Bearer when a token is present. Otherwise the request goes without auth
-     *  (the server allows it in open mode). */
+     *  (the server allows it in open mode). A 401 on an authenticated request
+     *  means the session is over (expired or revoked): AuthManager drops the
+     *  token instead of resending it. On /login, 401 is a wrong password. */
     private final class AuthInterceptor implements Interceptor {
         @Override public Response intercept(Chain chain) throws java.io.IOException {
             Request original = chain.request();
@@ -122,7 +124,16 @@ public class ApiClient {
             Request authed = original.newBuilder()
                     .header("Authorization", "Bearer " + token)
                     .build();
-            return chain.proceed(authed);
+            Response resp = chain.proceed(authed);
+            if (resp.code() == 401 && !isLoginPath(original)) {
+                AuthManager.get(appCtx).onUnauthorized(token);
+            }
+            return resp;
+        }
+
+        private boolean isLoginPath(Request r) {
+            java.util.List<String> seg = r.url().pathSegments();
+            return !seg.isEmpty() && "login".equals(seg.get(seg.size() - 1));
         }
     }
 }

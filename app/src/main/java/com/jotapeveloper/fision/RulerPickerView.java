@@ -139,7 +139,7 @@ public class RulerPickerView extends View {
         mTickLabelPaint.setColor(white85);
         mTickLabelPaint.setTextSize(mTickLabelSize);
         mTickLabelPaint.setTextAlign(Paint.Align.CENTER);
-        Typeface tf = ResourcesCompat.getFont(ctx, R.font.yugothic_ui_regular);
+        Typeface tf = ResourcesCompat.getFont(ctx, R.font.noto_sans_regular);
         if (tf != null) mTickLabelPaint.setTypeface(tf);
 
         mMarkerPaint.setColor(primary);

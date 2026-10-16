@@ -81,12 +81,14 @@ public final class SongOrder {
         return out;
     }
 
-    /** Song [delta] steps from [current] in list order, wrapping around.
-     *  Null when [current] is not in the library or it has a single song. */
+    /** Song [delta] steps from [current], wrapping around: in the active
+     *  playlist's order (PlayQueue) or else in list order. Null when [current]
+     *  is not in that order or it has a single song. */
     @Nullable
     public static File adjacent(Context ctx, File current, int delta) {
         if (current == null) return null;
-        List<File> songs = sortedSongFolders(ctx, current.getParentFile());
+        List<File> songs = PlayQueue.foldersFor(ctx, current);
+        if (songs == null) songs = sortedSongFolders(ctx, current.getParentFile());
         if (songs.size() < 2) return null;
         int idx = -1;
         for (int i = 0; i < songs.size(); i++) {

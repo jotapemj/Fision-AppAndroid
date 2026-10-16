@@ -46,6 +46,11 @@ public interface FisionApi {
     @POST("login")
     Call<LoginResponse> login(@Body LoginRequest body);
 
+    /** Trades the current token for a new one with a full TTL. A 401 means the
+     *  session is gone (expired, revoked, password changed). Bearer required. */
+    @POST("auth/refresh")
+    Call<LoginResponse> refresh();
+
     /** Rotates the current password. The old token is revoked on success and
      *  the response carries a fresh one. Bearer required. */
     @POST("auth/change-password")
@@ -120,4 +125,41 @@ public interface FisionApi {
      *  in a different language. */
     @DELETE("library/{h}/lyrics")
     Call<Map<String, Object>> deleteLyrics(@Path("h") String hash);
+
+    // ---- Playlists (server 1.8.0) ----
+
+    /** User playlists without their songs, last change first. */
+    @GET("playlists")
+    Call<List<PlaylistDto>> listPlaylists();
+
+    /** One playlist with its song hashes in play order. 404 = deleted. */
+    @GET("playlists/{id}")
+    Call<PlaylistDto> getPlaylist(@Path("id") String id);
+
+    @POST("playlists")
+    Call<PlaylistDto> createPlaylist(@Body PlaylistSaveRequest body);
+
+    /** Replaces the whole playlist (title and ordered songs). */
+    @retrofit2.http.PUT("playlists/{id}")
+    Call<PlaylistDto> updatePlaylist(@Path("id") String id, @Body PlaylistSaveRequest body);
+
+    /** Deletes the playlist and its cover. */
+    @DELETE("playlists/{id}")
+    Call<Map<String, Object>> deletePlaylist(@Path("id") String id);
+
+    /** Square JPEG/PNG/WebP, 2 MB max. 413 = too large, 400 = bad format. */
+    @Multipart
+    @retrofit2.http.PUT("playlists/{id}/cover")
+    Call<Map<String, Object>> putPlaylistCover(@Path("id") String id,
+                                               @Part MultipartBody.Part file);
+
+    /** [version] is the playlist updated_at, so a changed cover is not
+     *  served from a cache. */
+    @Streaming
+    @GET("playlists/{id}/cover")
+    Call<ResponseBody> getPlaylistCover(@Path("id") String id,
+                                        @retrofit2.http.Query("v") String version);
+
+    @DELETE("playlists/{id}/cover")
+    Call<Map<String, Object>> deletePlaylistCover(@Path("id") String id);
 }

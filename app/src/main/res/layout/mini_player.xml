@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mini-player (visible when the service has a song loaded), shared by every
+     screen but the Player and Settings via <include> + MiniPlayerController.
+     A BlurBehindLayout that paints a blur of the content behind it (source set
+     by the host): frosted glass letting color and motion show through.
+     Hosts position it (64dp high, 10dp side/bottom margins). -->
+<com.jotapeveloper.fision.BlurBehindLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mini_player"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:background="@drawable/mini_player_bg"
+    android:clipToOutline="true"
+    android:clickable="true"
+    android:focusable="true"
+    android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/iv_mini_icon"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/iv_icon"
+            app:srcCompat="@drawable/ic_media"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <!-- Wrapper that clips the translated text. Starts 5dp after the cover and
+             ends right where the play button begins. Three stacked LinearLayouts
+             (current/prev/next) receive translateX for the swipe + preview effect. -->
+        <FrameLayout
+            android:id="@+id/fl_mini_textWrap"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="5dp"
+            android:clipChildren="true"
+            android:clipToPadding="true"
+            app:layout_constraintStart_toEndOf="@+id/iv_mini_icon"
+            app:layout_constraintEnd_toStartOf="@+id/b_mini_playPause"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <!-- Current song -->
+            <LinearLayout
+                android:id="@+id/ll_mini_current"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_mini_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:maxLines="1"
+                    android:textStyle="bold"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tv_mini_artist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:maxLines="1"
+                    android:textColor="#919191"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
+            <!-- Previous song (preview on the left during swipe →) -->
+            <LinearLayout
+                android:id="@+id/ll_mini_prev"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_mini_titlePrev"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:maxLines="1"
+                    android:textStyle="bold"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tv_mini_artistPrev"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:maxLines="1"
+                    android:textColor="#919191"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
+            <!-- Next song (preview on the right during swipe ←) -->
+            <LinearLayout
+                android:id="@+id/ll_mini_next"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_mini_titleNext"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:maxLines="1"
+                    android:textStyle="bold"
+                    android:textColor="@color/AppWhite"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tv_mini_artistNext"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:maxLines="1"
+                    android:textColor="#919191"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <!-- Guideline at 65% (right overlay closer to the play button, less invasive) -->
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/gl_mini_half"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.65" />
+
+        <!-- Extended right fade (from 65% of the mini-player to the END of the play
+             button). It used to end at the button's start and left a visible seam between
+             the translucent overlay and the button background. The gradient now covers
+             the play area too, and the icon floats on top as a floating ID. No touch capture. -->
+        <View
+            android:id="@+id/v_mini_textFade"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/mini_text_fade_right"
+            android:clickable="false"
+            android:focusable="false"
+            app:layout_constraintStart_toStartOf="@+id/gl_mini_half"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <!-- Transparent layer that receives taps and swipes over the text area.
+             Does not cover the play/pause button (constraint to its start). -->
+        <View
+            android:id="@+id/v_mini_swipeArea"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/b_mini_playPause"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_mini_playPause"
+            style="@style/Widget.MaterialComponents.Button.IconOnly"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:backgroundTint="@android:color/transparent"
+            android:stateListAnimator="@null"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:icon="@drawable/avd_ic_play"
+            app:iconSize="28dp"
+            app:iconTint="@color/AppWhite"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <!-- Progress bar at the bottom, from the cover end to the right edge -->
+        <ProgressBar
+            android:id="@+id/pb_mini_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressTint="@color/AppWhite"
+            android:progressBackgroundTint="#3A3A3A"
+            app:layout_constraintStart_toEndOf="@+id/iv_mini_icon"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </com.jotapeveloper.fision.BlurBehindLayout>

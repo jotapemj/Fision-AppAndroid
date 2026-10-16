@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:layout_marginBottom="14dp"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         android:text="@string/audio3d_info_title"
         android:textColor="@color/AppWhite"
         android:textSize="18sp"
@@ -38,7 +38,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="14dp"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         android:text="@string/audio3d_info_body"
         android:textColor="@color/AppWhite"
         android:textSize="14sp"
@@ -61,35 +61,35 @@
             android:id="@+id/tv_audio3d_legend_drag"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:textColor="#CCFFFFFF"
             android:textSize="12sp" />
         <TextView
             android:id="@+id/tv_audio3d_legend_tap"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:textColor="#CCFFFFFF"
             android:textSize="12sp" />
         <TextView
             android:id="@+id/tv_audio3d_legend_double"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:textColor="#CCFFFFFF"
             android:textSize="12sp" />
         <TextView
             android:id="@+id/tv_audio3d_legend_long"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:textColor="#CCFFFFFF"
             android:textSize="12sp" />
         <TextView
             android:id="@+id/tv_audio3d_legend_reset"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/yugothic_ui_regular"
+            android:fontFamily="@font/noto_sans_regular"
             android:textColor="#CCFFFFFF"
             android:textSize="12sp" />
     </LinearLayout>

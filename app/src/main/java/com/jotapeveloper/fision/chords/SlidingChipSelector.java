@@ -52,7 +52,7 @@ public class SlidingChipSelector extends View {
         text.setTextAlign(Paint.Align.CENTER);
         text.setTextSize(12f * getResources().getDisplayMetrics().scaledDensity);
         Typeface tf = null;
-        try { tf = ResourcesCompat.getFont(c, R.font.yugothic_ui_regular); } catch (Exception ignored) {}
+        try { tf = ResourcesCompat.getFont(c, R.font.noto_sans_regular); } catch (Exception ignored) {}
         regular = tf != null ? tf : Typeface.DEFAULT;
         bold = Typeface.create(regular, Typeface.BOLD);
     }

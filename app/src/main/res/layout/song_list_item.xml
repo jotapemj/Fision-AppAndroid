@@ -3,15 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="80sp"
-    android:background="@drawable/ripple_button">
+    android:layout_height="72dp"
+    android:background="@drawable/row_pressed_flat">
 
 
     <!-- Wrapper that clips the cover + overlays to rounded corners -->
     <FrameLayout
         android:id="@+id/fl_cover_wrap"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
         android:layout_marginStart="16dp"
         android:background="@drawable/cover_clip_bg"
         android:clipToOutline="true"
@@ -52,6 +52,16 @@
             android:layout_gravity="center"
             android:indeterminateTint="@color/AppWhite"
             android:visibility="gone" />
+
+        <!-- Cloud song without a session: sign in to use it -->
+        <ImageView
+            android:id="@+id/iv_cover_lock"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_lock"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
     </FrameLayout>
 
     <TextView
@@ -60,11 +70,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:ellipsize="end"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         android:maxLines="1"
         android:text="@string/tvTitle"
         android:textColor="@color/white"
-        android:textSize="16sp"
+        android:textSize="15sp"
         app:layout_constraintBottom_toTopOf="@+id/tvSubtitle"
         app:layout_constraintEnd_toStartOf="@+id/options"
         app:layout_constraintStart_toEndOf="@+id/fl_cover_wrap"
@@ -77,11 +87,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:ellipsize="end"
-        android:fontFamily="@font/yugothic_ui_regular"
+        android:fontFamily="@font/noto_sans_regular"
         android:maxLines="1"
         android:text="@string/tvSubtitle"
         android:textColor="#919191"
-        android:textSize="12sp"
+        android:textSize="12.5sp"
         app:layout_constraintBottom_toBottomOf="@+id/fl_cover_wrap"
         app:layout_constraintEnd_toStartOf="@+id/options"
         app:layout_constraintStart_toEndOf="@+id/fl_cover_wrap"

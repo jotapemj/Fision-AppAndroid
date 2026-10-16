@@ -57,4 +57,9 @@ public class CloudItem {
         return state == State.QUEUED || state == State.RUNNING
                 || state == State.WAITING_GPU || state == State.DOWNLOADING;
     }
+
+    /** Still being separated on the server: no place in the library yet. */
+    public boolean isProcessing() {
+        return state == State.QUEUED || state == State.RUNNING || state == State.WAITING_GPU;
+    }
 }
