@@ -102,6 +102,26 @@ public class ApiClient {
         }
     }
 
+    /** True when the URL would carry the password and token in clear text
+     *  over a network others can read: plain http outside loopback and
+     *  Tailscale (whose tunnel is already encrypted). */
+    public static boolean isCleartextExposed(String url) {
+        okhttp3.HttpUrl u = okhttp3.HttpUrl.parse(normalizeBase(url));
+        if (u == null || u.isHttps()) return false;
+        String host = u.host().toLowerCase(java.util.Locale.ROOT);
+        if (host.equals("localhost") || host.startsWith("127.") || host.equals("::1")) return false;
+        if (host.endsWith(".ts.net") || host.startsWith("fd7a:115c:a1e0:")) return false;
+        String[] o = host.split("\\.");
+        if (o.length == 4 && o[0].equals("100")) {
+            // Tailscale addresses: 100.64.0.0/10.
+            try {
+                int b = Integer.parseInt(o[1]);
+                if (b >= 64 && b <= 127) return false;
+            } catch (NumberFormatException ignored) {}
+        }
+        return true;
+    }
+
     private static String normalizeBase(String url) {
         if (url == null) return "";
         String u = url.trim();
@@ -119,8 +139,11 @@ public class ApiClient {
         @Override public Response intercept(Chain chain) throws java.io.IOException {
             Request original = chain.request();
             String token;
-            synchronized (ApiClient.this) { token = currentToken; }
-            if (token == null || token.isEmpty()) return chain.proceed(original);
+            String base;
+            synchronized (ApiClient.this) { token = currentToken; base = currentBase; }
+            if (token == null || token.isEmpty() || !isOwnServer(original.url(), base)) {
+                return chain.proceed(original);
+            }
             Request authed = original.newBuilder()
                     .header("Authorization", "Bearer " + token)
                     .build();
@@ -129,6 +152,16 @@ public class ApiClient {
                 AuthManager.get(appCtx).onUnauthorized(token);
             }
             return resp;
+        }
+
+        /** Absolute URLs from the server (e.g. a cover_url) may point elsewhere:
+         *  the token only goes to the configured scheme, host and port. */
+        private boolean isOwnServer(okhttp3.HttpUrl url, String base) {
+            okhttp3.HttpUrl own = okhttp3.HttpUrl.parse(base);
+            return own != null
+                    && own.scheme().equals(url.scheme())
+                    && own.host().equalsIgnoreCase(url.host())
+                    && own.port() == url.port();
         }
 
         private boolean isLoginPath(Request r) {

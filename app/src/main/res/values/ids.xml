@@ -9,4 +9,6 @@
     <item name="tag_playlist_cover_key" type="id" />
     <!-- Running style animation of a lyrics row (active line change) -->
     <item name="tag_lyrics_anim" type="id" />
+    <!-- Visibility target of a stem FX control while it fades -->
+    <item name="tag_fx_visible" type="id" />
 </resources>

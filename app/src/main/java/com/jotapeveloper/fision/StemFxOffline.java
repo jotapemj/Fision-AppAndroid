@@ -10,7 +10,7 @@ public final class StemFxOffline implements AutoCloseable {
 
     private static final int CHUNK = 4096;
     /** Room for the echo and reverb tails after the stem ends. */
-    private static final float TAIL_SECONDS = 6f;
+    static final float TAIL_SECONDS = 6f;
 
     private long handle;
 

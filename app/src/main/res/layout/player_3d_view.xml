@@ -36,7 +36,7 @@
         android:layout_marginBottom="140dp"
         android:scaleType="fitCenter"
         android:src="@drawable/head"
-        android:contentDescription="listener head" />
+        android:contentDescription="@string/cd_listener_head" />
 
     <!-- 3) Dim layer: lights off effect when 3D=off. Vertical gradient so the
          top and bottom fade to transparent — avoids a hard seam against the

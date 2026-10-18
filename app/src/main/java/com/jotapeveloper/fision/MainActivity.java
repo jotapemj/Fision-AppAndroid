@@ -1339,6 +1339,20 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             deleteButton.setEnabled(false);
             deleteButton.setAlpha(0.4f);
         }
+        // Failed reprocess of a downloaded song: the row opens the previous
+        // stems, so the retry lives here.
+        Button retryButton = optionsBottomSheet.findViewById(R.id.b_retryJob);
+        final boolean canRetry = song.cloud != null
+                && song.cloud.state == CloudItem.State.ERROR
+                && song.cloud.hasLocalCopy()
+                && CloudRepository.isRetryableJobError(song.cloud.errorMessage);
+        if (retryButton != null) {
+            retryButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
+            retryButton.setOnClickListener(v -> {
+                optionsBottomSheet.dismiss();
+                showJobRetryDialog(song.cloud.hash);
+            });
+        }
 
         optionsBottomSheet.show();
 
@@ -1511,7 +1525,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (isQueued && song.cloud != null) {
                 CloudRepository.get(this).cancelQueuedJob(song.cloud.hash);
             } else if (cloudOnly && song.cloud != null) {
-                CloudRepository.get(this).deleteFromCloud(song.cloud.hash);
+                CloudRepository.get(this).deleteFromCloud(song.cloud.hash, () ->
+                        Toast.makeText(this, R.string.cloud_delete_busy, Toast.LENGTH_LONG).show());
             } else {
                 File target = new File(SongFolder, folderName);
                 // When the song is also on the cloud, remember its current order date so

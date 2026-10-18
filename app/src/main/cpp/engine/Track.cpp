@@ -533,6 +533,13 @@ bool Track::loadWavToFloat(const char* path){
     if(fmt==0 || dataPos==0){ LOGE("WAV missing fmt/data: %s", path); std::fclose(f); return false; }
     if(!(fmt==1 || fmt==3)) { LOGE("unsupported fmt: %u", fmt); std::fclose(f); return false; }
     if(!(ch==1 || ch==2))  { LOGE("unsupported channels: %u", ch); std::fclose(f); return false; }
+    if(sr < 8000 || sr > 384000) { LOGE("unsupported sample rate: %u", sr); std::fclose(f); return false; }
+    // The data chunk can only be as large as what follows it in the file
+    // (streamed WAVs write 0xFFFFFFFF): never allocate past the real size.
+    std::fseek(f, 0, SEEK_END);
+    const long fileEnd = std::ftell(f);
+    if (fileEnd <= dataPos) { LOGE("WAV without audio data: %s", path); std::fclose(f); return false; }
+    if ((uint64_t) dataSize > (uint64_t) (fileEnd - dataPos)) dataSize = (uint32_t) (fileEnd - dataPos);
     // Supported: PCM16, PCM24, PCM32, IEEE float32
     if(!( (fmt==1 && (bps==16 || bps==24 || bps==32)) || (fmt==3 && bps==32) )){
         LOGE("unsupported bps/fmt: fmt=%u bps=%u", fmt, bps); std::fclose(f); return false;
@@ -545,6 +552,7 @@ bool Track::loadWavToFloat(const char* path){
 
     const size_t bytesPerSample = bps/8;
     const size_t frames = dataSize / (bytesPerSample * ch);
+    if (frames == 0) { LOGE("WAV without audio data: %s", path); return false; }
     mPcm.resize(frames * ch);
 
     if(fmt==1 && bps==16){
@@ -583,8 +591,10 @@ bool Track::loadFlacToFloat(const char* path){
     float* samples = drflac_open_file_and_read_pcm_frames_f32(
             path, &channels, &sampleRate, &totalFrames, nullptr);
     if (!samples) { LOGE("FLAC decode failed: %s", path); return false; }
-    if (!(channels == 1 || channels == 2)) {
-        LOGE("FLAC unsupported channels: %u", channels);
+    if (!(channels == 1 || channels == 2) || sampleRate < 8000 || sampleRate > 384000
+            || totalFrames == 0) {
+        LOGE("FLAC unsupported: ch=%u sr=%u frames=%llu", channels, sampleRate,
+             (unsigned long long) totalFrames);
         drflac_free(samples, nullptr);
         return false;
     }

@@ -53,6 +53,11 @@ public class CloudRepository {
     /** Last known server order date per hash ("order_ts_<hash>"). Keeps the
      *  list order stable from the first render and while offline. */
     private static final String KEY_ORDER_TS_PREFIX = "order_ts_";
+    // Server updated_at whose chord files are already on the device.
+    private static final String KEY_CHORDS_TS_PREFIX = "chords_ts_";
+    private static final String[] CHORD_FILES = {"chords.txt", "chords_basic.txt"};
+    private final java.util.Set<String> chordsInFlight =
+            java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     public interface Listener {
         void onCloudChanged();
@@ -92,6 +97,13 @@ public class CloudRepository {
     private final Context appCtx;
     private final SharedPreferences prefs;
     private final Handler main = new Handler(Looper.getMainLooper());
+
+    /** Told on the main thread when a song's chord files were replaced. */
+    public interface ChordsListener { void onChordsUpdated(String hash); }
+    private final java.util.Set<ChordsListener> chordsListeners =
+            new java.util.concurrent.CopyOnWriteArraySet<>();
+    public void addChordsListener(ChordsListener l)    { chordsListeners.add(l); }
+    public void removeChordsListener(ChordsListener l) { chordsListeners.remove(l); }
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private final LinkedHashMap<String, CloudItem> items = new LinkedHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<String, Long> cachedOrderTs =
@@ -328,6 +340,10 @@ public class CloudRepository {
         it.localFolderName = folderName;
         it.state = CloudItem.State.LOCAL_AND_CLOUD;
         it.downloadPct = 0;
+        // The fresh ZIP already carries the current chords.
+        if (it.serverUpdated != null) {
+            prefs.edit().putString(KEY_CHORDS_TS_PREFIX + hash, it.serverUpdated).apply();
+        }
         it.stickyOrderTs = 0;     // now local, sticky order no longer needed
         clearStickyMetadata(hash);
         notifyChanged();
@@ -343,7 +359,7 @@ public class CloudRepository {
      *  can display it while the server processes, without waiting for the final ZIP. */
     public synchronized void onJobSubmitted(JobSubmitResponse r, String displayName,
                                             String artist, String coverPath) {
-        if (r == null || r.hash == null) return;
+        if (r == null || !CloudItem.isServerHash(r.hash)) return;
         CloudItem it = items.get(r.hash);
         if (it == null) {
             it = new CloudItem(r.hash);
@@ -476,11 +492,27 @@ public class CloudRepository {
     }
 
     /** Permanent cloud deletion (DELETE /library/{h}). */
-    public void deleteFromCloud(String hash) {
+    /** Outcome of {@link #deleteFromCloud} the UI has to tell. */
+    public interface DeleteCallback {
+        /** 409: the server could not stop the song's job in time. */
+        void onBusy();
+    }
+
+    /** DELETE /library/{h}. The server cancels a live job of the song first;
+     *  409 when it could not stop it (the song stays). */
+    public void deleteFromCloud(String hash, @androidx.annotation.Nullable DeleteCallback cb) {
         FisionApi api = ApiClient.get(appCtx).api();
         if (api == null) return;
         api.deleteLibrary(hash).enqueue(new Callback<Map<String, Object>>() {
             @Override public void onResponse(Call<Map<String, Object>> c, Response<Map<String, Object>> r) {
+                if (r.code() == 409) {
+                    if (cb != null) cb.onBusy();
+                    return;
+                }
+                if (!r.isSuccessful() && r.code() != 404) {
+                    Log.w(TAG, "deleteLibrary failed: HTTP " + r.code());
+                    return;
+                }
                 synchronized (CloudRepository.this) { items.remove(hash); }
                 clearStickyMetadata(hash);
                 notifyChanged();
@@ -514,7 +546,7 @@ public class CloudRepository {
     private synchronized void mergeActiveJobs(List<JobStatusResponse> active) {
         boolean dirty = false;
         for (JobStatusResponse js : active) {
-            if (js == null || js.hash == null) continue;
+            if (js == null || !CloudItem.isServerHash(js.hash)) continue;
             CloudItem it = items.get(js.hash);
             if (it == null) {
                 it = new CloudItem(js.hash);
@@ -581,10 +613,11 @@ public class CloudRepository {
         java.util.List<String> readyForDownload = new java.util.ArrayList<>();
         // Hashes whose cover needs to be fetched from the server (not cached yet)
         java.util.List<String> coversToFetch = new java.util.ArrayList<>();
+        java.util.Map<String, String> chordsToRefresh = new java.util.HashMap<>();
         // Server order dates that changed in this pass, written in one apply().
         SharedPreferences.Editor orderEdit = null;
         for (LibraryEntry e : remote) {
-            if (e == null || e.hash == null) continue;
+            if (e == null || !CloudItem.isServerHash(e.hash)) continue;
             seen.add(e.hash);
             CloudItem it = items.get(e.hash);
             if (it == null) {
@@ -631,12 +664,11 @@ public class CloudRepository {
             String est = e.estado != null ? e.estado.toLowerCase() : "";
             if ("listo".equals(est)) {
                 // With a matching local folder, it is LOCAL_AND_CLOUD; otherwise CLOUD_ONLY.
-                // Do not stomp DOWNLOADING (already downloading). RUNNING/QUEUED: server confirms
+                // Do not stomp DOWNLOADING (already downloading). RUNNING/QUEUED/WAITING_GPU: server confirms
                 // completion, so move the item to CLOUD_ONLY and start the download.
                 boolean local = it.localFolderName != null;
                 if (it.state != CloudItem.State.DOWNLOADING) {
-                    boolean wasInFlight = it.state == CloudItem.State.RUNNING
-                                       || it.state == CloudItem.State.QUEUED;
+                    boolean wasInFlight = it.isProcessing();
                     it.state = local ? CloudItem.State.LOCAL_AND_CLOUD : CloudItem.State.CLOUD_ONLY;
                     it.queuePosition = 0;
                     if (wasInFlight) {
@@ -664,6 +696,18 @@ public class CloudRepository {
                 it.state = CloudItem.State.CANCELLED;
             }
         }
+        // Downloaded songs whose server entry changed since their chord files
+        // were fetched (e.g. chords regenerated with a new notation): only the
+        // small chord files are fetched again, not the whole ZIP.
+        for (CloudItem ci : items.values()) {
+            boolean playable = ci.state == CloudItem.State.LOCAL_AND_CLOUD
+                    || ci.state == CloudItem.State.ERROR;   // failed reprocess, old stems kept
+            if (!playable || ci.localFolderName == null) continue;
+            if (ci.serverUpdated == null || readyForDownload.contains(ci.hash)) continue;
+            if (ci.serverUpdated.equals(prefs.getString(KEY_CHORDS_TS_PREFIX + ci.hash, null))) continue;
+            if (chordsInFlight.contains(ci.hash)) continue;
+            chordsToRefresh.put(ci.hash, ci.serverUpdated);
+        }
         // Purge: items no longer on the server and neither LOCAL_ONLY nor in-flight.
         Iterator<Map.Entry<String, CloudItem>> it = items.entrySet().iterator();
         while (it.hasNext()) {
@@ -676,13 +720,65 @@ public class CloudRepository {
         if (orderEdit != null) orderEdit.apply();
         notifyChanged();
         // Auto-start the download of items the server reports as "listo" while they
-        // were in flight (RUNNING/QUEUED). Done OUTSIDE the lock to avoid blocking.
+        // were in flight (RUNNING/QUEUED/WAITING_GPU). Done OUTSIDE the lock to avoid blocking.
         for (String h : readyForDownload) {
             DownloadManagerLite.get(appCtx).start(h);
         }
         // Fetch pending covers outside the lock: each one caches into
         // getCacheDir()/cover_<hash>.png and refreshes the UI on completion.
         for (String h : coversToFetch) fetchCover(h);
+        for (Map.Entry<String, String> e : chordsToRefresh.entrySet()) {
+            refreshChords(e.getKey(), e.getValue());
+        }
+    }
+
+    /** Fetches only the chord files of a downloaded song (GET
+     *  /library/{h}/stems/{file}) and replaces them atomically. The stamp is
+     *  saved once the server answered (200 or 404); a network error retries
+     *  on a later poll. The player reads the new chords on the next load. */
+    private void refreshChords(String hash, String updatedAt) {
+        FisionApi api = ApiClient.get(appCtx).api();
+        String base = ApiClient.get(appCtx).baseUrl();
+        if (api == null || base == null || !CloudItem.isServerHash(hash)) return;
+        if (!chordsInFlight.add(hash)) return;
+        java.io.File dir = new java.io.File(DownloadManagerLite.songsDir(appCtx), hash);
+        new Thread(() -> {
+            boolean answered = true;
+            boolean replaced = false;
+            try {
+                for (String name : CHORD_FILES) {
+                    Response<okhttp3.ResponseBody> r = api.downloadCover(
+                            base + "library/" + hash + "/stems/" + name).execute();
+                    try (okhttp3.ResponseBody body = r.body()) {
+                        if (r.code() == 404) continue;           // song without that variant
+                        if (!r.isSuccessful() || body == null) { answered = false; continue; }
+                        if (!dir.isDirectory()) return;           // deleted meanwhile
+                        java.io.File tmp = new java.io.File(dir, name + ".tmp");
+                        try (java.io.InputStream in = body.byteStream();
+                             java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                            byte[] buf = new byte[8 * 1024];
+                            int n;
+                            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                        }
+                        java.io.File dst = new java.io.File(dir, name);
+                        if (!tmp.renameTo(dst)) {
+                            dst.delete();
+                            if (!tmp.renameTo(dst)) { tmp.delete(); answered = false; continue; }
+                        }
+                        replaced = true;
+                    }
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "refreshChords failed " + hash, t);
+                answered = false;
+            } finally {
+                if (answered) prefs.edit().putString(KEY_CHORDS_TS_PREFIX + hash, updatedAt).apply();
+                chordsInFlight.remove(hash);
+                if (replaced) {
+                    main.post(() -> { for (ChordsListener l : chordsListeners) l.onChordsUpdated(hash); });
+                }
+            }
+        }, "ChordsRefresh").start();
     }
 
     /** Async download of the server artcover, stored in cacheDir. */
@@ -876,7 +972,7 @@ public class CloudRepository {
         for (String part : s.split(";")) {
             // "hash:jobId" (older entries) or "hash:jobId:submittedAt"
             String[] f = part.split(":");
-            if (f.length < 2 || f[0].isEmpty()) continue;
+            if (f.length < 2 || !CloudItem.isServerHash(f[0])) continue;
             String h = f[0];
             String j = f[1];
             CloudItem it = new CloudItem(h);

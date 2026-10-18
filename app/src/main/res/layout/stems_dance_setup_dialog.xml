@@ -52,7 +52,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:fontFamily="@font/noto_sans_regular"
-        android:text="Randomize swing"
+        android:text="@string/dance_randomize_swing"
         android:textColor="@color/AppWhite"
         android:textSize="14sp"
         app:buttonTint="?attr/colorPrimary"

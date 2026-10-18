@@ -179,8 +179,10 @@ bool AudioEngine::setClickWav(const char* path){
     // Start "ended" (silent) until the first trigger. Seek to the end.
     t->seekToMs(dur);
     {
+        // Swap only: the audio callback takes this mutex, so the previous
+        // track (PCM + SoundTouch) is freed after the lock, in t's destructor.
         std::lock_guard<std::mutex> lock(mClickMutex);
-        mClickTrack = std::move(t);
+        mClickTrack.swap(t);
         mClickTriggers.clear();
     }
     LOGI("setClickWav: OK %s (dur=%lld ms)", path, (long long)dur);

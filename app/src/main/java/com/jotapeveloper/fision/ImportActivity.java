@@ -35,6 +35,7 @@ import com.jotapeveloper.fision.cloud.ContentUriRequestBody;
 import com.jotapeveloper.fision.cloud.FisionApi;
 import com.jotapeveloper.fision.cloud.JobSubmitResponse;
 import com.jotapeveloper.fision.cloud.ProgressRequestBody;
+import com.jotapeveloper.fision.cloud.ServerError;
 import com.jotapeveloper.fision.cloud.ServerPrefs;
 
 import java.util.Arrays;
@@ -468,6 +469,9 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
     // ---------------------------------------------------------------
     // Hero card
     // ---------------------------------------------------------------
+    /** Duration read from the selected file, -1 when unknown. */
+    private long selectedDurationMs = -1;
+
     private void setSelectedUri(Uri uri) {
         selectedUri = uri;
         selectedFilename = queryDisplayName(uri);
@@ -495,6 +499,9 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
             try { mmr.release(); } catch (Throwable ignored) {}
         }
         if (title == null || title.isEmpty()) title = stripExtension(selectedFilename);
+        selectedDurationMs = -1;
+        try { if (duration != null) selectedDurationMs = Long.parseLong(duration); }
+        catch (NumberFormatException ignored) {}
         bindHero(title, artist, buildMetaLine(duration), cover);
     }
 
@@ -604,7 +611,42 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
             Toast.makeText(this, R.string.import_err_too_large, Toast.LENGTH_LONG).show();
             return;
         }
+        if (size == 0) {
+            Toast.makeText(this, R.string.import_err_empty, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (selectedDurationMs >= 0 && selectedDurationMs < ServerError.MIN_AUDIO_SEC * 1000L) {
+            Toast.makeText(this, getString(R.string.import_err_too_short, ServerError.MIN_AUDIO_SEC),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
 
+        // Renew the session first: an expired token is rejected before the
+        // server reads the file, which would only show after the whole upload.
+        final String mimeType = mime;
+        bSend.setEnabled(false);
+        com.jotapeveloper.fision.cloud.AuthManager.get(this).refreshBeforeUpload(
+                new com.jotapeveloper.fision.cloud.AuthManager.RefreshCallback() {
+            @Override public void onReady() {
+                bSend.setEnabled(true);
+                if (isFinishing() || isDestroyed()) return;
+                FisionApi fresh = ApiClient.get(ImportActivity.this).api();
+                if (fresh == null) {
+                    Toast.makeText(ImportActivity.this, R.string.import_no_server, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                startUpload(fresh, cr, mimeType, filename, configJson);
+            }
+            @Override public void onExpired() {
+                bSend.setEnabled(true);
+                Toast.makeText(ImportActivity.this, R.string.login_session_expired, Toast.LENGTH_LONG).show();
+                finish();
+            }
+        });
+    }
+
+    private void startUpload(FisionApi api, ContentResolver cr, String mime,
+                             String filename, String configJson) {
         // Wrap the body with a ProgressRequestBody that counts bytes live.
         RequestBody rawBody = new ContentUriRequestBody(cr, selectedUri, mime);
         ProgressRequestBody fileBody = new ProgressRequestBody(rawBody, (sent, total) -> {
@@ -635,7 +677,13 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
                     dismissUploadDialog();
                     if (uploadCancelled) return;
                     if (!r.isSuccessful() || r.body() == null) {
-                        Toast.makeText(ImportActivity.this, uploadErrorMessage(r),
+                        ServerError err = ServerError.of(r);
+                        if (err.http == 409 && err.jobId != null) {
+                            // Same song already processing with another setup: follow that job.
+                            followRunningJob(api, err.jobId, displayName, artist, coverPath);
+                            return;
+                        }
+                        Toast.makeText(ImportActivity.this, uploadErrorMessage(err),
                                 Toast.LENGTH_LONG).show();
                         return;
                     }
@@ -676,6 +724,12 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
                     if (r.code() == 404) {
                         Toast.makeText(ImportActivity.this,
                                 R.string.reprocess_missing_input, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (r.code() == 409 || r.code() == 429) {
+                        Toast.makeText(ImportActivity.this, r.code() == 409
+                                ? R.string.reprocess_busy : R.string.err_job_limit,
+                                Toast.LENGTH_LONG).show();
                         return;
                     }
                     if (!r.isSuccessful() || r.body() == null) {
@@ -835,22 +889,61 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
         return m;
     }
 
-    /** Upload message for a failed submit, chosen by HTTP code (the server's
-     *  own text is not localised). */
-    private String uploadErrorMessage(Response<?> r) {
-        switch (r.code()) {
+    /** Upload message for a failed submit, chosen by HTTP status and the
+     *  server's stable code (its own text is not localised). */
+    private String uploadErrorMessage(ServerError e) {
+        switch (e.http) {
             case 415: return getString(R.string.import_err_unsupported_format);
             case 413: return getString(R.string.import_err_too_large);
+            case 429: return getString(R.string.err_job_limit);
+            case 401: return getString(R.string.login_session_expired);
             case 400:
-                String detail = null;
-                try (ResponseBody eb = r.errorBody()) {
-                    if (eb != null) detail = eb.string();
-                } catch (Throwable ignored) {}
-                android.util.Log.e("ImportActivity", "Upload rejected (400): " + detail);
+                if (e.is(ServerError.AUDIO_EMPTY)) return getString(R.string.import_err_empty);
+                if (e.is(ServerError.AUDIO_TOO_SHORT)) {
+                    return getString(R.string.import_err_too_short, ServerError.MIN_AUDIO_SEC);
+                }
+                android.util.Log.e("ImportActivity", "Upload rejected (400): " + e.code);
                 return getString(R.string.import_err_internal);
             default:
-                return getString(R.string.import_upload_failed) + " (" + r.code() + ")";
+                return getString(R.string.import_upload_failed) + " (" + e.http + ")";
         }
+    }
+
+    /** The song was already processing with another setup (409 job_running):
+     *  the job's hash is read from the server and the list follows that job. */
+    private void followRunningJob(FisionApi api, String jobId, String displayName,
+                                  String artist, String coverPath) {
+        api.getJob(jobId).enqueue(new Callback<com.jotapeveloper.fision.cloud.JobStatusResponse>() {
+            @Override public void onResponse(Call<com.jotapeveloper.fision.cloud.JobStatusResponse> c,
+                                             Response<com.jotapeveloper.fision.cloud.JobStatusResponse> r) {
+                main.post(() -> {
+                    if (r.isSuccessful() && r.body() != null && r.body().hash != null) {
+                        JobSubmitResponse js = new JobSubmitResponse();
+                        js.hash = r.body().hash;
+                        js.jobId = jobId;
+                        js.estado = r.body().estado;
+                        String cover = coverPath != null
+                                ? renameCoverForHash(coverPath, js.hash) : null;
+                        CloudRepository.get(ImportActivity.this)
+                                .onJobSubmitted(js, displayName, artist, cover);
+                    }
+                    Toast.makeText(ImportActivity.this, R.string.import_job_running,
+                            Toast.LENGTH_LONG).show();
+                    setResult(Activity.RESULT_OK);
+                    finish();
+                });
+            }
+            @Override public void onFailure(Call<com.jotapeveloper.fision.cloud.JobStatusResponse> c,
+                                            Throwable t) {
+                // The job list poll picks it up anyway.
+                main.post(() -> {
+                    Toast.makeText(ImportActivity.this, R.string.import_job_running,
+                            Toast.LENGTH_LONG).show();
+                    setResult(Activity.RESULT_OK);
+                    finish();
+                });
+            }
+        });
     }
 
     // ---------------------------------------------------------------

@@ -252,6 +252,43 @@ public class AuthManager {
         });
     }
 
+    /** Result of {@link #refreshBeforeUpload}. */
+    public interface RefreshCallback {
+        /** Session usable (renewed, or kept after a network error). */
+        void onReady();
+        /** Token missing or expired: the upload would be rejected unread. */
+        void onExpired();
+    }
+
+    /**
+     * Renews the token right before a large upload: the server answers 401
+     * without reading the body, so an expired token would only show up after
+     * sending the whole file. Main thread callbacks; a network error keeps
+     * the current token and lets the upload try.
+     */
+    public void refreshBeforeUpload(RefreshCallback cb) {
+        ServerPrefs prefs = ServerPrefs.get(appCtx);
+        FisionApi api = ApiClient.get(appCtx).api();
+        if (!prefs.isLoggedIn() || api == null) { cb.onExpired(); return; }
+        String sent = prefs.getToken();
+        api.refresh().enqueue(new Callback<LoginResponse>() {
+            @Override public void onResponse(Call<LoginResponse> c, Response<LoginResponse> r) {
+                main.post(() -> {
+                    if (r.code() == 401) { cb.onExpired(); return; }
+                    if (r.isSuccessful() && r.body() != null && r.body().token != null
+                            && sent.equals(prefs.getToken())) {
+                        prefs.setToken(r.body().token);
+                        ApiClient.get(appCtx).notifyConfigChanged();
+                    }
+                    cb.onReady();
+                });
+            }
+            @Override public void onFailure(Call<LoginResponse> c, Throwable t) {
+                main.post(cb::onReady);
+            }
+        });
+    }
+
     /** Notified on the main thread when the server rejects the session. */
     public interface SessionExpiredListener { void onSessionExpired(); }
 

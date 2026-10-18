@@ -127,7 +127,11 @@ password. On the first launch the app shows a login dialog with an
 option to continue in local mode, which lets the player run entirely
 offline. Once signed in, the returned session token is stored in an
 encrypted preferences file and the connection status icon in the
-toolbar reflects reachability in real time.
+toolbar reflects reachability in real time. The token is only sent to
+the configured server and is left out of Android backups, so a restored
+device asks to sign in again. When the server address is plain HTTP
+outside Tailscale or the device itself, the login dialog warns that the
+password and songs would travel unencrypted.
 
 The Settings screen exposes an Account row that surfaces the current
 session and lets the user:
@@ -178,7 +182,9 @@ these states in the UI:
 - **Local only**: on the device only. Songs you added manually behave
   this way.
 - **Error** or **Cancelled**: shown as a static overlay with a status
-  label.
+  label. A song that is already downloaded stays playable when its
+  reprocess fails: it opens the previous stems, its subtitle reads
+  "Reprocess failed", and the retry lives in its bottom sheet.
 
 Downloads run inside a foreground service with its own notification, so
 they survive leaving the app.
@@ -187,8 +193,10 @@ they survive leaving the app.
 
 
 Long-pressing a song opens a bottom sheet with the cover in HD, the
-title, the artist, and two actions:
+title, the artist, and its actions:
 
+- **Retry processing**: only after a reprocess of a downloaded song
+  failed for a temporary reason (busy GPU, time limit).
 - **Edit info**: opens the edit dialog described below.
 - **Delete**: removes the song. If the song exists both locally and on
   the server, the local files are removed and the entry stays as
@@ -247,7 +255,10 @@ side to side you find:
   scrolls in sync with the song. Each cell shows the chord that plays at
   that beat when available. Bar lines are drawn at each downbeat. Elapsed
   beats keep a subtle tint, with a stronger trail over the last bar.
-  Tapping a cell jumps the song to that beat; dragging the strip browses
+  When a chord lasts several bars, each new bar shows a faded reminder of
+  it until the next change. When the server regenerates a song's chords,
+  the new chart is downloaded on its own, without fetching the stems
+  again, and an open player switches to it right away. Tapping a cell jumps the song to that beat; dragging the strip browses
   ahead or back without jumping, and it returns to the current beat on
   its own shortly after release.
 - **Stem controls**: one row per stem, with an icon that toggles mute,
@@ -269,7 +280,8 @@ side to side you find:
   selector (open, 3-7, 7-12 or automatic) for the fretted instruments.
   Guitar and ukulele shapes come from chords-db (MIT). Swiping the
   diagrams jumps to the next or previous chord. While the diagrams are
-  open, the button closes them.
+  open, the button closes them. Opening lyrics or 3D from the diagrams
+  brings them back when that view is closed.
 - **Lyrics button**: opens the lyrics overlay for the current song.
 - **Audio 3D button**: switches into the 3D positioning view.
 
@@ -367,7 +379,8 @@ options.
   click.
 - **Play next song when this one ends**: continues playback with the
   next song in the library when repeat is off. The order follows the
-  main list sort preference.
+  main list sort preference. It also works with the app in the background
+  or the screen off; the player follows the new song when reopened.
 - **Animated background**: fades in an ambient nebula effect behind the
   player. Colours are derived from the current cover art and pulse on
   every beat. See the section below.
@@ -382,7 +395,10 @@ options.
   or the stems individually. Supported formats are WAV (PCM 16 stereo),
   AAC (raw with ADTS headers), and M4A (AAC LC in an MP4 container).
   When exporting the mix, the metronome and the current stem volumes
-  can be included optionally.
+  can be included optionally. When any stem has effects on, an
+  "Include effects" option renders them, echo and reverb tails
+  included. Mixed or processed exports go through the same soft limiter
+  as playback, so they sound the same.
 
 ## Stem bottom sheet
 
@@ -402,8 +418,9 @@ can:
   - **Reverb**: a send into a shared room, small, medium or large.
 
 Effects are not saved: they reset when another song is loaded and are
-never applied in Android Auto. A mix export with the current volumes
-includes them; separate stems are exported dry.
+never applied in Android Auto. Every export (mix, separate stems or a
+single stem) offers to include them, with the full echo and reverb tail.
+Stems without effects are still copied untouched.
 
 ## Pitch bottom sheet
 
@@ -582,7 +599,7 @@ line lit until its last note fades, and show the instrumental marker only
 during real vocal silence. An optional karaoke mode lights each word as it
 is sung. Sentences that the transcription merged into one line are split
 again, and tapping a line or word jumps there and centres it, also while
-paused.
+paused, with the karaoke colour filled up to the tapped word.
 
 The finished transcript is cached locally, so reopening the same song
 does not hit the network again. A reprocess action lets you rerun the

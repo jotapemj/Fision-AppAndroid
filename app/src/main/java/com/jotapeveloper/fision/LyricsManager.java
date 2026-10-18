@@ -113,8 +113,9 @@ public class LyricsManager {
             @Override public void onResponse(Call<JobSubmitResponse> c, Response<JobSubmitResponse> resp) {
                 if (call.isCanceled()) return;
                 if (!resp.isSuccessful() || resp.body() == null) {
-                    if (resp.code() == 409) publishState(State.ERROR, "409");
-                    else                    publishState(State.ERROR, "HTTP " + resp.code());
+                    if (resp.code() == 409)      publishState(State.ERROR, "409");
+                    else if (resp.code() == 429) publishState(State.ERROR, "429");
+                    else                         publishState(State.ERROR, "HTTP " + resp.code());
                     return;
                 }
                 currentJobId = resp.body().jobId;

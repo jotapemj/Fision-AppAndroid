@@ -28,6 +28,11 @@ public class StemFx {
         return filter != 0f || echo > 0f || reverb > 0f;
     }
 
+    /** Echo or reverb keep sounding after the stem ends. */
+    public boolean hasTail() {
+        return echo > 0f || reverb > 0f;
+    }
+
     public StemFx copy() {
         StemFx c = new StemFx();
         c.filter = filter; c.echo = echo; c.echoDivision = echoDivision; c.reverb = reverb;

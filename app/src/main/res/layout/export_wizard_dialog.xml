@@ -54,6 +54,16 @@
             android:fontFamily="@font/noto_sans_regular"
             android:text="@string/export_include_metronome" />
 
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_wizardIncludeFx"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/AppWhite"
+            android:fontFamily="@font/noto_sans_regular"
+            android:text="@string/export_include_fx"
+            android:checked="true"
+            android:visibility="gone" />
+
     </LinearLayout>
 
     <!-- Progress (visible only during render) -->

@@ -1107,7 +1107,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Fision", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("Fision player controls");
+            channel.setDescription(getString(R.string.notif_channel_player_desc));
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(channel);
         }

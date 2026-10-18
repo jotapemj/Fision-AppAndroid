@@ -24,7 +24,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
-            android:contentDescription="cover"
+            android:contentDescription="@string/cd_cover"
             android:src="@drawable/ic_media" />
 
         <!-- Gray veil for cloud_only / processing / error -->
@@ -99,7 +99,7 @@
 
     <ImageButton
         android:id="@+id/options"
-        android:contentDescription="chosen song options"
+        android:contentDescription="@string/cd_song_options"
         android:layout_width="30dp"
         android:layout_height="30dp"
         android:gravity="center"

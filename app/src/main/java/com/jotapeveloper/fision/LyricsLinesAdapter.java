@@ -565,7 +565,8 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             // color is left untouched.
             sb.setSpan(new android.text.style.ClickableSpan() {
                 @Override public void onClick(@NonNull View v) {
-                    if (clickListener != null) clickListener.onLyricsWordClicked(w.start);
+                    // Seek to the word as sung (measured onset), not to its raw start.
+                    if (clickListener != null) clickListener.onLyricsWordClicked(onset);
                 }
                 @Override public void updateDrawState(@NonNull android.text.TextPaint ds) {
                     ds.setUnderlineText(false);

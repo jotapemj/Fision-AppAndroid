@@ -190,7 +190,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
 
     /** Cloud song with no local copy while signed out: it needs the server. */
     private boolean isLocked(CloudItem c) {
-        return c != null && !c.isLocal() && c.state != null
+        return c != null && !c.hasLocalCopy() && c.state != null
                 && !com.jotapeveloper.fision.cloud.AuthManager.get(context).isLoggedIn();
     }
 
@@ -207,7 +207,8 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 case WAITING_GPU: return context.getString(R.string.cloud_state_waiting_gpu);
                 case DOWNLOADING: return context.getString(R.string.cloud_state_downloading, c.downloadPct);
                 case CLOUD_ONLY:  return context.getString(R.string.cloud_state_cloud_only);
-                case ERROR:       return context.getString(R.string.cloud_state_error);
+                case ERROR:       return context.getString(c.hasLocalCopy()
+                        ? R.string.cloud_state_reprocess_failed : R.string.cloud_state_error);
                 default: /* LOCAL_AND_CLOUD, LOCAL_ONLY fall through to the normal subtitle */ break;
             }
         }
@@ -223,8 +224,10 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
             return;
         }
+        // A failed reprocess keeps the previous stems: the row stays playable.
         if (c == null || c.state == CloudItem.State.LOCAL_AND_CLOUD
-                      || c.state == CloudItem.State.LOCAL_ONLY) {
+                      || c.state == CloudItem.State.LOCAL_ONLY
+                      || (c.state == CloudItem.State.ERROR && c.hasLocalCopy())) {
             fadeDim(h, false, animate);
             h.pbSpinner.setVisibility(View.GONE);
             if (h.vCoverWave != null) h.vCoverWave.setVisibility(View.GONE);
@@ -348,7 +351,8 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 }
                 // Retryable error (GPU busy, time limit): reopen the retry dialog
                 // so the user can act on items whose original popup was dismissed.
-                if (c.state == CloudItem.State.ERROR
+                // (with a local copy the song opens; the retry is in its options)
+                if (c.state == CloudItem.State.ERROR && !c.hasLocalCopy()
                         && CloudRepository.isRetryableJobError(c.errorMessage)) {
                     ParentActivity.showJobRetryDialog(c.hash);
                     return;

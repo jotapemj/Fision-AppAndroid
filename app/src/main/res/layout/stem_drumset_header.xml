@@ -23,7 +23,7 @@
             android:layout_height="32dp"
             android:layout_marginStart="20dp"
             android:scaleType="fitCenter"
-            android:contentDescription="drumset icon"
+            android:contentDescription="@string/cd_drumset"
             android:src="@drawable/ic_drumset" />
 
         <ImageView
@@ -32,7 +32,7 @@
             android:layout_height="22dp"
             android:layout_marginStart="14dp"
             android:scaleType="fitCenter"
-            android:contentDescription="expand collapse"
+            android:contentDescription="@string/cd_expand_collapse"
             android:src="@drawable/ic_collapsed"
             app:tint="@color/AppWhite" />
 

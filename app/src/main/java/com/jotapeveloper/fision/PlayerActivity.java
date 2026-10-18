@@ -232,10 +232,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (playbackService == null) return;
             // Song released by the service's idle stop while the app was in
             // the background: nothing to show, so the player closes.
-            if (!playbackService.isSongLoaded() && !FisionApplication.isInForeground()) {
+            if (!playbackService.isSongLoaded() && !playbackService.isLoading()
+                    && !FisionApplication.isInForeground()) {
                 finish();
                 return;
             }
+            // The service moved to another song while the Player was hidden.
+            resyncWithServiceSong();
             boolean playing = playbackService.isPlaying();
             paused = !playing;
             applyPlayIcon(playing, true);
@@ -300,7 +303,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             playbackService.loadSongAsync(SongPath, SongName, SongId, ok -> {
                 if (isFinishing() || isDestroyed || playbackService == null) return;
                 if (!ok) {
-                    Toast.makeText(this, "Error opening song. Missing files.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.err_song_missing_files, Toast.LENGTH_LONG).show();
                     // Release the service so no phantom notification is left with the
                     // startForegroundService promise dangling
                     playbackService.releaseSongAndStop();
@@ -361,6 +364,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Back on screen: the first tick resyncs bar, clock and beat at once.
         resyncOnNextTick = true;
         startProgressTimer(0);
+        resyncWithServiceSong();
         // Pick up an accent change performed while the player was in the
         // background; recreate re-inflates layouts with the new palette.
         com.jotapeveloper.fision.design.AccentColorManager.get(this)
@@ -375,6 +379,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Black curtain with the loading spinner until the player is fully
         // loaded (revealed from updateUI, when the stem sliders animate).
         loadingCurtain = com.jotapeveloper.fision.brand.LoadingCurtain.show(this);
+        com.jotapeveloper.fision.cloud.CloudRepository.get(this).addChordsListener(chordsUpdatedListener);
         // Get data from main activity
         String SongPath = getIntent().getStringExtra("SongPathString");
         SongName = getIntent().getStringExtra("SongName");
@@ -384,7 +389,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (SongPath != null) {
             SongFolder = new File(SongPath);
         } else {
-            Toast.makeText(this, "Extra is null", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.err_song_missing_files, Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -447,83 +452,91 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void readDataBase(int songId) {
-        // Run the database query on a separate thread
+        final String songName = SongName;
+        final File songFolder = SongFolder;
+        // Only the query runs in the background; the fields are applied on the
+        // main thread, and only while the same song is still loaded.
         new Thread(() -> {
-            // Get the database instance
             AppDatabase db = AppDatabase.getInstance(getApplicationContext());
 
             // On re-entry the service binds fast and SongId may still be 0
             // (getSongInfoFromDB is async). Resolve by name in-thread so the
             // query never reads an empty row.
             int id = songId;
-            if (id <= 0) {
-                id = db.DAO_db_SongParameters().getSongIdByName(SongName);
-                SongId = id;
-            }
-
-            // Query the database for this song's parameters
-            List<db_SongParameters> parametersList = db.DAO_db_SongParameters().getParametersByElementId(id);
-
-            if (!parametersList.isEmpty()) {
-                db_SongParameters parameters = parametersList.get(0);
-                chordsActive       = parameters.chordsActive;
-                chordsBasicMode    = parameters.chordsBasicMode;
-                metronomeEnabled   = parameters.metronomeActive;
-                selectedMetronome  = parameters.selectedMetronome;
-                metronomeVol       = parameters.metronomeVol;
-                metronomePan       = parameters.metronomePan;
-                metronomeHalfVariant = parameters.metronomeHalfVariant;
-                // downbeatSoundEnabled / downbeatSoundType already loaded as globals
-                // in onCreate (PREF_DOWNBEAT_*). Legacy Room columns ignored.
-                selectedPitch = (parameters.pitchIndex > 0)
-                        ? parameters.pitchIndex : numberPickerData.CENTRAL_PITCH_INDEX;
-                // v7: multiplier persisted directly (mult * 1000). Migration
-                // populates this column from the legacy `tempoIndex`, so a value
-                // of 1000 always represents neutral 1.0x.
-                selectedTempoMultMilli = (parameters.tempoMultMilli > 0)
-                        ? parameters.tempoMultMilli : 1000;
-
-                // v3: per-stem settings from JSON. Soft migration from v2 columns.
-                java.util.Map<String, StemSetting> parsed = StemSettingsCodec.parse(parameters.stemSettingsJson);
-                stemSettings.clear();
-                stemSettings.putAll(parsed);
-                // v6: 3D audio flag + per-stem (x/y) positions restored from the JSON.
-                is3DEnabled = parameters.audio3DEnabled;
-                stem3DPositions.clear();
-                for (java.util.Map.Entry<String, StemSetting> e : parsed.entrySet()) {
-                    StemSetting st = e.getValue();
-                    if (!Float.isNaN(st.pos3DX) && !Float.isNaN(st.pos3DY)) {
-                        stem3DPositions.put(e.getKey(), new float[]{ st.pos3DX, st.pos3DY });
-                    }
-                }
-                // Fallback: when the JSON is empty and there is legacy column data, use it
-                if (stemSettings.isEmpty()) {
-                    seedFromLegacy("bass",   parameters.bass,    parameters.bassPan);
-                    seedFromLegacy("drums",  parameters.drums,   parameters.drumsPan);
-                    seedFromLegacy("other",  parameters.other,   parameters.otherPan);
-                    seedFromLegacy("vocals", parameters.vocals,  parameters.vocalsPan);
-                    seedFromLegacy("instrumental", parameters.instrumental, 0f);
-                }
-            } else {
-                // No saved row: defaults, not the previous song's values
-                // (these fields survive an in-place song switch).
-                chordsActive         = true;
-                chordsBasicMode      = false;
-                metronomeEnabled     = false;
-                selectedMetronome    = 1;
-                metronomeVol         = 100;
-                metronomePan         = 0;
-                metronomeHalfVariant = 0;
-                selectedPitch        = numberPickerData.CENTRAL_PITCH_INDEX;
-                selectedTempoMultMilli = 1000;
-                is3DEnabled          = false;
-                stem3DPositions.clear();
-            }
-            // Update the UI on the main thread
-            runOnUiThread(this::updateUI);
-
+            if (id <= 0) id = db.DAO_db_SongParameters().getSongIdByName(songName);
+            final int resolvedId = id;
+            final List<db_SongParameters> parametersList =
+                    db.DAO_db_SongParameters().getParametersByElementId(id);
+            runOnUiThread(() -> {
+                // A newer load (engine null behind the curtain, or another song)
+                // reads its own row when it lands.
+                if (isDestroyed || engine == null || playbackService == null
+                        || !java.util.Objects.equals(songFolder, SongFolder)) return;
+                if (songId <= 0) SongId = resolvedId;
+                applySongParameters(parametersList);
+                updateUI();
+            });
         }).start();
+    }
 
+    /** Copies the song's Room row (or the defaults) into the Player fields. */
+    private void applySongParameters(List<db_SongParameters> parametersList) {
+        if (!parametersList.isEmpty()) {
+            db_SongParameters parameters = parametersList.get(0);
+            chordsActive       = parameters.chordsActive;
+            chordsBasicMode    = parameters.chordsBasicMode;
+            metronomeEnabled   = parameters.metronomeActive;
+            selectedMetronome  = parameters.selectedMetronome;
+            metronomeVol       = parameters.metronomeVol;
+            metronomePan       = parameters.metronomePan;
+            metronomeHalfVariant = parameters.metronomeHalfVariant;
+            // downbeatSoundEnabled / downbeatSoundType already loaded as globals
+            // in onCreate (PREF_DOWNBEAT_*). Legacy Room columns ignored.
+            selectedPitch = (parameters.pitchIndex > 0)
+                    ? parameters.pitchIndex : numberPickerData.CENTRAL_PITCH_INDEX;
+            // v7: multiplier persisted directly (mult * 1000). Migration
+            // populates this column from the legacy `tempoIndex`, so a value
+            // of 1000 always represents neutral 1.0x.
+            selectedTempoMultMilli = (parameters.tempoMultMilli > 0)
+                    ? parameters.tempoMultMilli : 1000;
+
+            // v3: per-stem settings from JSON. Soft migration from v2 columns.
+            java.util.Map<String, StemSetting> parsed = StemSettingsCodec.parse(parameters.stemSettingsJson);
+            stemSettings.clear();
+            stemSettings.putAll(parsed);
+            // v6: 3D audio flag + per-stem (x/y) positions restored from the JSON.
+            is3DEnabled = parameters.audio3DEnabled;
+            stem3DPositions.clear();
+            for (java.util.Map.Entry<String, StemSetting> e : parsed.entrySet()) {
+                StemSetting st = e.getValue();
+                if (!Float.isNaN(st.pos3DX) && !Float.isNaN(st.pos3DY)) {
+                    stem3DPositions.put(e.getKey(), new float[]{ st.pos3DX, st.pos3DY });
+                }
+            }
+            // Fallback: when the JSON is empty and there is legacy column data, use it
+            if (stemSettings.isEmpty()) {
+                seedFromLegacy("bass",   parameters.bass,    parameters.bassPan);
+                seedFromLegacy("drums",  parameters.drums,   parameters.drumsPan);
+                seedFromLegacy("other",  parameters.other,   parameters.otherPan);
+                seedFromLegacy("vocals", parameters.vocals,  parameters.vocalsPan);
+                seedFromLegacy("instrumental", parameters.instrumental, 0f);
+            }
+        } else {
+            // No saved row: defaults, not the previous song's values
+            // (these fields survive an in-place song switch).
+            chordsActive         = true;
+            chordsBasicMode      = false;
+            metronomeEnabled     = false;
+            selectedMetronome    = 1;
+            metronomeVol         = 100;
+            metronomePan         = 0;
+            metronomeHalfVariant = 0;
+            selectedPitch        = numberPickerData.CENTRAL_PITCH_INDEX;
+            selectedTempoMultMilli = 1000;
+            is3DEnabled          = false;
+            stem3DPositions.clear();
+            stemSettings.clear();
+        }
     }
 
     /** Creates a StemSetting with legacy values when the stem exists in the engine. */
@@ -1737,11 +1750,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private TextView wizardTitle, wizardProgressSubtitle;
     private LinearLayout wizardOptions, wizardExtras, wizardProgressBox;
     private com.google.android.material.checkbox.MaterialCheckBox wizardIncludeMetronome;
+    private com.google.android.material.checkbox.MaterialCheckBox wizardIncludeFx;
     private android.widget.ProgressBar wizardProgressBar;
     private com.google.android.material.button.MaterialButton wizardBackBtn, wizardCancelBtn, wizardSaveBtn;
     private java.util.ArrayDeque<WizardStep> wizardStack = new java.util.ArrayDeque<>();
     private ExportManager.VolumeSource pendingVolumeSource = ExportManager.VolumeSource.DEFAULT;
     private boolean pendingIncludeMetronome = false;
+    /** Stem FX in the export (offered only when some are active). */
+    private boolean pendingIncludeFx = true;
     private String  pendingSingleStem = null;
     // Entry mode: signals whether the flow is drawer (mix/sep) or per-stem.
     private boolean wizardForSingleStem = false;
@@ -1750,6 +1766,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         wizardForSingleStem = false;
         pendingSingleStem  = null;
         pendingIncludeMetronome = false;
+        pendingIncludeFx = true;
         WizardStep first = needsAllFilesPermission() ? WizardStep.PERM : WizardStep.MIX_OR_SEP;
         openWizard(first);
     }
@@ -1759,6 +1776,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         wizardForSingleStem = true;
         pendingSingleStem  = stem;
         pendingIncludeMetronome = false;
+        pendingIncludeFx = true;
         WizardStep first = needsAllFilesPermission() ? WizardStep.PERM : WizardStep.STEM_FORMAT;
         openWizard(first);
     }
@@ -1786,6 +1804,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         wizardIncludeMetronome.setOnCheckedChangeListener((b, isChecked) ->
                 pendingIncludeMetronome = isChecked);
+        wizardIncludeFx = wizardRoot.findViewById(R.id.cb_wizardIncludeFx);
+        wizardIncludeFx.setOnCheckedChangeListener((b, isChecked) ->
+                pendingIncludeFx = isChecked);
 
         wizardBackBtn.setOnClickListener(v -> goBackWizardStep());
         wizardCancelBtn.setOnClickListener(v -> {
@@ -1914,10 +1935,24 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         addFormatRow(R.string.export_format_aac, ExportManager.Format.AAC, separate, stem);
         addFormatRow(R.string.export_format_m4a, ExportManager.Format.M4A, separate, stem);
         // Metronome checkbox: visible in mix and per-stem; never on separates.
-        if (!separate) {
+        // Effects checkbox: whenever the exported stems have active FX.
+        boolean metronome = !separate;
+        boolean fx = !exportFx(stem).isEmpty();
+        if (metronome || fx) {
             wizardExtras.setVisibility(View.VISIBLE);
-            wizardIncludeMetronome.setChecked(pendingIncludeMetronome);
+            wizardIncludeMetronome.setVisibility(metronome ? View.VISIBLE : View.GONE);
+            if (metronome) wizardIncludeMetronome.setChecked(pendingIncludeMetronome);
+            wizardIncludeFx.setVisibility(fx ? View.VISIBLE : View.GONE);
+            wizardIncludeFx.setChecked(pendingIncludeFx);
         }
+    }
+
+    /** Active FX of the stems being exported: the single stem or all of them. */
+    private java.util.Map<String, StemFx> exportFx(boolean stem) {
+        if (playbackService == null) return new java.util.HashMap<>();
+        java.util.Map<String, StemFx> fx = playbackService.getActiveStemFx();
+        if (stem) fx.keySet().retainAll(java.util.Collections.singleton(pendingSingleStem));
+        return fx;
     }
 
     private void addFormatRow(int labelRes, ExportManager.Format fmt, boolean separate, boolean stem) {
@@ -1993,20 +2028,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             metronomeFile  = resolveActiveMetronomeFile(songFolder);
             metronomeVolN  = Math.max(0f, Math.min(1f, metronomeVol * 0.01f));
         }
+        java.util.Map<String, StemFx> fx = pendingIncludeFx ? exportFx(stem) : null;
         activeExporter = new ExportManager(this);
         ExportManager.Listener listener = buildWizardListener();
         if (stem) {
             activeExporter.exportSingleStem(songFolder, displayName, pendingSingleStem,
-                    format, metronomeFile, metronomeVolN, listener);
+                    format, metronomeFile, metronomeVolN,
+                    fx != null ? fx.get(pendingSingleStem) : null, globalBpm, listener);
         } else if (separate) {
             activeExporter.exportSeparate(songFolder, displayName,
-                    playbackService.getStemOrder(), format, listener);
+                    playbackService.getStemOrder(), format, fx, globalBpm, listener);
         } else {
             activeExporter.exportMixdown(songFolder, displayName,
                     playbackService.getStemOrder(), stemSettings,
                     pendingVolumeSource, format,
                     metronomeFile, metronomeVolN,
-                    playbackService.getActiveStemFx(), globalBpm, listener);
+                    fx, globalBpm, listener);
         }
     }
 
@@ -2302,6 +2339,23 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  service): it lifts as a standard spinner, without closing the ring. */
     private boolean curtainResolves = true;
 
+    /** Set while switching the UI to a song the service already plays: the
+     *  transport stays as the service has it (no autoplay click). */
+    private boolean resyncSwitch = false;
+
+    /** Back on screen after the service changed songs on its own (autoplay or
+     *  a skip while hidden): the Player follows it without reloading audio. */
+    private void resyncWithServiceSong() {
+        if (!uiStarted || isDestroyed || playbackService == null) return;
+        if (loadingCurtain != null || playbackService.isLoading()) return;
+        String path = playbackService.getCurrentSongPath();
+        if (path == null || SongFolder == null || path.equals(SongFolder.getAbsolutePath())) return;
+        // Same semantics as entering from the mini-player: no slider sweep.
+        getIntent().putExtra("NoAutoplay", true);
+        resyncSwitch = true;
+        switchToSong(new File(path));
+    }
+
     /** Switches to a song within the current Activity, under the curtain. */
     private void switchToSong(File newFolder) {
         if (playbackService == null || newFolder == null) return;
@@ -2422,7 +2476,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         playbackService.loadSongAsync(SongPath, SongName, SongId, ok -> {
             if (isDestroyed || playbackService == null || !loadingFolder.equals(SongFolder)) return;
             if (!ok) {
-                Toast.makeText(this, "Error opening song. Missing files.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.err_song_missing_files, Toast.LENGTH_LONG).show();
                 if (loadingCurtain != null) {
                     com.jotapeveloper.fision.brand.LoadingCurtain c = loadingCurtain;
                     loadingCurtain = null;
@@ -2457,8 +2511,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // it lands on the picker.
         resetLyricsForNewSong();
 
-        // 8) Pending autoplay: updateUI applies saved volumes before pressing play
-        autoplayPending = true;
+        // 8) Pending autoplay: updateUI applies saved volumes before pressing play.
+        // A resync keeps the service's transport (playing or paused) as it is.
+        if (resyncSwitch) {
+            resyncSwitch = false;
+            autoplayPending = false;
+            paused = !playbackService.isPlaying();
+            applyPlayIcon(!paused, false);
+            if (!paused) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            autoplayPending = true;
+        }
 
         // 9) Read DB async → updateUI triggers autoplay with the correct volumes
         readDataBase(SongId);
@@ -2568,6 +2631,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     /** Reloads chordList from disk and rebuilds the recycler cells. */
+    /** New chord files arrived from the server for the loaded song: show
+     *  them right away instead of on the next load. */
+    private final com.jotapeveloper.fision.cloud.CloudRepository.ChordsListener chordsUpdatedListener =
+            hash -> {
+                if (SongFolder != null && SongFolder.getName().equals(hash)) reloadChords();
+            };
+
     private void reloadChords() {
         if (SongFolder == null) return;
         readChordsFile(SongFolder.getAbsolutePath());
@@ -3728,8 +3798,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             setFxRestoreVisible(rEcho, e);
             setFxRestoreVisible(rReverb, r);
             setFxRestoreVisible(clear, fx.isActive());
-            division.setAlpha(e ? 1f : 0.5f);
-            room.setAlpha(r ? 1f : 0.5f);
+            setFxDimmed(division, e);
+            setFxDimmed(room, r);
         };
         Runnable apply = () -> {
             playbackService.setStemFx(stem, fx);
@@ -3814,12 +3884,35 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return getString(amount < 0f ? R.string.fx_filter_lowpass : R.string.fx_filter_highpass, f);
     }
 
+    private static final long FX_FADE_MS = 120L;
+
+    /** Fade in / out of a restore button or "Clear FX". The target is kept in
+     *  a tag so repeated calls while sliding do not restart the fade. */
     private static void setFxRestoreVisible(View v, boolean visible) {
-        int target = visible ? View.VISIBLE : View.INVISIBLE;
-        if (v.getVisibility() == target) return;
-        v.setVisibility(target);
-        v.setAlpha(visible ? 0f : 1f);
-        if (visible) v.animate().alpha(1f).setDuration(150).start();
+        Object prev = v.getTag(R.id.tag_fx_visible);
+        boolean shown = prev != null ? (Boolean) prev : v.getVisibility() == View.VISIBLE;
+        if (prev != null && shown == visible) return;
+        v.setTag(R.id.tag_fx_visible, visible);
+        v.animate().cancel();
+        if (visible) {
+            if (v.getVisibility() != View.VISIBLE) { v.setAlpha(0f); v.setVisibility(View.VISIBLE); }
+            v.animate().alpha(1f).setDuration(FX_FADE_MS).start();
+        } else if (v.getVisibility() == View.VISIBLE) {
+            v.animate().alpha(0f).setDuration(FX_FADE_MS)
+                    .withEndAction(() -> v.setVisibility(View.INVISIBLE)).start();
+        }
+    }
+
+    /** Dimmed chips of an FX that is off (fades instead of a jump). */
+    private static void setFxDimmed(View v, boolean on) {
+        float target = on ? 1f : 0.5f;
+        Object prev = v.getTag(R.id.tag_fx_visible);
+        if (prev != null && (Boolean) prev == on) return;
+        boolean first = prev == null;
+        v.setTag(R.id.tag_fx_visible, on);
+        v.animate().cancel();
+        if (first) v.setAlpha(target);
+        else v.animate().alpha(target).setDuration(FX_FADE_MS).start();
     }
 
     private static void animateFxSlider(Slider s, float to) {
@@ -4201,6 +4294,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        com.jotapeveloper.fision.cloud.CloudRepository.get(this).removeChordsListener(chordsUpdatedListener);
         if (loadingCurtain != null) { loadingCurtain.dismissNow(); loadingCurtain = null; }
         android.view.Choreographer.getInstance().removeFrameCallback(sceneStepCallback);
         sceneBuildSteps.clear();
@@ -4237,6 +4331,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private final PlaybackService.SkipRequestHandler skipRequestHandler =
             delta -> {
                 if (isDestroyed) return false;
+                // Off screen the curtain never animates, so the switch would
+                // hang: the service loads the song itself and the Player
+                // catches up in onStart (resyncWithServiceSong).
+                if (!uiStarted) return false;
                 // Still loading the song behind the curtain: swallow the skip
                 // (a service-side load would supersede the pending one).
                 if (engine == null) return true;
@@ -5102,6 +5200,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (chordsContainer != null) {
             chordsContainer.setVisibility(chordsActive ? View.VISIBLE : View.GONE);
         }
+        if (chordDiagramsParked) resumeParkedChordDiagrams(0L);
+        else restoreStemsBox();
         if (b3DReset != null) {
             b3DReset.animate().cancel();
             b3DReset.setAlpha(0f);
@@ -5457,6 +5557,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (chordsContainer != null) {
             chordsContainer.setVisibility(chordsActive ? View.VISIBLE : View.GONE);
         }
+        if (chordDiagramsParked) resumeParkedChordDiagrams(scene ? OUT_DUR : OUT_DUR - 80L);
+        else restoreStemsBox();
     }
 
     /** Animates the stem icons with a cascaded fade+scale in after the transition.
@@ -7225,7 +7327,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
             @Override public void onLyricsWordClicked(double startSec) {
                 seekToLyricsPosSec(startSec);
-                holdLyricsRow(lyricsRowAt(startSec));
+                // The tapped word shows lit, as the one about to be sung.
+                holdLyricsRow(lyricsRowAt(startSec), startSec,
+                        startSec + LyricsLinesAdapter.KARAOKE_FADE_SEC);
             }
         });
         rvLyrics.setAdapter(mLyricsLinesAdapter);
@@ -7327,6 +7431,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 try {
                     Lyrics ly = mLyricsMgr.parseLocal(f);
                     runOnUiThread(() -> {
+                        // Dropped when the song changed while parsing.
+                        if (isDestroyed || !f.equals(SongFolder)) return;
                         mLoadedLyrics = ly;
                         if (mLyricsLinesAdapter != null) {
                             mLyricsLinesAdapter.setLyrics(ly, lyricsVocalActivity());
@@ -7335,7 +7441,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                         mLyricsActiveIdx = -1;
                     });
                 } catch (Exception ignored) {
-                    runOnUiThread(() -> setLyricsUiState(LyricsUiState.PICKER));
+                    runOnUiThread(() -> {
+                        if (isDestroyed || !f.equals(SongFolder)) return;
+                        setLyricsUiState(LyricsUiState.PICKER);
+                    });
                 }
             }, "lyrics-parse").start();
         } else {
@@ -7395,6 +7504,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             closeChordDiagrams();
             return;
         }
+        // Diagrams parked behind 3D / lyrics: the button drops the return.
+        if (chordDiagramsParked) {
+            chordDiagramsParked = false;
+            morphChordButtonIcon(chordIcon, chordsActive ? accent() : Color.WHITE);
+            return;
+        }
         if (chordModePill == null) {
             chordModePill = new com.jotapeveloper.fision.chords.ChordModePill(this, b_chord,
                     newDiagramsIcon(),
@@ -7449,6 +7564,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  setting is restored on close), diagrams in with the lyrics transition. */
     private void openChordDiagrams() {
         if (isChordDiagramShown || is3DViewShown || isLyricsViewShown) return;
+        chordDiagramsParked = false;
         if (chordDiagramRoot == null) chordDiagramRoot = findViewById(R.id.chordDiagram_root);
         if (chordDiagramRoot == null) return;
         if (chordDiagrams == null) {
@@ -7515,11 +7631,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      * Closes the chord diagrams. With [handoff] (opening lyrics or the 3D view
      * from the diagrams) the stems are not brought back, since the next view
      * hides them anyway (no flash); [handoff] runs once the diagrams are out.
+     * The diagrams stay parked: leaving that view brings them back, and the
+     * button keeps the diagrams icon meanwhile.
      */
     private void closeChordDiagrams(@androidx.annotation.Nullable Runnable handoff) {
         if (!isChordDiagramShown) return;
         isChordDiagramShown = false;
-        morphChordButtonIcon(chordIcon, chordsActive ? accent() : Color.WHITE);
+        chordDiagramsParked = handoff != null;
+        if (!chordDiagramsParked) morphChordButtonIcon(chordIcon, chordsActive ? accent() : Color.WHITE);
 
         final long OUT_DUR = 200L;
         final long IN_DUR  = 260L;
@@ -7569,6 +7688,30 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
         }
+    }
+
+    /** Diagrams handed off to 3D / lyrics and waiting to come back. */
+    private boolean chordDiagramsParked = false;
+
+    /** Leaving 3D / lyrics with parked diagrams: they reopen once that view
+     *  is out. The stems stay hidden meanwhile (the handoff left them out). */
+    private void resumeParkedChordDiagrams(long delayMs) {
+        new Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (isDestroyed || !chordDiagramsParked) return;
+            if (is3DViewShown || isLyricsViewShown) return;   // still parked
+            openChordDiagrams();
+        }, delayMs);
+    }
+
+    /** Stems box back in place, for exits that do not return to the diagrams
+     *  (the diagrams handoff leaves it hidden). */
+    private void restoreStemsBox() {
+        View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
+        if (stemsBox == null || stemsBox.getVisibility() == View.VISIBLE) return;
+        stemsBox.animate().cancel();
+        stemsBox.setAlpha(1f);
+        stemsBox.setTranslationY(0f);
+        stemsBox.setVisibility(View.VISIBLE);
     }
 
     private void transitionIntoLyrics(View chordsContainer, boolean chordsWereVisible) {
@@ -7663,7 +7806,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 }).start();
 
         View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
-        if (stemsBox != null) {
+        if (chordDiagramsParked) {
+            // Back to the diagrams the lyrics came from; the stems stay out.
+            resumeParkedChordDiagrams(OUT_DUR - 80L);
+        } else if (stemsBox != null) {
             stemsBox.setAlpha(0f);
             stemsBox.setTranslationY(slidePx);
             stemsBox.setVisibility(View.VISIBLE);
@@ -7991,6 +8137,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     android.widget.Toast.makeText(this,
                             R.string.lyrics_no_vocals, android.widget.Toast.LENGTH_SHORT).show();
                     setLyricsUiState(LyricsUiState.PICKER);
+                } else if ("429".equals(errorMsg)) {
+                    // Too many live jobs of the user: back to the picker to retry later.
+                    android.widget.Toast.makeText(this,
+                            R.string.err_job_limit, android.widget.Toast.LENGTH_LONG).show();
+                    setLyricsUiState(LyricsUiState.PICKER);
                 } else if (com.jotapeveloper.fision.cloud.CloudRepository.isTimeoutError(errorMsg)) {
                     // Time limit on the server: back to the picker to retry.
                     android.widget.Toast.makeText(this,
@@ -8220,7 +8371,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         // Publish position every tick so karaoke mode can advance word by
         // word inside the active row without waiting for a row change.
-        if (mLyricsKaraokeMode) mLyricsLinesAdapter.setKaraokePosSec(posSec);
+        if (mLyricsKaraokeMode) {
+            mLyricsLinesAdapter.setKaraokePosSec(mLyricsHoldIdx >= 0
+                    ? Math.max(posSec, mLyricsHoldKaraokeSec) : posSec);
+        }
         if (idx == mLyricsActiveIdx) return;
         showLyricsRow(idx);
     }
@@ -8282,21 +8436,28 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void seekToLyricsRow(LyricsLinesAdapter.Row row) {
         if (row == null || mLyricsLinesAdapter == null) return;
         seekToLyricsPosSec(row.start);
-        holdLyricsRow(mLyricsLinesAdapter.getRows().indexOf(row));
+        java.util.List<LyricsLinesAdapter.Row> rows = mLyricsLinesAdapter.getRows();
+        int idx = rows.indexOf(row);
+        if (idx >= 0) holdLyricsRow(idx, lyricsSwitchAt(rows, idx), row.start);
     }
 
-    // Row lit by a tap until playback reaches it (see updateLyricsHighlight).
+    // Row lit by a tap until playback reaches [mLyricsHoldUntilSec] (see
+    // updateLyricsHighlight); karaoke words stay lit up to the tapped one.
     private int mLyricsHoldIdx = -1;
     private double mLyricsHoldUntilSec;
+    private double mLyricsHoldKaraokeSec;
 
     /** Lights the tapped row right away, also while paused, so pressing
-     *  play does not move the view again. */
-    private void holdLyricsRow(int idx) {
+     *  play does not move the view again. Karaoke words are coloured up to
+     *  [karaokeSec]. */
+    private void holdLyricsRow(int idx, double untilSec, double karaokeSec) {
         java.util.List<LyricsLinesAdapter.Row> rows = mLyricsLinesAdapter.getRows();
         if (idx < 0 || idx >= rows.size()) return;
         mLyricsHoldIdx = idx;
-        mLyricsHoldUntilSec = lyricsSwitchAt(rows, idx);
+        mLyricsHoldUntilSec = untilSec;
+        mLyricsHoldKaraokeSec = karaokeSec;
         if (idx != mLyricsActiveIdx) showLyricsRow(idx);
+        if (mLyricsKaraokeMode) mLyricsLinesAdapter.setKaraokePosSec(karaokeSec);
     }
 
     /** Index of the text row that holds the word starting at [sec]. */

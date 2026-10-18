@@ -89,6 +89,18 @@ public final class AccentRecolorer {
                 new int[] { disabled, color });
     }
 
+    /** True when [csl]'s enabled color is [color] at any alpha (ripples and
+     *  halos carry the accent with their own transparency). */
+    private static boolean sameRgb(@Nullable ColorStateList csl, int color) {
+        return csl != null && (en(csl) & 0x00FFFFFF) == (color & 0x00FFFFFF);
+    }
+
+    /** [csl]'s enabled color with its hue replaced by [color], alpha kept. */
+    private static ColorStateList withRgb(@Nullable ColorStateList csl, int color) {
+        int a = csl != null ? en(csl) & 0xFF000000 : 0xFF000000;
+        return ColorStateList.valueOf(a | (color & 0x00FFFFFF));
+    }
+
     private static void collect(View v, int fromP, int fromS,
                                 List<Target> animated, List<Target> instant) {
         if (v instanceof MaterialButton) {
@@ -110,6 +122,11 @@ public final class AccentRecolorer {
             if (en(stroke) == fromP) {
                 animated.add((p, s) -> b.setStrokeColor(retint(stroke, p)));
             }
+            // Press ripple (app:rippleColor="?attr/colorPrimary"): same hue, own alpha.
+            ColorStateList ripple = b.getRippleColor();
+            if (sameRgb(ripple, fromP)) {
+                animated.add((p, s) -> b.setRippleColor(withRgb(ripple, p)));
+            }
         } else if (v instanceof Slider) {
             Slider sl = (Slider) v;
             ColorStateList track = sl.getTrackActiveTintList();
@@ -122,6 +139,11 @@ public final class AccentRecolorer {
                 animated.add((p, s) -> sl.setThumbTintList(retint(thumbCsl, s)));
             } else if (thumb == fromP) {
                 animated.add((p, s) -> sl.setThumbTintList(retint(thumbCsl, p)));
+            }
+            // Halo shown while dragging: the accent at low alpha.
+            ColorStateList halo = sl.getHaloTintList();
+            if (sameRgb(halo, fromP)) {
+                animated.add((p, s) -> sl.setHaloTintList(withRgb(halo, p)));
             }
         } else if (v instanceof VerticalSlider) {
             VerticalSlider vs = (VerticalSlider) v;

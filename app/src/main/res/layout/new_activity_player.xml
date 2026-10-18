@@ -413,7 +413,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/b_pitch"
-                    android:contentDescription="pitch"
+                    android:contentDescription="@string/cd_pitch"
                     style="@style/Widget.MaterialComponents.Button.IconOnly"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
@@ -428,7 +428,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/b_metronome"
-                    android:contentDescription="metronome"
+                    android:contentDescription="@string/cd_metronome"
                     style="@style/Widget.MaterialComponents.Button.IconOnly"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
@@ -441,7 +441,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/b_chord"
-                    android:contentDescription="show/hide chords"
+                    android:contentDescription="@string/cd_chords_toggle"
                     style="@style/Widget.MaterialComponents.Button.IconOnly"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
@@ -456,7 +456,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/b_3d"
-                    android:contentDescription="3D spatial audio"
+                    android:contentDescription="@string/cd_audio_3d"
                     style="@style/Widget.MaterialComponents.Button.IconOnly"
                     android:layout_width="50dp"
                     android:layout_height="50dp"

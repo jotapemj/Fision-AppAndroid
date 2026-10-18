@@ -22,7 +22,7 @@
         android:layout_marginTop="6dp"
         android:layout_marginBottom="14dp"
         android:scaleType="centerCrop"
-        android:contentDescription="cover"
+        android:contentDescription="@string/cd_cover"
         android:src="@raw/artcover_generic"
         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Fision.Cover.Rounded" />
 
@@ -74,6 +74,22 @@
         android:textAllCaps="false"
         android:textColor="#FFFFFF"
         android:textSize="18dp" />
+
+    <Button
+        android:id="@+id/b_retryJob"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:drawableLeft="@drawable/ic_reprocess"
+        android:drawablePadding="16dp"
+        android:fontFamily="@font/noto_sans_regular"
+        android:includeFontPadding="false"
+        android:gravity="center_vertical"
+        android:text="@string/song_option_retry_job"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="18dp"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/b_delete"

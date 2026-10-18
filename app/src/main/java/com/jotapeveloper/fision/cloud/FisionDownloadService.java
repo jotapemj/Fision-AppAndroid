@@ -52,11 +52,9 @@ public class FisionDownloadService extends Service {
 
     private static final String TAG = "FisionDlService";
     private static final String CHANNEL_ID = "fision_cloud";
-    private static final String CHANNEL_NAME = "Fision · Server";
     // Separate high-importance channel so the "song ready" notif surfaces as
     // a heads-up banner without impacting the low-importance progress notif.
     private static final String CHANNEL_ID_READY   = "fision_cloud_ready";
-    private static final String CHANNEL_NAME_READY = "Fision · Song ready";
     private static final int    NOTIF_ID    = 91201;
     public  static final String EXTRA_HASH  = "hash";
 
@@ -103,6 +101,12 @@ public class FisionDownloadService extends Service {
     private void runDownload(String hash) {
         CloudRepository repo = CloudRepository.get(this);
         FisionApi api = ApiClient.get(this).api();
+        if (!CloudItem.isServerHash(hash)) {
+            // The hash names the folder that gets wiped and refilled.
+            markDone(hash);
+            repo.onDownloadFailed(hash, "Invalid hash");
+            return;
+        }
         if (api == null) {
             markDone(hash);
             repo.onDownloadFailed(hash, "Server not configured");
@@ -240,29 +244,28 @@ public class FisionDownloadService extends Service {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
-        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_LOW);
-            ch.setDescription("Fision server downloads");
-            nm.createNotificationChannel(ch);
-        }
-        if (nm.getNotificationChannel(CHANNEL_ID_READY) == null) {
-            NotificationChannel ready = new NotificationChannel(CHANNEL_ID_READY,
-                    CHANNEL_NAME_READY, NotificationManager.IMPORTANCE_HIGH);
-            ready.setDescription("New song ready to play");
-            ready.enableVibration(false);
-            nm.createNotificationChannel(ready);
-        }
+        // Created every time: an existing channel only takes the new name and
+        // description, so they follow the app language.
+        NotificationChannel ch = new NotificationChannel(CHANNEL_ID,
+                getString(R.string.notif_channel_downloads), NotificationManager.IMPORTANCE_LOW);
+        ch.setDescription(getString(R.string.notif_channel_downloads_desc));
+        nm.createNotificationChannel(ch);
+        NotificationChannel ready = new NotificationChannel(CHANNEL_ID_READY,
+                getString(R.string.notif_channel_ready), NotificationManager.IMPORTANCE_HIGH);
+        ready.setDescription(getString(R.string.notif_channel_ready_desc));
+        ready.enableVibration(false);
+        nm.createNotificationChannel(ready);
     }
 
     private static void unzip(File zip, File outDir) throws IOException {
+        String root = outDir.getCanonicalPath() + File.separator;
         try (ZipInputStream zin = new ZipInputStream(new java.io.FileInputStream(zip))) {
             ZipEntry e;
             byte[] buf = new byte[64 * 1024];
             while ((e = zin.getNextEntry()) != null) {
-                String name = e.getName();
-                if (name.contains("..")) continue;
-                File dst = new File(outDir, name);
+                File dst = new File(outDir, e.getName());
+                // Zip-slip: every entry must land inside the song folder.
+                if (!dst.getCanonicalPath().startsWith(root)) continue;
                 if (e.isDirectory()) { dst.mkdirs(); continue; }
                 File parent = dst.getParentFile();
                 if (parent != null && !parent.exists()) parent.mkdirs();
@@ -312,7 +315,7 @@ public class FisionDownloadService extends Service {
         // reinforces the "user should be told" hint on some OEMs.
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID_READY)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setContentTitle(displayName != null ? displayName : "Song ready")
+                .setContentTitle(displayName != null ? displayName : getString(R.string.notif_channel_ready))
                 .setContentText(getString(R.string.dl_notif_ready))
                 .setContentIntent(pi)
                 .setAutoCancel(true)

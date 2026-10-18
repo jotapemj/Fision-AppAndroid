@@ -49,8 +49,23 @@ public class CloudItem {
 
     public CloudItem(String hash) { this.hash = hash; }
 
+    private static final java.util.regex.Pattern SERVER_HASH =
+            java.util.regex.Pattern.compile("^[0-9a-f]{64}$");
+
+    /** Server hashes are SHA-256 hex. They name folders and files on disk, so
+     *  anything else from the network is rejected. */
+    public static boolean isServerHash(String h) {
+        return h != null && SERVER_HASH.matcher(h).matches();
+    }
+
     public boolean isLocal() {
         return state == State.LOCAL_AND_CLOUD || state == State.LOCAL_ONLY;
+    }
+
+    /** Stems on the device, whatever the server state (a failed reprocess
+     *  leaves the previous version playable). */
+    public boolean hasLocalCopy() {
+        return isLocal() || localFolderName != null;
     }
 
     public boolean isInFlight() {

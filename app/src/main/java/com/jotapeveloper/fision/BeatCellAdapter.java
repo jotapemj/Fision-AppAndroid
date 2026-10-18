@@ -43,6 +43,10 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     /** Accent share of the played-history tint (subtle, below the trail). */
     private static final float PLAYED_TINT   = 0.22f;
 
+    // Ghost of a held chord at bar starts.
+    private static final float CHORD_SP = 18f, GHOST_SP = 14f;
+    private static final float GHOST_ALPHA = 0.32f, GHOST_ALPHA_ACTIVE = 0.6f;
+
     /** Tap on a beat cell (jump the song to that beat). */
     public interface OnCellClickListener { void onCellClick(int position); }
     @androidx.annotation.Nullable private OnCellClickListener cellClickListener;
@@ -109,8 +113,18 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         BeatCell cell = cells.get(position);
-        holder.tv_chord.setText(ChordFormatter.format(cell.chord, semitonesShift, latinNotation, preferFlat));
+        // A chord held over several bars is recalled at each bar start as a
+        // faint, smaller ghost until the next chord.
+        String chord = cell.chord;
+        boolean ghost = false;
+        if (chord == null && cell.isDownbeat) {
+            chord = sustainedChord(position);
+            ghost = chord != null;
+        }
+        holder.tv_chord.setText(ChordFormatter.format(chord, semitonesShift, latinNotation, preferFlat));
         holder.tv_chord.setTypeface(typefaceForCurrent());
+        holder.tv_chord.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, ghost ? GHOST_SP : CHORD_SP);
+        holder.tv_chord.setAlpha(!ghost ? 1f : position == currentBeatIndex ? GHOST_ALPHA_ACTIVE : GHOST_ALPHA);
 
         int active = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(context);
 
@@ -146,6 +160,16 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
 
     @Override
     public int getItemCount() { return cells.size(); }
+
+    /** Chord still sounding at [position]: the last one that started before. */
+    @androidx.annotation.Nullable
+    private String sustainedChord(int position) {
+        for (int i = position - 1; i >= 0; i--) {
+            String c = cells.get(i).chord;
+            if (c != null) return c;
+        }
+        return null;
+    }
 
     /** Returns the typeface for the active notation (lazy + cached). */
     private android.graphics.Typeface typefaceForCurrent() {

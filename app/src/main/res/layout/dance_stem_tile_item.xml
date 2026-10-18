@@ -56,7 +56,7 @@
             android:clickable="true"
             android:focusable="true"
             android:fontFamily="@font/noto_sans_regular"
-            android:text="swing"
+            android:text="@string/dance_swing"
             android:textSize="13sp"
             android:textStyle="bold"
             tools:ignore="HardcodedText" />

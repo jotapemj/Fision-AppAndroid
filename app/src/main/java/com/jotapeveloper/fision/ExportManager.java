@@ -95,8 +95,8 @@ public class ExportManager {
                               float bpm,
                               Listener listener) {
         cancelled.set(false);
-        // FX belong to the current mix only.
-        mixFx = volSrc == VolumeSource.CURRENT ? stemFx : null;
+        // null = dry mix (effects left out in the wizard).
+        mixFx = stemFx;
         mixFxBpm = bpm;
         _listener = listener;
         worker = new Thread(() -> {
@@ -128,11 +128,14 @@ public class ExportManager {
         worker.start();
     }
 
-    /** Exports separate tracks. One file per stem. */
+    /** Exports separate tracks. One file per stem. A stem with active FX in
+     *  {@code stemFx} (null = none) is rendered through them, with its tail. */
     public void exportSeparate(File songFolder,
                                String displayName,
                                List<String> stemOrder,
                                Format format,
+                               Map<String, StemFx> stemFx,
+                               float bpm,
                                Listener listener) {
         cancelled.set(false);
         _listener = listener;
@@ -153,7 +156,13 @@ public class ExportManager {
                     final int base = i * 100 / n;
                     final int top  = (i + 1) * 100 / n;
                     boolean srcIsWav = src.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".wav");
-                    if (format == Format.WAV && srcIsWav) {
+                    StemFx fx = stemFx != null ? stemFx.get(stem) : null;
+                    if (fx != null && fx.isActive()) {
+                        WavIO.WavData d = AudioIO.read(src);
+                        float[] out = renderStemFx(d, fx, bpm);
+                        softLimit(out);
+                        writeOutput(outFile, out, d.sampleRate, 2, format, base, top, listener);
+                    } else if (format == Format.WAV && srcIsWav) {
                         // Bit-for-bit copy only when source and destination are WAV
                         WavIO.copyFile(src, outFile);
                         post(listener, l -> l.onProgress(top));
@@ -176,13 +185,16 @@ public class ExportManager {
     }
 
     /** Single-stem export (from the bottom sheet).
-     *  {@code metronomeWavOrNull}: when != null, mixes the metronome on top of the stem. */
+     *  {@code metronomeWavOrNull}: when != null, mixes the metronome on top of the stem.
+     *  {@code fx}: the stem's FX to render (null = dry). */
     public void exportSingleStem(File songFolder,
                                  String displayName,
                                  String stem,
                                  Format format,
                                  File metronomeWavOrNull,
                                  float metronomeVol,
+                                 StemFx fx,
+                                 float bpm,
                                  Listener listener) {
         cancelled.set(false);
         _listener = listener;
@@ -198,7 +210,17 @@ public class ExportManager {
                         sanitize(displayName) + "_" + stem + "_" + timestamp() + extFor(format));
 
                 boolean srcIsWav = src.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".wav");
-                if (metronomeWavOrNull == null) {
+                if (fx != null && fx.isActive()) {
+                    WavIO.WavData d = AudioIO.read(src);
+                    float[] out = renderStemFx(d, fx, bpm);
+                    postProgress(50);
+                    if (metronomeWavOrNull != null) {
+                        addMetronome(out, 2, metronomeWavOrNull, metronomeVol, d.framesCount());
+                    }
+                    softLimit(out);
+                    if (cancelled.get()) { post(listener, l -> l.onCancelled()); return; }
+                    writeOutput(outFile, out, d.sampleRate, 2, format, 70, 100, listener);
+                } else if (metronomeWavOrNull == null) {
                     // Direct copy only when both source and destination are WAV
                     if (format == Format.WAV && srcIsWav) {
                         WavIO.copyFile(src, outFile);
@@ -264,7 +286,17 @@ public class ExportManager {
         int ch  = Math.max(2, first.channels);
         long maxFrames = first.framesCount();
 
-        long totalSamples = maxFrames * ch;
+        // Room for the echo / reverb tail past the longest stem (trimmed at the end).
+        long tailFrames = 0;
+        if (mixFx != null && ch == 2) {
+            for (StemFx fx : mixFx.values()) {
+                if (fx != null && fx.hasTail()) {
+                    tailFrames = (long) (StemFxOffline.TAIL_SECONDS * sr);
+                    break;
+                }
+            }
+        }
+        long totalSamples = (maxFrames + tailFrames) * ch;
         if (totalSamples > Integer.MAX_VALUE - 8) throw new java.io.IOException("Mix too long");
         float[] out = new float[(int) totalSamples];
 
@@ -280,8 +312,8 @@ public class ExportManager {
             WavIO.WavData d = AudioIO.read(AudioIO.findStemFile(songFolder, stem));
             maxFrames = Math.max(maxFrames, d.framesCount());
             // When a stem is longer than the current buffer, expand (rare but possible)
-            if (d.framesCount() * ch > out.length) {
-                float[] bigger = new float[(int) (d.framesCount() * ch)];
+            if ((d.framesCount() + tailFrames) * ch > out.length) {
+                float[] bigger = new float[(int) ((d.framesCount() + tailFrames) * ch)];
                 System.arraycopy(out, 0, bigger, 0, out.length);
                 out = bigger;
             }
@@ -292,27 +324,10 @@ public class ExportManager {
         }
 
         // Optional metronome on top of the mix
-        if (metronomeFile != null && metronomeFile.exists()) {
-            if (cancelled.get()) throw new InterruptedException();
-            WavIO.WavData m = AudioIO.read(metronomeFile);
-            int srcCh = m.channels;
-            int len   = (int) m.framesCount();
-            int n     = Math.min(len, (int) maxFrames);
-            for (int f = 0; f < n; f++) {
-                if ((f & 0xFFFF) == 0 && cancelled.get()) throw new InterruptedException();
-                float l, r;
-                if (srcCh == 1) { l = r = m.samples[f]; }
-                else            { l = m.samples[f * srcCh]; r = m.samples[f * srcCh + 1]; }
-                out[f * ch]     += l * metronomeVol;
-                out[f * ch + 1] += r * metronomeVol;
-            }
-        }
+        if (metronomeFile != null) addMetronome(out, ch, metronomeFile, metronomeVol, maxFrames);
 
-        // Light soft-clamp (no limiter)
-        for (int i = 0; i < out.length; i++) {
-            if (out[i] >  1f) out[i] =  1f;
-            if (out[i] < -1f) out[i] = -1f;
-        }
+        out = trimTail(out, maxFrames * ch, ch);
+        softLimit(out);
 
         MixResult r = new MixResult();
         r.samples = out; r.sampleRate = sr; r.channels = ch;
@@ -396,14 +411,74 @@ public class ExportManager {
                 out[f * ch + 1] += mr * metronomeVol;
             }
         }
-        for (int i = 0; i < out.length; i++) {
-            if (out[i] >  1f) out[i] =  1f;
-            if (out[i] < -1f) out[i] = -1f;
-        }
+        softLimit(out);
         postProgress(progressTop);
         MixResult r = new MixResult();
         r.samples = out; r.sampleRate = sr; r.channels = ch;
         return r;
+    }
+
+    /** One stem through its FX at unity volume: stereo, with the FX tail
+     *  (silence after the tail trimmed). */
+    private float[] renderStemFx(WavIO.WavData d, StemFx fx, float bpm) throws Exception {
+        long len = d.framesCount();
+        long tail = fx.hasTail() ? (long) (StemFxOffline.TAIL_SECONDS * d.sampleRate) : 0;
+        long total = (len + tail) * 2;
+        if (total > Integer.MAX_VALUE - 8) throw new java.io.IOException("Stem too long");
+        float[] out = new float[(int) total];
+        try (StemFxOffline off = new StemFxOffline(d.sampleRate, fx, bpm)) {
+            if (!off.mixInto(d.samples, d.channels, (int) len, d.sampleRate, out, 1f, 1f, cancelled::get)) {
+                throw new InterruptedException();
+            }
+        }
+        return trimTail(out, len * 2, 2);
+    }
+
+    /** Adds the metronome (no pan) to the first {@code maxFrames} of {@code out}. */
+    private void addMetronome(float[] out, int ch, File metronomeFile, float vol,
+                              long maxFrames) throws Exception {
+        if (!metronomeFile.exists()) return;
+        if (cancelled.get()) throw new InterruptedException();
+        WavIO.WavData m = AudioIO.read(metronomeFile);
+        int mch = m.channels;
+        int n = (int) Math.min(m.framesCount(), Math.min(maxFrames, out.length / ch));
+        for (int f = 0; f < n; f++) {
+            if ((f & 0xFFFF) == 0 && cancelled.get()) throw new InterruptedException();
+            float l, r;
+            if (mch == 1) { l = r = m.samples[f]; }
+            else          { l = m.samples[f * mch]; r = m.samples[f * mch + 1]; }
+            out[f * ch]     += l * vol;
+            out[f * ch + 1] += r * vol;
+        }
+    }
+
+    /** Below this the FX tail counts as silence (about -80 dBFS). */
+    private static final float TAIL_FLOOR = 1e-4f;
+
+    /** Cuts the buffer after the last audible sample, never shorter than
+     *  {@code minSamples} (the song itself). */
+    private static float[] trimTail(float[] buf, long minSamples, int ch) {
+        int last = buf.length - 1;
+        while (last >= minSamples && Math.abs(buf[last]) < TAIL_FLOOR) last--;
+        int len = (int) Math.max(minSamples, last + 1);
+        len = Math.min(buf.length, (len + ch - 1) / ch * ch);   // whole frames
+        return len == buf.length ? buf : java.util.Arrays.copyOf(buf, len);
+    }
+
+    /** Same soft-knee limiter as the engine output (AudioEngine::onAudioReady):
+     *  linear up to 0.7, eased curve up to 1, ceiling 0.95. Keeps the export
+     *  sounding like the playback instead of hard clipping. */
+    static void softLimit(float[] buf) {
+        final float thr = 0.7f, ceil = 0.95f;
+        final float span = 1f - thr, delta = ceil - thr;
+        for (int i = 0; i < buf.length; i++) {
+            float x = buf[i];
+            float a = Math.abs(x);
+            if (a <= thr) continue;
+            if (a >= 1f) { buf[i] = Math.copySign(ceil, x); continue; }
+            float over = (a - thr) / span;
+            buf[i] = Math.copySign(thr + delta * (1f - (1f - over) * (1f - over)), x);
+        }
     }
 
     private void writeOutput(File outFile,

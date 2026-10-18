@@ -200,7 +200,9 @@ Java_com_jotapeveloper_fision_FlacDecoderJni_nativeDecodeFlac(
             path, &channels, &sampleRate, &totalFrames, nullptr);
     env->ReleaseStringUTFChars(path_, path);
     if (!samples) return nullptr;
-    if (!(channels == 1 || channels == 2)) {
+    // A Java array holds at most INT32_MAX elements.
+    if (!(channels == 1 || channels == 2) || sampleRate == 0
+            || totalFrames * channels > (drflac_uint64) INT32_MAX) {
         drflac_free(samples, nullptr);
         return nullptr;
     }

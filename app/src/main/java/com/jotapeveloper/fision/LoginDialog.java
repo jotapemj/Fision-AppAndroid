@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.jotapeveloper.fision.cloud.ApiClient;
 import com.jotapeveloper.fision.cloud.AuthManager;
 import com.jotapeveloper.fision.cloud.ServerPrefs;
 
@@ -54,6 +55,21 @@ public class LoginDialog {
         ServerPrefs prefs = ServerPrefs.get(host);
         String prevUrl = prefs.getUrl();
         if (!prevUrl.isEmpty()) etUrl.setText(prevUrl);
+        // Plain http outside Tailscale: password and token would travel readable.
+        com.google.android.material.textfield.TextInputLayout tilUrl = v.findViewById(R.id.til_loginUrl);
+        tilUrl.setHelperTextColor(android.content.res.ColorStateList.valueOf(
+                host.getColor(R.color.gpu_warning_accent)));
+        Runnable checkCleartext = () -> {
+            String u = etUrl.getText() != null ? etUrl.getText().toString() : "";
+            tilUrl.setHelperText(!u.trim().isEmpty() && ApiClient.isCleartextExposed(u)
+                    ? host.getString(R.string.login_warn_cleartext) : null);
+        };
+        checkCleartext.run();
+        etUrl.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable s) { checkCleartext.run(); }
+        });
         String prevUser = prefs.getUsername();
         if (!prevUser.isEmpty()) etUser.setText(prevUser);
         if (notice != null) {
