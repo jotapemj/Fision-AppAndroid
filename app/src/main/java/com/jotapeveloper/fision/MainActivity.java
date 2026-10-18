@@ -72,6 +72,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     // 1 = date added ascending (oldest first).
     private int sortOrder = 0;
     private static final String PREF_SORT_ORDER = "songs_sort_order";
+    /** Decode bounds: avatar / small covers, and the HD cover of the song sheet. */
+    private static final int AVATAR_MAX_PX = 512;
+    private static final int COVER_HD_MAX_PX = 1024;
 
     private Uri SongFolderUri;
 
@@ -1163,8 +1166,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // already been attempted for this user in the current process.
         am.ensureFetched(user);
         if (am.hasLocalAvatar(user)) {
-            android.graphics.Bitmap bm = android.graphics.BitmapFactory
-                    .decodeFile(am.getLocalFile(user).getAbsolutePath());
+            android.graphics.Bitmap bm = ImageDecode.file(
+                    am.getLocalFile(user).getAbsolutePath(), AVATAR_MAX_PX);
             if (bm != null) {
                 ivAvatarImage.setImageBitmap(bm);
                 ivAvatarImage.setVisibility(View.VISIBLE);
@@ -1311,7 +1314,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         Button   deleteButton = optionsBottomSheet.findViewById(R.id.b_delete);
 
         if (ivCover != null && coverPath != null) {
-            android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(coverPath);
+            android.graphics.Bitmap bm = ImageDecode.file(coverPath, COVER_HD_MAX_PX);
             if (bm != null) ivCover.setImageBitmap(bm);
         }
 
@@ -1585,7 +1588,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         Button save       = dialogView.findViewById(R.id.b_rename_save);
 
         if (ivCover != null && coverPath != null) {
-            android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(coverPath);
+            android.graphics.Bitmap bm = ImageDecode.file(coverPath, AVATAR_MAX_PX);
             if (bm != null) ivCover.setImageBitmap(bm);
         }
         etSong.setText(displayName);

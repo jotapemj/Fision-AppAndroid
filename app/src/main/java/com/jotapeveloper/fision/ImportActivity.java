@@ -305,7 +305,7 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
         String title = (ci.displayName != null && !ci.displayName.isEmpty())
                 ? ci.displayName : reprocessHash;
         android.graphics.Bitmap bm = ci.coverPath != null
-                ? android.graphics.BitmapFactory.decodeFile(ci.coverPath) : null;
+                ? ImageDecode.file(ci.coverPath, 1024) : null;
         bindHero(title, ci.artist, null, bm);
 
         // Prefill UI from the current server config
@@ -1064,7 +1064,10 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
 
     /** Moves cover_pending_*.png to the hash's sticky cover so it survives restarts. */
     private String renameCoverForHash(String pendingPath, String hash) {
-        if (pendingPath == null || hash == null) return pendingPath;
+        // The hash names the file that gets replaced: server format only.
+        if (pendingPath == null || !com.jotapeveloper.fision.cloud.CloudItem.isServerHash(hash)) {
+            return pendingPath;
+        }
         java.io.File src = new java.io.File(pendingPath);
         if (!src.exists()) return null;
         java.io.File dst = com.jotapeveloper.fision.cloud.CloudRepository.get(this)

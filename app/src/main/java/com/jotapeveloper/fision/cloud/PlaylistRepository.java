@@ -210,6 +210,7 @@ public final class PlaylistRepository {
         List<Playlist> out = new ArrayList<>();
         try {
             for (db_Playlist row : dao().getAll()) {
+                if (!isValidId(row.id)) continue;
                 List<String> songs = null;
                 try {
                     songs = gson.fromJson(row.songsJson, new TypeToken<List<String>>() {}.getType());
@@ -318,7 +319,7 @@ public final class PlaylistRepository {
         List<Integer> toFetch = new ArrayList<>();
         for (int i = 0; i < remote.size(); i++) {
             PlaylistDto d = remote.get(i);
-            if (d == null || d.id == null) continue;
+            if (d == null || !isValidId(d.id)) continue;
             Playlist old = known.get(d.id);
             boolean same = old != null && old.updatedAt != null
                     && old.updatedAt.equals(d.updatedAt);
@@ -566,7 +567,17 @@ public final class PlaylistRepository {
 
     private File coverFileFor(Playlist p) {
         String v = p.updatedAt != null ? Integer.toHexString(p.updatedAt.hashCode()) : "0";
-        return new File(coverDir(), p.id + "_" + v + ".img");
+        // The id names a file: anything but the server format is hashed.
+        String id = isValidId(p.id) ? p.id : "x" + Integer.toHexString(String.valueOf(p.id).hashCode());
+        return new File(coverDir(), id + "_" + v + ".img");
+    }
+
+    private static final java.util.regex.Pattern PLAYLIST_ID =
+            java.util.regex.Pattern.compile("^[0-9a-f]{12}$");
+
+    /** Server playlist ids are 12 hex characters. */
+    static boolean isValidId(String id) {
+        return id != null && PLAYLIST_ID.matcher(id).matches();
     }
 
     private void writeCover(Playlist p, byte[] bytes) {

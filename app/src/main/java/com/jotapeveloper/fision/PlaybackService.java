@@ -1387,14 +1387,15 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         mediaSession.setMetadata(b.build());
     }
 
-    /** Loads the original artcover (without rescaling) on first access and caches it.
-     *  Fallback to artcover_generic in res/raw when the song has no dedicated artcover. */
+    /** Lock screen / notification artwork: HD, capped at COVER_MAX_PX.
+     *  Loaded on first access and cached. Fallback to artcover_generic in
+     *  res/raw when the song has no dedicated artcover. */
+    private static final int COVER_MAX_PX = 1440;
+
     private android.graphics.Bitmap getOrLoadCover() {
         if (cachedCoverBitmap != null) return cachedCoverBitmap;
-        android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
-        opts.inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888;
         if (currentMetadata != null && currentMetadata.coverPath != null) {
-            cachedCoverBitmap = android.graphics.BitmapFactory.decodeFile(currentMetadata.coverPath, opts);
+            cachedCoverBitmap = ImageDecode.file(currentMetadata.coverPath, COVER_MAX_PX);
             if (cachedCoverBitmap != null) return cachedCoverBitmap;
         }
         // Server-side cover fallback when the local artcover is missing.
@@ -1402,13 +1403,14 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         if (ci != null && ci.coverPath != null) {
             java.io.File f = new java.io.File(ci.coverPath);
             if (f.exists()) {
-                cachedCoverBitmap = android.graphics.BitmapFactory.decodeFile(
-                        ci.coverPath, opts);
+                cachedCoverBitmap = ImageDecode.file(ci.coverPath, COVER_MAX_PX);
                 if (cachedCoverBitmap != null) return cachedCoverBitmap;
             }
         }
         // Generic fallback (res/raw/artcover_generic.png). Its resolution is assumed
         // to fit the modern notification; no unnecessary rescaling.
+        android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
+        opts.inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888;
         cachedCoverBitmap = android.graphics.BitmapFactory.decodeResource(
                 getResources(), R.raw.artcover_generic, opts);
         return cachedCoverBitmap;

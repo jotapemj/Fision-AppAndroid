@@ -94,7 +94,10 @@ public class LyricsManager {
     public Lyrics parseLocal(File songFolder) throws IOException {
         File f = lyricsFile(songFolder);
         try (Reader r = new InputStreamReader(new java.io.FileInputStream(f))) {
-            return gson.fromJson(r, Lyrics.class);
+            return Lyrics.sanitize(gson.fromJson(r, Lyrics.class));
+        } catch (com.google.gson.JsonParseException e) {
+            // Malformed file: reported like an unreadable one.
+            throw new IOException(e);
         }
     }
 

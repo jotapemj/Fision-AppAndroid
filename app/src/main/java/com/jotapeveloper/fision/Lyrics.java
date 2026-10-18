@@ -33,6 +33,30 @@ public class Lyrics {
         @SerializedName("text")  public String text;
     }
 
+    /** Drops what the UI cannot draw: null segments or words and entries
+     *  with non-finite times. Called right after parsing the server JSON. */
+    public static Lyrics sanitize(Lyrics lyrics) {
+        if (lyrics == null || lyrics.segments == null) return lyrics;
+        java.util.List<Segment> segs = new java.util.ArrayList<>();
+        for (Segment s : lyrics.segments) {
+            if (s == null || !finite(s.start, s.end)) continue;
+            if (s.words != null) {
+                java.util.List<Word> words = new java.util.ArrayList<>();
+                for (Word w : s.words) {
+                    if (w != null && finite(w.start, w.end)) words.add(w);
+                }
+                s.words = words;
+            }
+            segs.add(s);
+        }
+        lyrics.segments = segs;
+        return lyrics;
+    }
+
+    private static boolean finite(double a, double b) {
+        return !Double.isNaN(a) && !Double.isInfinite(a) && !Double.isNaN(b) && !Double.isInfinite(b);
+    }
+
     /** True when at least one segment carries per-word timestamps. Callers
      *  use this to decide whether the karaoke mode is available for the
      *  currently loaded lyrics. */

@@ -1028,7 +1028,9 @@ public class CloudRepository {
         java.io.File dir = new java.io.File(appCtx.getFilesDir(), "sticky_covers");
         //noinspection ResultOfMethodCallIgnored
         dir.mkdirs();
-        return new java.io.File(dir, hash + ".png");
+        // Only a server hash names the file; anything else stays inside the dir.
+        String name = CloudItem.isServerHash(hash) ? hash : "x" + Integer.toHexString(hash.hashCode());
+        return new java.io.File(dir, name + ".png");
     }
 
     /** Fills title, artist and cover the server does not provide (yet) from

@@ -649,8 +649,8 @@ public class SettingsActivity extends AppCompatActivity
                                  MaterialButton bRemove) {
         AvatarManager am = AvatarManager.get(this);
         if (am.hasLocalAvatar(user)) {
-            android.graphics.Bitmap bm = android.graphics.BitmapFactory
-                    .decodeFile(am.getLocalFile(user).getAbsolutePath());
+            android.graphics.Bitmap bm = ImageDecode.file(
+                    am.getLocalFile(user).getAbsolutePath(), 512);
             if (bm != null) {
                 ivAvatar.setImageBitmap(bm);
                 ivAvatar.setVisibility(View.VISIBLE);

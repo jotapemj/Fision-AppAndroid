@@ -76,8 +76,12 @@ public class ApiClient {
             return;
         }
 
+        // Request lines carry song hashes: logged only in debuggable builds.
+        boolean debuggable = (appCtx.getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         HttpLoggingInterceptor log = new HttpLoggingInterceptor();
-        log.setLevel(HttpLoggingInterceptor.Level.BASIC);
+        log.setLevel(debuggable ? HttpLoggingInterceptor.Level.BASIC
+                                : HttpLoggingInterceptor.Level.NONE);
 
         http = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)

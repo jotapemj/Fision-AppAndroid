@@ -190,7 +190,9 @@ public final class MiniPlayerController {
         tvArtist.setVisibility(artist != null && !artist.isEmpty() ? View.VISIBLE : View.GONE);
 
         if (cover != null && new File(cover).exists()) {
-            ivIcon.setImageBitmap(BitmapFactory.decodeFile(cover));
+            android.graphics.Bitmap bm = ImageDecode.file(cover, 256);
+            if (bm != null) ivIcon.setImageBitmap(bm);
+            else ivIcon.setImageResource(R.raw.artcover_generic);
         } else {
             ivIcon.setImageResource(R.raw.artcover_generic);
         }

@@ -112,7 +112,7 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             Bitmap bm = null;
             if (!user.isEmpty() && am.hasLocalAvatar(user)) {
                 File f = am.getLocalFile(user);
-                if (f != null) bm = BitmapFactory.decodeFile(f.getAbsolutePath());
+                if (f != null) bm = ImageDecode.file(f.getAbsolutePath(), 512);
             }
             if (bm != null) {
                 ivAvatar.setImageBitmap(bm);
