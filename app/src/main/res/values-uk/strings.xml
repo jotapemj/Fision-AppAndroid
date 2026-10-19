@@ -124,6 +124,9 @@
     <string name="export_permission_title">Дозвіл на сховище</string>
     <string name="export_permission_body">Щоб зберігати експорти, Fision потребує доступу до всіх файлів. Відкриються Налаштування — увімкни доступ і повернись до додатка.</string>
     <string name="export_permission_continue">Відкрити Налаштування</string>
+    <string name="export_solo_title">Соло увімкнено</string>
+    <string name="export_solo_body">Експорт не враховує соло: кожна доріжка звучить зі своєю гучністю.</string>
+    <string name="export_solo_continue">Продовжити</string>
 
     <string name="helpline_icon">Піктограма діалогового вікна попередження</string>
     <string name="tv_alertDialog_text">Видалити [НАЗВА ПІСНІ]?</string>

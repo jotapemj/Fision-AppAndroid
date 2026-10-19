@@ -6,9 +6,9 @@ package com.jotapeveloper.fision;
  */
 public class StemFx {
 
-    /** Echo divisions in beats: 1/2, 1/4, dotted 1/8, 1/8, 1/16. */
-    public static final float[] ECHO_BEATS = {2f, 1f, 0.75f, 0.5f, 0.25f};
-    public static final String[] ECHO_LABELS = {"1/2", "1/4", "1/8·", "1/8", "1/16"};
+    /** Echo divisions in beats: 1/2, 1/4, dotted 1/8, 1/8, eighth triplet ("1/3"), 1/16. */
+    public static final float[] ECHO_BEATS = {2f, 1f, 0.75f, 0.5f, 1f / 3f, 0.25f};
+    public static final String[] ECHO_LABELS = {"1/2", "1/4", "1/8·", "1/8", "1/3", "1/16"};
     public static final int DEFAULT_ECHO_DIVISION = 2;
     /** Tempo used for the echo when the song has no detected BPM. */
     public static final float FALLBACK_BPM = 120f;
@@ -60,7 +60,7 @@ public class StemFx {
     /** Filter cutoff in Hz for the current amount (same mapping as the engine). */
     public static float filterCutoffHz(float amount) {
         float a = Math.abs(amount);
-        return amount > 0f ? (float) (20.0 * Math.pow(250.0, a))
+        return amount > 0f ? (float) (20.0 * Math.pow(750.0, a))
                            : (float) (20000.0 * Math.pow(0.01, a));
     }
 }

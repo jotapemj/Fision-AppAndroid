@@ -119,6 +119,9 @@
     <string name="export_permission_title">Speicherberechtigung nötig</string>
     <string name="export_permission_body">Um Exporte zu speichern, erlaube Fision den Zugriff auf alle Dateien. Die Systemeinstellungen werden geöffnet: Aktiviere dort den Zugriff für Fision und kehre zurück.</string>
     <string name="export_permission_continue">Einstellungen öffnen</string>
+    <string name="export_solo_title">Solo aktiv</string>
+    <string name="export_solo_body">Der Export ignoriert das Solo: Jeder Stem klingt mit seiner Lautstärke.</string>
+    <string name="export_solo_continue">Weiter</string>
 
     <string name="helpline_icon">Symbol des Hinweisdialogs</string>
     <string name="tv_alertDialog_text">[SONGTITEL] löschen?</string>

@@ -119,6 +119,9 @@
     <string name="export_permission_title">Serve l\'autorizzazione di archiviazione</string>
     <string name="export_permission_body">Per salvare le esportazioni, consenti a Fision di accedere a tutti i file. Si apriranno le impostazioni di sistema: attiva l\'accesso per Fision e torna indietro.</string>
     <string name="export_permission_continue">Apri impostazioni</string>
+    <string name="export_solo_title">Solo attivo</string>
+    <string name="export_solo_body">L\'esportazione ignora il solo: ogni traccia suona al suo volume.</string>
+    <string name="export_solo_continue">Continua</string>
 
     <string name="helpline_icon">Icona della finestra di avviso</string>
     <string name="tv_alertDialog_text">Eliminare [TITOLO DEL BRANO]?</string>

@@ -119,6 +119,9 @@
     <string name="export_permission_title">Autorisation de stockage requise</string>
     <string name="export_permission_body">Pour enregistrer les exports, autorise Fision à accéder à tous les fichiers. Les paramètres du système vont s\'ouvrir : active l\'accès pour Fision puis reviens.</string>
     <string name="export_permission_continue">Ouvrir les paramètres</string>
+    <string name="export_solo_title">Solo actif</string>
+    <string name="export_solo_body">L\'export ignore le solo : chaque piste garde son volume.</string>
+    <string name="export_solo_continue">Continuer</string>
 
     <string name="helpline_icon">Icône de la boîte de dialogue</string>
     <string name="tv_alertDialog_text">Supprimer [TITRE DU MORCEAU] ?</string>

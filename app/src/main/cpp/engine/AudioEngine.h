@@ -38,6 +38,7 @@ public:
     void  setTrack3DPosition(int trackId, float azimuthRad, float distance, float elevationDeg);
     void  setTrack3DOmnipresent(int trackId, bool omni);
     void  setTrack3DMuted(int trackId, bool muted);
+    void  setTrackSoloMuted(int trackId, bool muted);
     // === Per-track FX (not persisted) ===
     void  setTrackFilter(int trackId, float amount);                    // -1..1, 0 = off
     void  setTrackEcho(int trackId, float amount, float delaySourceMs); // 0..1

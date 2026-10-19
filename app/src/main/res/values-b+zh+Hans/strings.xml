@@ -119,6 +119,9 @@
     <string name="export_permission_title">需要存储权限</string>
     <string name="export_permission_body">要保存导出文件，请允许 Fision 访问所有文件。系统设置将会打开：为 Fision 开启访问权限后返回。</string>
     <string name="export_permission_continue">打开设置</string>
+    <string name="export_solo_title">独奏已开启</string>
+    <string name="export_solo_body">导出会忽略独奏：每个分轨按各自音量播放。</string>
+    <string name="export_solo_continue">继续</string>
 
     <string name="helpline_icon">提示对话框图标</string>
     <string name="tv_alertDialog_text">删除 [歌曲标题]？</string>

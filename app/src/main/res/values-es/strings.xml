@@ -135,6 +135,9 @@
     <string name="export_permission_title">Permiso de almacenamiento</string>
     <string name="export_permission_body">Para guardar exportaciones, Fision necesita acceso a todos los archivos. Se abrirán los Ajustes — activa el acceso y vuelve a la app.</string>
     <string name="export_permission_continue">Abrir Ajustes</string>
+    <string name="export_solo_title">Solo activo</string>
+    <string name="export_solo_body">La exportación ignora el solo: cada pista suena con su volumen.</string>
+    <string name="export_solo_continue">Continuar</string>
 
     <string name="helpline_icon">Icono de ayuda</string>
     <string name="tv_alertDialog_text">¿Borrar [SONG TITLE]?</string>

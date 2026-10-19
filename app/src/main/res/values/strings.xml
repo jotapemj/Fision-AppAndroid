@@ -133,6 +133,9 @@
     <string name="export_permission_title">Storage permission needed</string>
     <string name="export_permission_body">To save exports, allow Fision to access all files. The system Settings will open — toggle the access for Fision and come back.</string>
     <string name="export_permission_continue">Open Settings</string>
+    <string name="export_solo_title">Solo active</string>
+    <string name="export_solo_body">The export ignores the solo: every stem plays at its own volume.</string>
+    <string name="export_solo_continue">Continue</string>
 
     <string name="helpline_icon">Alert dialog icon</string>
     <string name="tv_alertDialog_text">Delete [SONG TITLE]?</string>

@@ -119,6 +119,9 @@
     <string name="export_permission_title">Permissão de armazenamento necessária</string>
     <string name="export_permission_body">Para salvar as exportações, permita que o Fision acesse todos os arquivos. As configurações do sistema vão abrir: ative o acesso para o Fision e volte.</string>
     <string name="export_permission_continue">Abrir configurações</string>
+    <string name="export_solo_title">Solo ativo</string>
+    <string name="export_solo_body">A exportação ignora o solo: cada faixa toca no próprio volume.</string>
+    <string name="export_solo_continue">Continuar</string>
 
     <string name="helpline_icon">Ícone da caixa de alerta</string>
     <string name="tv_alertDialog_text">Excluir [TÍTULO DA MÚSICA]?</string>

@@ -521,6 +521,41 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         stemFx.clear();
     }
 
+    // ---- Solo ----
+    // Set of soloed stems; while not empty, every other stem is silenced by the
+    // engine's solo gate (volumes untouched). In memory only, like the FX:
+    // cleared on every load, on stop and in the car.
+    private final java.util.Set<String> soloStems = new java.util.LinkedHashSet<>();
+
+    public boolean isSoloActive()          { return !soloStems.isEmpty(); }
+    public boolean isSoloed(String stem)   { return soloStems.contains(stem); }
+
+    /** True when the stem is silent because other stems are soloed. */
+    public boolean isSilencedBySolo(String stem) {
+        return !soloStems.isEmpty() && !soloStems.contains(stem);
+    }
+
+    /** Adds or removes [stems] from the solo set and updates the engine. */
+    public void setSoloed(java.util.Collection<String> stems, boolean soloed) {
+        for (String s : stems) {
+            if (!stemTracks.containsKey(s)) continue;
+            if (soloed) soloStems.add(s); else soloStems.remove(s);
+        }
+        applySolo();
+    }
+
+    public void clearSolo() {
+        soloStems.clear();
+        applySolo();
+    }
+
+    private void applySolo() {
+        if (engine == null) return;
+        for (java.util.Map.Entry<String, Integer> e : stemTracks.entrySet()) {
+            engine.setTrackSoloMuted(e.getValue(), isSilencedBySolo(e.getKey()));
+        }
+    }
+
     // Compat wrappers for the legacy code path (4 stems). Return -1 when the stem is missing.
     private int trackOrMinus1(String stem) {
         Integer t = stemTracks.get(stem); return t == null ? -1 : t;
@@ -730,8 +765,9 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     /** Applies a decoded song to the service state (main thread). */
     private void commitSong(DecodedSong song, String songName, int songId) {
         engine = song.engine;
-        // FX never carry over to another song.
+        // FX and solo never carry over to another song.
         stemFx.clear();
+        soloStems.clear();
         fxBpm = 0f;
         stemTracks.clear();
         stemTracks.putAll(song.stems);
@@ -1007,6 +1043,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         if (engine == null) return;
         cancelCarFades();
         clearAllFx();
+        clearSolo();
         for (java.util.Map.Entry<String, Integer> e : stemTracks.entrySet()) {
             float g = carTargetGain(e.getKey());
             carGain.put(e.getKey(), g);
@@ -1100,6 +1137,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         stemTracks.clear();
         stemOrder.clear();
         stemFx.clear();
+        soloStems.clear();
         metronomeTrack = metronomeHalfTrack = metronomeDoubleTrack = -1;
     }
 

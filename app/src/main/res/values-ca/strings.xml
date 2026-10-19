@@ -124,6 +124,9 @@
     <string name="export_permission_title">Permís d\'emmagatzematge</string>
     <string name="export_permission_body">Per desar exportacions, Fision necessita accés a tots els fitxers. S\'obriran els Ajustaments — activa l\'accés i torna a l\'app.</string>
     <string name="export_permission_continue">Obrir Ajustaments</string>
+    <string name="export_solo_title">Solo actiu</string>
+    <string name="export_solo_body">L\'exportació ignora el solo: cada pista sona amb el seu volum.</string>
+    <string name="export_solo_continue">Continua</string>
 
     <string name="helpline_icon">Icona de diàleg d\'alerta</string>
     <string name="tv_alertDialog_text">Vols suprimir [SONG TITLE]?</string>

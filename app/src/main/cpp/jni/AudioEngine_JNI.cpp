@@ -177,6 +177,12 @@ Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrack3DMuted(JNIEnv*, jclass,
     asEngine(h)->setTrack3DMuted(id, muted == JNI_TRUE);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_jotapeveloper_fision_AudioEngine_nativeSetTrackSoloMuted(JNIEnv*, jclass, jlong h, jint id, jboolean muted){
+    if (h == 0) return;
+    asEngine(h)->setTrackSoloMuted(id, muted == JNI_TRUE);
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_jotapeveloper_fision_AudioEngine_nativeInitHrtf(JNIEnv* env, jclass, jlong h, jobject assetMgrJava, jstring assetPath_){
     if (h == 0) return JNI_FALSE;

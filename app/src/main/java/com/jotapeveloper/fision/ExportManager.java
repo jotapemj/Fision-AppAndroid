@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>Pitch and tempo are NOT applied to exports in this version (would
  *       require plugging the engine in offline mode, out of scope here).
  *       Volume and pan are applied.</li>
- *   <li>Output folder: {@code Fision/<ArtistTitle>/} at the root of external
- *       storage. Each file has a timestamp to avoid overwrite.</li>
+ *   <li>Output folder: {@code Music/Fision/<ArtistTitle>/} in the shared
+ *       Music folder. Each file has a timestamp to avoid overwrite.</li>
  *   <li>MP3 has no native encoder on Android — the caller must handle that (toast).</li>
  * </ul>
  */
@@ -55,9 +55,10 @@ public class ExportManager {
         if (worker != null) worker.interrupt();
     }
 
-    /** Base output folder: {@code Fision/<ArtistTitle>/}. Created when missing. */
+    /** Base output folder: {@code Music/Fision/<ArtistTitle>/}. Created when missing. */
     public static File outputFolderFor(String displayName) {
-        File root = new File(Environment.getExternalStorageDirectory(), "Fision");
+        File music = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+        File root = new File(music, "Fision");
         File song = new File(root, sanitize(displayName));
         if (!song.exists()) song.mkdirs();
         return song;

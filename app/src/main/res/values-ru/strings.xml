@@ -119,6 +119,9 @@
     <string name="export_permission_title">Нужен доступ к хранилищу</string>
     <string name="export_permission_body">Чтобы сохранять экспорт, разрешите Fision доступ ко всем файлам. Откроются системные настройки: включите доступ для Fision и вернитесь.</string>
     <string name="export_permission_continue">Открыть настройки</string>
+    <string name="export_solo_title">Соло включено</string>
+    <string name="export_solo_body">Экспорт не учитывает соло: каждая дорожка звучит со своей громкостью.</string>
+    <string name="export_solo_continue">Продолжить</string>
 
     <string name="helpline_icon">Значок предупреждения</string>
     <string name="tv_alertDialog_text">Удалить [НАЗВАНИЕ ПЕСНИ]?</string>

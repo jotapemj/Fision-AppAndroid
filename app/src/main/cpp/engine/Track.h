@@ -35,6 +35,9 @@ public:
     // Per-stem mute inside 3D mode (independent from the user sliders). When
     // muted, apply3D / apply3D_Hrtf output silence for this stem.
     void set3DMuted(bool m);
+    // Solo gate: silenced while another stem is soloed. Independent from the
+    // user volume and from 3D; ramps over SOLO_RAMP_MS so toggling never clicks.
+    void setSoloMuted(bool m){ mSoloMuted.store(m, std::memory_order_release); }
     // Engine-controlled "duck" multiplier (independent of the user volume).
     // Output_final = sample * mVolL/R * mEngineDuckMul. Atomic, lock-free.
     void  setEngineDuckMul(float m){ mEngineDuckMul.store(m, std::memory_order_release); }
@@ -136,6 +139,11 @@ private:
     // Independent 3D mute: not coupled to mVolL/R, so muting a stem in 3D does
     // not change the value shown by its normal slider outside 3D mode.
     std::atomic<bool>  m3DMuted{false};
+    // Solo gate (see setSoloMuted). mSoloGain is the ramped gain, audio thread only.
+    static constexpr float SOLO_RAMP_MS = 20.f;
+    std::atomic<bool>  mSoloMuted{false};
+    float mSoloGain = 1.f;
+    void applySoloGate(float* interleaved, int frames);
     // Circular per-channel delay lines (fixed, generous size). 96 samples cover
     // >= 2ms at 48kHz — MORE than enough for the maximum ITD (~660us / ~32 samples).
     static constexpr int DELAY_BUF_SIZE = 128;

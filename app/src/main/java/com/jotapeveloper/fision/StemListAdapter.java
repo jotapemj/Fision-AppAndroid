@@ -58,6 +58,8 @@ public class StemListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     // Alpha applied to the icon when the stem is muted (volume 0)
     public static final float ALPHA_DISABLED = 0.35f;
     public static final float ALPHA_ACTIVE   = 1.0f;
+    // Slider alpha of a stem silenced by another stem's solo
+    private static final float SOLO_SILENCED_ALPHA = 0.5f;
     // Compat: a legacy caller still uses disabledColor() to tint some text views
     private static final int COLOR_DISABLED = Color.argb(255, 100, 100, 100);
 
@@ -144,10 +146,60 @@ public class StemListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         bindStem((ViewHolder) holder, position);
     }
 
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position,
+                                 @NonNull java.util.List<Object> payloads) {
+        if (payloads.isEmpty() || !payloads.contains(PlayerActivity.PAYLOAD_SOLO)) {
+            onBindViewHolder(holder, position);
+            return;
+        }
+        if (holder instanceof DrumsetHeaderViewHolder) {
+            applyDrumsetSoloLook((DrumsetHeaderViewHolder) holder);
+            return;
+        }
+        StemListData data = stemAt(position);
+        if (data != null) applySoloLook((ViewHolder) holder, data.getStemType());
+    }
+
+    private java.util.List<String> drumPartNames() {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (StemListData d : drumStems) names.add(d.getStemType());
+        return names;
+    }
+
+    /** Solo look of a stem row: accent icon when soloed; icon and slider dimmed
+     *  while silenced by another solo (the slider stays usable). */
+    private void applySoloLook(ViewHolder h, String stem) {
+        boolean soloed = ParentActivity.isStemSoloed(stem);
+        h.iv_stemIcon.setImageTintList(soloed ? accentTint(h.itemView.getContext()) : null);
+        h.iv_stemIcon.setAlpha(ParentActivity.stemIconAlpha(stem, ParentActivity.getStemVolume(stem)));
+        float rowAlpha = editingLocked ? 0.35f
+                : ParentActivity.isStemSilencedBySolo(stem) ? SOLO_SILENCED_ALPHA : 1f;
+        h.sb_stemVol.setAlpha(rowAlpha);
+    }
+
+    /** Same look on the drum kit header, for the drum parts as a group. */
+    private void applyDrumsetSoloLook(DrumsetHeaderViewHolder h) {
+        java.util.List<String> parts = drumPartNames();
+        h.iv_drumsetIcon.setImageTintList(ParentActivity.areStemsSoloed(parts)
+                ? accentTint(h.itemView.getContext()) : null);
+        h.iv_drumsetIcon.setAlpha(ParentActivity.areStemsSilencedBySolo(parts)
+                ? ALPHA_DISABLED : ALPHA_ACTIVE);
+    }
+
+    private static android.content.res.ColorStateList accentTint(Context ctx) {
+        return android.content.res.ColorStateList.valueOf(
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx));
+    }
+
     private void bindDrumsetHeader(DrumsetHeaderViewHolder h) {
         h.iv_chevron.setImageResource(drumsetExpanded
                 ? R.drawable.ic_expanded : R.drawable.ic_collapsed);
         h.itemView.setOnClickListener(v -> toggleDrumset());
+        h.iv_drumsetIcon.setOnClickListener(v ->
+                ParentActivity.showDrumsetActionMenu(v, drumPartNames()));
+        h.iv_drumsetIcon.setEnabled(!editingLocked);
+        applyDrumsetSoloLook(h);
     }
 
     private void toggleDrumset() {
@@ -189,7 +241,6 @@ public class StemListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         // to saved afterwards). Prevents the "saved → 0 → animated" flash.
         int savedVol = ParentActivity.getStemVolume(stem);
         holder.sb_stemVol.setValue(animateInitial ? 0f : savedVol);
-        holder.iv_stemIcon.setAlpha(savedVol == 0 ? ALPHA_DISABLED : ALPHA_ACTIVE);
 
         // Slider changes → apply to engine + persist (only when fromUser)
         holder.sb_stemVol.addOnChangeListener((slider, value, fromUser) -> {
@@ -217,9 +268,10 @@ public class StemListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         holder.ib_options.setEnabled(interactive);
         holder.iv_stemIcon.setEnabled(interactive);
         float rowAlpha = interactive ? 1f : 0.35f;
-        holder.sb_stemVol.setAlpha(rowAlpha);
         holder.ib_restoreVol.setAlpha(rowAlpha);
         holder.ib_options.setAlpha(rowAlpha);
+        // Icon alpha/tint and slider alpha (mute, solo, 3D lock).
+        applySoloLook(holder, stem);
 
         // Visual indent for drum-parts (children of the drum kit header)
         boolean isDrumChild = StemSpec.isDrumPart(stem);

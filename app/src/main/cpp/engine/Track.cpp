@@ -91,6 +91,22 @@ void Track::set3DMuted(bool m){
     m3DMuted.store(m, std::memory_order_release);
 }
 
+void Track::applySoloGate(float* buf, int frames){
+    const float target = mSoloMuted.load(std::memory_order_acquire) ? 0.f : 1.f;
+    if (mSoloGain == target) {
+        if (target == 0.f) std::fill_n(buf, frames * mOutCh, 0.f);
+        return;
+    }
+    // Linear ramp toward the target, then hold.
+    const float step = 1000.f / (SOLO_RAMP_MS * (float)std::max(1, mDevSR));
+    for (int i = 0; i < frames; ++i) {
+        mSoloGain = target > mSoloGain ? std::min(target, mSoloGain + step)
+                                       : std::max(target, mSoloGain - step);
+        buf[2 * i]     *= mSoloGain;
+        buf[2 * i + 1] *= mSoloGain;
+    }
+}
+
 void Track::setHrtfBank(const HrtfBank* b){
     mHrtfBank = b;
     if (b && b->isLoaded()) {
@@ -184,6 +200,7 @@ int Track::render(float* out, int32_t numFrames, bool forceST){
             const float L = mVolL.load() * dm, R = mVolR.load() * dm;
             for(int i=0;i<got;i++){ out[2*i+0] = res[2*i+0]*L; out[2*i+1] = res[2*i+1]*R; }
         }
+        applySoloGate(out, got);
         if(got < numFrames){ std::fill(out+2*got, out+2*numFrames, 0.f); }
         mPositionMs.store((int64_t) llround(mSrcPos * 1000.0 / (double)mSrcSR),
                           std::memory_order_release);
@@ -256,6 +273,7 @@ int Track::render(float* out, int32_t numFrames, bool forceST){
         const float L = mVolL.load() * dm, R = mVolR.load() * dm;
         for(int i=0;i<produced;i++){ stTmp[2*i+0] *= L; stTmp[2*i+1] *= R; }
     }
+    applySoloGate(stTmp.data(), produced);
 
     // copy to out and pad with zeros if missing
     std::copy_n(stTmp.data(), produced*mOutCh, out);

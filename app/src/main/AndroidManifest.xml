@@ -21,7 +21,7 @@
     <!-- Haptic feedback for the ruler pickers (pitch/tempo). -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- Storage to Export to /Fision/<song>/ at the root of storage.
+    <!-- Storage to Export to Music/Fision/<song>/ in shared storage.
          API <= 28: WRITE_EXTERNAL_STORAGE (declared with maxSdkVersion).
          API >= 30: MANAGE_EXTERNAL_STORAGE — must be granted manually in system
          Settings (the special "All files access" screen). Without it, the export

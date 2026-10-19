@@ -730,8 +730,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
                 // Push the final volume to the engine at once — the animation is visual only
                 applyStemVolumeToEngine(stem);
-                svh.iv_stemIcon.setAlpha(targetValue == 0
-                        ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
+                svh.iv_stemIcon.setAlpha(stemIconAlpha(stem, targetValue));
 
                 // The bind already left the slider at 0 (animateInitial=true). Animate 0 → target.
                 ObjectAnimator anim = ObjectAnimator.ofFloat(svh.sb_stemVol, "value", 0f, (float) targetValue);
@@ -1742,7 +1741,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     //   SEP_FORMAT     : format (no metronome checkbox — separates never have it).
     //   STEM_FORMAT    : format + "Include metronome" checkbox (per-stem).
     //   PROGRESS       : ProgressBar + Cancel.
-    private enum WizardStep { PERM, MIX_OR_SEP, MIX_VOLUME, MIX_FORMAT, SEP_FORMAT, STEM_FORMAT, PROGRESS }
+    private enum WizardStep { PERM, SOLO_WARNING, MIX_OR_SEP, MIX_VOLUME, MIX_FORMAT, SEP_FORMAT, STEM_FORMAT, PROGRESS }
 
     private ExportManager activeExporter;
     private androidx.appcompat.app.AlertDialog wizardDialog;
@@ -1767,7 +1766,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         pendingSingleStem  = null;
         pendingIncludeMetronome = false;
         pendingIncludeFx = true;
-        WizardStep first = needsAllFilesPermission() ? WizardStep.PERM : WizardStep.MIX_OR_SEP;
+        // The export ignores the solo: warned first, inside the same wizard.
+        boolean solo = playbackService != null && playbackService.isSoloActive();
+        WizardStep first = needsAllFilesPermission() ? WizardStep.PERM
+                : solo ? WizardStep.SOLO_WARNING : WizardStep.MIX_OR_SEP;
         openWizard(first);
     }
 
@@ -1859,6 +1861,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             wizardBackBtn.setVisibility(wizardStack.size() > 1 ? View.VISIBLE : View.INVISIBLE);
             switch (step) {
                 case PERM:        buildStepPerm();        break;
+                case SOLO_WARNING: buildStepSoloWarning(); break;
                 case MIX_OR_SEP:  buildStepMixOrSep();    break;
                 case MIX_VOLUME:  buildStepMixVolume();   break;
                 case MIX_FORMAT:  buildStepFormat(/*separate=*/false, /*stem=*/false); break;
@@ -1903,6 +1906,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 startActivity(it);
             } catch (Exception ignored) {}
         });
+    }
+
+    private void buildStepSoloWarning() {
+        wizardTitle.setText(R.string.export_solo_title);
+        TextView body = new TextView(this);
+        body.setText(R.string.export_solo_body);
+        body.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.AppWhite));
+        body.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+        body.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular));
+        float density = getResources().getDisplayMetrics().density;
+        body.setPadding((int)(8*density),(int)(4*density),(int)(8*density),(int)(12*density));
+        wizardOptions.addView(body);
+        addOptionRow(getString(R.string.export_solo_continue), false,
+                () -> pushWizardStep(WizardStep.MIX_OR_SEP));
     }
 
     private void buildStepMixOrSep() {
@@ -4465,8 +4482,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // crosses value=0). The alpha is set once by the adapter bind based
         // on the saved value.
         if (icon != null && (fromUser || !stemInitialAnimating(stem))) {
-            icon.setAlpha(newVol == 0 ? StemListAdapter.ALPHA_DISABLED
-                                      : StemListAdapter.ALPHA_ACTIVE);
+            icon.setAlpha(stemIconAlpha(stem, newVol));
         }
         if (!fromUser) return;
 
@@ -4485,34 +4501,73 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         animateSliderTo(slider, defaultVol);
         s.volume = defaultVol;
         stemLastVol.put(stem, defaultVol);
-        if (icon != null) icon.setAlpha(StemListAdapter.ALPHA_ACTIVE);
+        if (icon != null) icon.setAlpha(stemIconAlpha(stem, defaultVol));
         applyStemVolumeToEngine(stem);
         persistStemSettings();
     }
 
-    /** Stem currently soloed (null if none) + snapshot of previous volumes before
-     *  entering solo, so they can be restored on un-solo. */
-    private String soloedStem = null;
-    private java.util.Map<String, Integer> preSoloVolumes = null;
+    // === Solo ===
+    // The solo set lives in the service (PlaybackService.setSoloed): the engine
+    // silences the other stems with its solo gate and the volumes stay as they
+    // are, so sliders keep working during a solo and un-soloing plays each stem
+    // at its current slider. Not persisted.
 
-    /** Click on the stem icon: shows contextual menu (Solo / Mute) anchored
-     *  to the icon itself. Replaces the previous direct toggle. */
+    /** Adapter payload: refresh only the solo look (no slider rebind). */
+    static final Object PAYLOAD_SOLO = new Object();
+
+    public boolean isStemSoloed(String stem) {
+        return playbackService != null && playbackService.isSoloed(stem);
+    }
+
+    /** True when the stem is silent because other stems are soloed. */
+    public boolean isStemSilencedBySolo(String stem) {
+        return playbackService != null && playbackService.isSilencedBySolo(stem);
+    }
+
+    /** True when every stem of [stems] is soloed. */
+    public boolean areStemsSoloed(java.util.List<String> stems) {
+        if (stems.isEmpty()) return false;
+        for (String s : stems) if (!isStemSoloed(s)) return false;
+        return true;
+    }
+
+    /** True when every stem of [stems] is silenced by a solo elsewhere. */
+    public boolean areStemsSilencedBySolo(java.util.List<String> stems) {
+        if (stems.isEmpty()) return false;
+        for (String s : stems) if (!isStemSilencedBySolo(s)) return false;
+        return true;
+    }
+
+    /** Icon alpha in the stem list: dimmed when muted (volume 0) or silenced by a solo. */
+    public float stemIconAlpha(String stem, int volume) {
+        return volume == 0 || isStemSilencedBySolo(stem)
+                ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE;
+    }
+
+    /** Click on the stem icon: contextual menu (Solo / Mute) anchored to the icon. */
     public void showStemActionMenu(View anchor, String stem, Slider slider,
                                    android.widget.ImageView icon) {
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View menu = inflater.inflate(R.layout.stem_context_menu, null);
+        StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
+        showSoloMenu(anchor, java.util.Collections.singletonList(stem), ss.volume == 0,
+                () -> onStemMuteToggle(stem, slider, icon));
+    }
+
+    /** Click on the drum kit header icon: Solo of every drum part at once. */
+    public void showDrumsetActionMenu(View anchor, java.util.List<String> drumParts) {
+        showSoloMenu(anchor, drumParts, false, null);
+    }
+
+    /** Solo / Mute popup. [onMute] null hides the Mute entry. */
+    private void showSoloMenu(View anchor, java.util.List<String> stems, boolean muted,
+                              @androidx.annotation.Nullable Runnable onMute) {
+        View menu = LayoutInflater.from(this).inflate(R.layout.stem_context_menu, null);
         TextView tvSolo = menu.findViewById(R.id.tv_stemMenuSolo);
         TextView tvMute = menu.findViewById(R.id.tv_stemMenuMute);
-
-        // Highlight Solo in colorPrimary if this stem is soloed (visual toggle)
-        if (stem.equals(soloedStem)) {
-            tvSolo.setTextColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
-        }
-        // Same for Mute: if the stem is muted, highlight Mute in green
-        StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
-        if (ss.volume == 0) {
-            tvMute.setTextColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
-        }
+        int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        // Active states in the accent.
+        if (areStemsSoloed(stems)) tvSolo.setTextColor(accent);
+        if (onMute == null) tvMute.setVisibility(View.GONE);
+        else if (muted) tvMute.setTextColor(accent);
 
         android.widget.PopupWindow popup = new android.widget.PopupWindow(menu,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -4525,60 +4580,44 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         tvSolo.setOnClickListener(v -> {
             popup.dismiss();
-            toggleStemSolo(stem);
+            toggleSolo(stems);
         });
-        tvMute.setOnClickListener(v -> {
-            popup.dismiss();
-            onStemMuteToggle(stem, slider, icon);
-        });
-
+        if (onMute != null) {
+            tvMute.setOnClickListener(v -> {
+                popup.dismiss();
+                onMute.run();
+            });
+        }
         popup.showAsDropDown(anchor, 0, 0);
     }
 
-    /** Solo toggle: mutes every other stem and leaves this one playing. Pressing
-     *  Solo again on the same stem restores the volumes that were active before the first solo. */
-    private void toggleStemSolo(String stem) {
-        java.util.List<String> order = playbackService != null
-                ? playbackService.getStemOrder() : java.util.Collections.emptyList();
-        if (stem.equals(soloedStem)) {
-            // Des-solo: restaurar snapshot
-            if (preSoloVolumes != null) {
-                for (String s : order) {
-                    Integer v = preSoloVolumes.get(s);
-                    if (v == null) continue;
-                    setStemVolumeAnimated(s, v, order);
-                }
-                preSoloVolumes = null;
-            }
-            soloedStem = null;
-        } else {
-            // Snapshot only the first time — when switching from one solo to another, keep
-            // the actual pre-first-solo state.
-            if (preSoloVolumes == null) {
-                preSoloVolumes = new java.util.HashMap<>();
-                for (String s : order) {
-                    StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, s);
-                    preSoloVolumes.put(s, ss.volume);
-                }
-            }
-            for (String s : order) {
+    /** Adds [stems] to the solo set, or removes them when all are soloed
+     *  already. Several stems can be soloed at once; removing the last one
+     *  brings every stem back. A soloed stem at volume 0 returns to its last level. */
+    private void toggleSolo(java.util.List<String> stems) {
+        if (playbackService == null) return;
+        boolean on = !areStemsSoloed(stems);
+        playbackService.setSoloed(stems, on);
+        if (on) {
+            java.util.List<String> order = playbackService.getStemOrder();
+            boolean changed = false;
+            for (String s : stems) {
                 StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, s);
-                int target;
-                if (s.equals(stem)) {
-                    if (ss.volume == 0) {
-                        Integer prev = stemLastVol.get(s);
-                        target = (prev != null && prev > 0) ? prev : 75;
-                    } else {
-                        target = ss.volume;
-                    }
-                } else {
-                    target = 0;
-                }
-                setStemVolumeAnimated(s, target, order);
+                if (ss.volume > 0) continue;
+                Integer prev = stemLastVol.get(s);
+                setStemVolumeAnimated(s, (prev != null && prev > 0) ? prev : 75, order);
+                changed = true;
             }
-            soloedStem = stem;
+            if (changed) persistStemSettings();
         }
-        persistStemSettings();
+        refreshSoloLook();
+    }
+
+    /** Repaints the solo state of every bound row (no slider rebind). */
+    private void refreshSoloLook() {
+        if (stemsAdapter != null) {
+            stemsAdapter.notifyItemRangeChanged(0, stemsAdapter.getItemCount(), PAYLOAD_SOLO);
+        }
     }
 
     /** Applies volume to a stem: updates model + engine + animates the matching
@@ -4586,6 +4625,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void setStemVolumeAnimated(String stem, int target, java.util.List<String> order) {
         StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
         ss.volume = target;
+        if (target > 0) stemLastVol.put(stem, target);
         applyStemVolumeToEngine(stem);
         if (rvStems == null || stemsAdapter == null) return;
         int idx = stemsAdapter.adapterPositionForStem(stem);
@@ -4594,8 +4634,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (!(vh instanceof StemListAdapter.ViewHolder)) return;
         StemListAdapter.ViewHolder svh = (StemListAdapter.ViewHolder) vh;
         animateSliderTo(svh.sb_stemVol, target);
-        svh.iv_stemIcon.setAlpha(target == 0
-                ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
+        svh.iv_stemIcon.setAlpha(stemIconAlpha(stem, target));
     }
 
     /** Click on the stem icon: mute if playing, restore if muted. */
@@ -4605,13 +4644,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             stemLastVol.put(stem, s.volume);
             animateSliderTo(slider, 0);
             s.volume = 0;
-            if (icon != null) icon.setAlpha(StemListAdapter.ALPHA_DISABLED);
+            if (icon != null) icon.setAlpha(stemIconAlpha(stem, 0));
         } else {
             Integer prev = stemLastVol.get(stem);
             int restoreTo = (prev != null && prev > 0) ? prev : 75;
             animateSliderTo(slider, restoreTo);
             s.volume = restoreTo;
-            if (icon != null) icon.setAlpha(StemListAdapter.ALPHA_ACTIVE);
+            if (icon != null) icon.setAlpha(stemIconAlpha(stem, restoreTo));
         }
         applyStemVolumeToEngine(stem);
         persistStemSettings();
@@ -5569,8 +5608,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         for (java.util.Map.Entry<String, android.widget.ImageView> e : stem3DIcons.entrySet()) {
             String stem = e.getKey();
             android.widget.ImageView iv = e.getValue();
-            float alphaTarget = is3DStemMuted(stem)
-                    ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE;
+            float alphaTarget = iconAlphaFor(stem);
             float[] pos = stem3DPositions.get(stem);
             float distance = pos != null
                     ? (float) Math.sqrt(pos[0]*pos[0] + pos[1]*pos[1])
@@ -6088,8 +6126,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     break;
                 case LONG_PRESS:
                     toggle3DStemMute(id);
-                    boolean muted = is3DStemMuted(id);
-                    audio3DScene.setStemMuted(id, muted);
+                    audio3DScene.setStemMuted(id, is3DStemMuted(id) || isStemSilencedBySolo(id));
                     break;
                 case DOUBLE_TAP:
                     toggle3DStemOmnipresentScene(id);
@@ -6101,7 +6138,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 ? playbackService.getStemOrder() : java.util.Collections.emptyList();
         for (String stem : orderNow) {
             StemSetting ss0 = StemSettingsCodec.getOrDefault(stemSettings, stem);
-            if (ss0.mute3D) audio3DScene.setStemMuted(stem, true);
+            if (ss0.mute3D || isStemSilencedBySolo(stem)) audio3DScene.setStemMuted(stem, true);
             if (ss0.omnipresent) audio3DScene.setStemOmnipresent(stem, true);
         }
     }
@@ -6659,7 +6696,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             ss.pos3DX = nxT;
             ss.pos3DY = nyT;
             applyOmnipresentTint(iv, false);
-            iv.setAlpha(StemListAdapter.ALPHA_ACTIVE);
+            iv.setAlpha(iconAlphaFor(stem));
             Integer trackId = playbackService != null ? playbackService.getStemTrack(stem) : null;
             if (trackId != null && engine != null) engine.setTrack3DMuted(trackId, false);
 
@@ -6738,7 +6775,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 audio3DScene.updateStemPose(stem, az, h, dist);
             });
             va.start();
-            audio3DScene.setStemMuted(stem, false);
+            audio3DScene.setStemMuted(stem, isStemSilencedBySolo(stem));
             audio3DScene.setStemOmnipresent(stem, false);
         }
         selected3DStem = null;
@@ -7086,8 +7123,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
+    /** 3D icon alpha: dimmed when muted in 3D or silenced by a solo. */
     private float iconAlphaFor(String stem) {
-        return is3DStemMuted(stem) ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE;
+        return is3DStemMuted(stem) || isStemSilencedBySolo(stem)
+                ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE;
     }
 
     /** "Lights off / lights on" effect when toggling the Audio 3D switch.
@@ -7124,8 +7163,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  outside 3D). The engine's Track applies the flag inside apply3D /
      *  apply3D_Hrtf; the normal setVolume path is unused here. */
     private void toggle3DStemMute(String stem, View icon) {
-        boolean nowMuted = toggle3DStemMute(stem);
-        icon.setAlpha(nowMuted ? StemListAdapter.ALPHA_DISABLED : StemListAdapter.ALPHA_ACTIVE);
+        toggle3DStemMute(stem);
+        icon.setAlpha(iconAlphaFor(stem));
     }
 
     /** Core toggle without the flat-mode icon. Returns the new mute state. */
@@ -7255,9 +7294,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void resetStemsToDefault() {
         java.util.List<String> order = playbackService != null
                 ? playbackService.getStemOrder() : java.util.Collections.emptyList();
-        // Exit solo if it was active
-        soloedStem = null;
-        preSoloVolumes = null;
+        if (playbackService != null) playbackService.clearSolo();
+        refreshSoloLook();
         // 3D poses: with the 3D view open its reset animates the icons home and
         // saves the default poses; otherwise the saved poses are cleared.
         boolean animate3D = is3DViewShown;

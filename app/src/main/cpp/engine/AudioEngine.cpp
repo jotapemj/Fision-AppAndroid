@@ -151,6 +151,9 @@ void AudioEngine::setTrackReverbSend(int id, float s, int room){
 void AudioEngine::setTrack3DMuted(int id, bool m){
     if(id>=0 && id<(int)mTracks.size()) mTracks[id]->set3DMuted(m);
 }
+void AudioEngine::setTrackSoloMuted(int id, bool m){
+    if(id>=0 && id<(int)mTracks.size()) mTracks[id]->setSoloMuted(m);
+}
 
 int64_t AudioEngine::getOutputLatencyMs() const {
     if (!mStream) return 0;

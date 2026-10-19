@@ -66,6 +66,11 @@ public class AudioEngine {
     public void setTrack3DMuted(int trackId, boolean muted) {
         nativeSetTrack3DMuted(handle, trackId, muted);
     }
+    /** Solo gate: silences the stem while another one is soloed, with a short
+     *  ramp. Independent from the volume and from 3D. */
+    public void setTrackSoloMuted(int trackId, boolean muted) {
+        nativeSetTrackSoloMuted(handle, trackId, muted);
+    }
 
     /** Envelope hop of {@link #getTrackEnvelope}. */
     public static final int ENVELOPE_HOP_MS = 10;
@@ -126,6 +131,7 @@ public class AudioEngine {
     private static native void    nativeSetTrack3DPosition(long h, int id, float azimuthRad, float distance, float elevationDeg);
     private static native void    nativeSetTrack3DOmnipresent(long h, int id, boolean omni);
     private static native void    nativeSetTrack3DMuted(long h, int id, boolean muted);
+    private static native void    nativeSetTrackSoloMuted(long h, int id, boolean muted);
     private static native boolean nativeInitHrtf(long h, android.content.res.AssetManager mgr, String assetPath);
 }
 

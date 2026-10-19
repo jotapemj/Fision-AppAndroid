@@ -13,7 +13,7 @@ namespace fx {
 // ---------------------------------------------------------------------------
 // Bipolar filter: amount in [-1, 1]. 0 = bypass, negative = low-pass sweeping
 // down from 20 kHz to 200 Hz, positive = high-pass sweeping up from 20 Hz to
-// 5 kHz. Topology-preserving state-variable filter (stable under modulation),
+// 15 kHz. Topology-preserving state-variable filter (stable under modulation),
 // fixed gentle resonance. The amount is smoothed so sweeps do not zipper.
 // ---------------------------------------------------------------------------
 class Filter {
@@ -37,7 +37,7 @@ public:
             if (target == 0.f && std::fabs(mS) < 0.002f) { mActive = false; return; }
             const float a = std::fabs(mS);
             const bool high = mS > 0.f;
-            float fc = high ? 20.f * std::pow(250.f, a) : 20000.f * std::pow(0.01f, a);
+            float fc = high ? 20.f * std::pow(750.f, a) : 20000.f * std::pow(0.01f, a);
             fc = std::min(fc, 0.45f * (float)sr);
             const float g  = std::tan((float)M_PI * fc / (float)sr);
             const float k  = 1.0f;                 // Q = 1: soft resonance
@@ -108,6 +108,7 @@ public:
         const float wet = 0.75f;
         float wantDelay = mDelaySrcMs.load(std::memory_order_relaxed) * 0.001f
                           * (float)sr / std::max(0.25f, tempo);
+        if (!(wantDelay >= 1.f)) wantDelay = 1.f;   // also NaN, which clamp lets through
         wantDelay = std::clamp(wantDelay, 1.f, (float)(mLen - 3));
         if (mDelay < 0.f) mDelay = wantDelay;
         const float amtCoef   = 1.f - std::exp(-1.f / (0.03f * (float)sr));
@@ -116,11 +117,15 @@ public:
         for (int i = 0; i < frames; ++i) {
             mAmt   += (target - mAmt) * amtCoef;
             mDelay += (wantDelay - mDelay) * delayCoef;
-            float rp = (float)mW - mDelay;
-            if (rp < 0.f) rp += (float)mLen;
-            const int   r0 = (int)rp;
+            // Double: in float, a tiny negative position plus mLen rounds to
+            // mLen itself, one frame past the end of the line.
+            double rp = (double)mW - (double)mDelay;
+            if (rp < 0.0) rp += (double)mLen;
+            int r0 = (int)rp;
+            if (r0 >= mLen) { r0 -= mLen; rp -= (double)mLen; }
+            if (r0 < 0) { r0 = 0; rp = 0.0; }
             const int   r1 = (r0 + 1) % mLen;
-            const float fr = rp - (float)r0;
+            const float fr = (float)(rp - (double)r0);
             for (int c = 0; c < 2; ++c) {
                 const float y = mBuf[2 * r0 + c] + (mBuf[2 * r1 + c] - mBuf[2 * r0 + c]) * fr;
                 // Darker repeats: one-pole low-pass in the feedback path.

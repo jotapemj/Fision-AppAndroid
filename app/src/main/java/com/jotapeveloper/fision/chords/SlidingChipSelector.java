@@ -26,6 +26,9 @@ public class SlidingChipSelector extends View {
 
     public interface OnSelectedListener { void onSelected(int index); }
 
+    /** A label ending in this is a dotted value; the dot is drawn, not typed. */
+    public static final String DOT = "·";
+
     private String[] options = new String[0];
     private int selected = 0;
     /** Chip position in option units (animated). */
@@ -125,13 +128,30 @@ public class SlidingChipSelector extends View {
         r.set(left + chipPos * seg, top, left + (chipPos + 1) * seg, top + h);
         c.drawRoundRect(r, rad, rad, chip);
         float ty = top + h / 2f - (text.descent() + text.ascent()) / 2f;
+        float d = getResources().getDisplayMetrics().density;
         for (int i = 0; i < n; i++) {
             // Label turns black while the chip covers it (crossfade by overlap).
             float cover = Math.max(0f, 1f - Math.abs(chipPos - i));
             text.setTypeface(cover > 0.5f ? bold : regular);
             int v = (int) (255 * (1f - cover));
             text.setColor(Color.argb(cover > 0.5f ? 255 : 210, v, v, v));
-            c.drawText(options[i], left + (i + 0.5f) * seg, ty, text);
+            float cx = left + (i + 0.5f) * seg;
+            String label = options[i];
+            if (!label.endsWith(DOT)) {
+                c.drawText(label, cx, ty, text);
+                continue;
+            }
+            // Dotted value: the font's middle dot is too small to read, so the
+            // dot is drawn as a round mark at mid-height of the digits, like
+            // the dot after a note. Label and dot are centred as one group.
+            String base = label.substring(0, label.length() - DOT.length());
+            float tw = text.measureText(base);
+            float dotR = (cover > 0.5f ? 1.9f : 1.7f) * d;
+            float gap = 2.2f * d;
+            float total = tw + gap + 2f * dotR;
+            float x0 = cx - total / 2f;
+            c.drawText(base, x0 + tw / 2f, ty, text);
+            c.drawCircle(x0 + tw + gap + dotR, ty - 0.36f * text.getTextSize(), dotR, text);
         }
     }
 }
