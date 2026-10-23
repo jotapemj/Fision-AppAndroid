@@ -1,5 +1,7 @@
 package com.jotapeveloper.fision;
 
+import com.jotapeveloper.fision.onboarding.CoachMarkOverlay;
+import com.jotapeveloper.fision.onboarding.Onboarding;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
@@ -708,6 +710,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // No animation: the first bind ran before this DB load, so rebind
             // now that stemSettings is populated with the saved values.
             if (stemsAdapter != null) stemsAdapter.notifyDataSetChanged();
+            new Handler().postDelayed(this::maybeStartPlayerTour, 900);
             return;
         }
         // animateInitial is already on since setupRecyclerViews — the bind left the
@@ -744,6 +747,58 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             new Handler().postDelayed(() -> stemsAdapter.setAnimateInitial(false),
                     delay * order.size() + 350);
         }
+        // First-visit tour once the sliders have landed.
+        new Handler().postDelayed(this::maybeStartPlayerTour, delay * order.size() + 900L);
+    }
+
+    /** Guided tour of the player, on the first song opened (and after "Show
+     *  the tour again"). Only over the plain stems view, never over a dialog. */
+    private void maybeStartPlayerTour() {
+        if (isDestroyed || isFinishing() || !uiStarted || !hasWindowFocus()) return;
+        if (is3DViewShown || isLyricsViewShown || isChordDiagramShown) return;
+        if (Onboarding.isDone(this, Onboarding.PLAYER)) return;
+        java.util.List<CoachMarkOverlay.Step> steps = new java.util.ArrayList<>();
+        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(findViewById(R.id.chords_container)),
+                R.string.coach_pl_chords_title, R.string.coach_pl_chords_body).corner(14));
+        StemListAdapter.ViewHolder row = null;
+        if (rvStems != null) {
+            for (int i = 0; i < rvStems.getChildCount() && row == null; i++) {
+                RecyclerView.ViewHolder vh = rvStems.getChildViewHolder(rvStems.getChildAt(i));
+                if (vh instanceof StemListAdapter.ViewHolder) row = (StemListAdapter.ViewHolder) vh;
+            }
+        }
+        if (row != null) {
+            steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(row.iv_stemIcon),
+                    R.string.coach_pl_icon_title, R.string.coach_pl_icon_body));
+            steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(row.sb_stemVol, row.ib_restoreVol),
+                    R.string.coach_pl_volume_title, R.string.coach_pl_volume_body));
+            steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(row.ib_options),
+                    R.string.coach_pl_options_title, R.string.coach_pl_options_body));
+        }
+        // The bottom bar in a single step, with a legend of its buttons.
+        CoachMarkOverlay.Step bar = new CoachMarkOverlay.Step(
+                CoachMarkOverlay.views(findViewById(R.id.optionsLayout)),
+                R.string.coach_pl_bar_title, 0).corner(24);
+        int[][] legend = {
+                { R.id.b_repeat,    R.string.coach_pl_bar_repeat },
+                { R.id.b_lyrics,    R.string.coach_pl_bar_lyrics },
+                { R.id.b_pitch,     R.string.coach_pl_bar_pitch },
+                { R.id.b_metronome, R.string.coach_pl_bar_metronome },
+                { R.id.b_chord,     R.string.coach_pl_bar_chords },
+                { R.id.b_3d,        R.string.coach_pl_bar_3d },
+        };
+        for (int[] l : legend) {
+            View v = findViewById(l[0]);
+            if (!(v instanceof MaterialButton) || !v.isShown()) continue;
+            android.graphics.drawable.Drawable icon = ((MaterialButton) v).getIcon();
+            if (icon == null || icon.getConstantState() == null) continue;
+            bar.legend(new CoachMarkOverlay.LegendRow(
+                    icon.getConstantState().newDrawable(getResources()).mutate(), getString(l[1])));
+        }
+        steps.add(bar);
+        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(b_menu),
+                R.string.coach_pl_menu_title, R.string.coach_pl_menu_body));
+        CoachMarkOverlay.start(this, Onboarding.PLAYER, steps);
     }
 
     private void setupTimers(){
@@ -994,11 +1049,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             BufferedReader reader = new BufferedReader(new FileReader(chordFilePath));
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(" ");
+                String[] parts = line.trim().split("\\s+");
                 if (parts.length == 2) {
                     String chord;
                     if ("N".equals(parts[0])){/*chord = "-";*/continue;}else{chord = parts[0];}
-                    float time = Float.parseFloat(parts[1]);
+                    float time;
+                    try { time = Float.parseFloat(parts[1]); }
+                    catch (NumberFormatException e) { continue; }   // malformed line
+                    if (!Float.isFinite(time) || time < 0f) continue;
                     chordList.add(new ChordsFile(chord, time));
                 }
             }

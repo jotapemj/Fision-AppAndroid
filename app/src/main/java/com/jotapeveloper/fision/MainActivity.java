@@ -1,5 +1,7 @@
 package com.jotapeveloper.fision;
 
+import com.jotapeveloper.fision.onboarding.CoachMarkOverlay;
+import com.jotapeveloper.fision.onboarding.Onboarding;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -416,12 +418,51 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // First-run flow: prompt the sign-in dialog on the very first launch. The
         // user can either authenticate against a server or skip into local mode.
         maybeShowFirstRunLogin();
+        // Leftovers of an import cut short (app killed mid copy).
+        new Thread(() -> SongFolderImporter.cleanStaging(getApplicationContext()), "ImportCleanup").start();
     }
 
     /** Shows the login dialog once, on the first ever launch. The dialog itself
      *  transitions the app out of first-run state via AuthManager. */
     private void maybeShowFirstRunLogin() {
-        if (!AuthManager.get(this).isFirstRun()) return;
+        if (!AuthManager.get(this).isFirstRun()) {
+            // Debug builds preview the welcome once per app start, whatever the
+            // session; the choice is then ignored.
+            if (isDebuggable() && !welcomePreviewShown) {
+                welcomePreviewShown = true;
+                startActivity(new Intent(this, WelcomeActivity.class));
+            }
+            return;
+        }
+        welcome.launch(new Intent(this, WelcomeActivity.class));
+    }
+
+    private static boolean welcomePreviewShown = false;
+
+    private boolean isDebuggable() {
+        return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
+    /** First launch: the welcome screens end in a choice; backing out of them closes the app. */
+    private final androidx.activity.result.ActivityResultLauncher<Intent> welcome =
+            registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+                    r -> {
+                        String choice = r.getData() != null
+                                ? r.getData().getStringExtra(WelcomeActivity.EXTRA_CHOICE) : null;
+                        if (r.getResultCode() != RESULT_OK || choice == null) { finish(); return; }
+                        if (WelcomeActivity.CHOICE_LOCAL.equals(choice)) {
+                            AuthManager.get(this).enterLocalMode();
+                            refreshToolbarAvatar();
+                            refreshCloudStatusIcon();
+                            rvSongList.postDelayed(this::maybeStartLibraryTour, 700);
+                        } else {
+                            showFirstRunLogin();
+                        }
+                    });
+
+    /** Server sign-in after the welcome screens; local mode stays offered in the dialog. */
+    private void showFirstRunLogin() {
         // Defer to the next UI cycle so the activity is fully laid out.
         rvSongList.post(() -> {
             if (isFinishing() || isDestroyed()) return;
@@ -431,16 +472,47 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     refreshCloudStatusIcon();
                     CloudRepository.get(MainActivity.this).notifyConfigChanged();
                     CloudRepository.get(MainActivity.this).startPolling();
+                    rvSongList.postDelayed(MainActivity.this::maybeStartLibraryTour, 700);
                 }
                 @Override public void onLocalMode() {
                     refreshToolbarAvatar();
                     refreshCloudStatusIcon();
+                    rvSongList.postDelayed(MainActivity.this::maybeStartLibraryTour, 700);
                 }
                 @Override public void onCancelled() {
                     // No decision yet; keep first_run true so it prompts again next open.
                 }
             });
         });
+    }
+
+    /** Guided tour of the library: first visit after the sign-in decision,
+     *  and again after "Show the tour again" in Settings. Never over a dialog. */
+    private void maybeStartLibraryTour() {
+        if (isFinishing() || isDestroyed() || !hasWindowFocus()) return;
+        AuthManager auth = AuthManager.get(this);
+        if (auth.isFirstRun()) return;
+        if (Onboarding.isDone(this, Onboarding.LIBRARY)) return;
+        boolean local = auth.isLocalMode();
+        java.util.List<CoachMarkOverlay.Step> steps = new java.util.ArrayList<>();
+        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(b_add),
+                local ? R.string.coach_lib_import_title : R.string.coach_lib_add_title,
+                local ? R.string.coach_lib_import_body : R.string.coach_lib_add_body));
+        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(et_find, b_orderBy),
+                R.string.coach_lib_search_title, R.string.coach_lib_search_body).corner(16));
+        View firstSong = rvSongList.getChildCount() > 0 ? rvSongList.getChildAt(0) : null;
+        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(firstSong),
+                R.string.coach_lib_song_title, R.string.coach_lib_song_body).corner(16));
+        steps.add(new CoachMarkOverlay.Step(
+                CoachMarkOverlay.views(bnvMain.findViewById(R.id.tab_playlists)),
+                R.string.coach_lib_playlists_title, R.string.coach_lib_playlists_body).corner(16));
+        if (!local) {
+            steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(ivCloudStatus),
+                    R.string.coach_lib_cloud_title, R.string.coach_lib_cloud_body));
+        }
+        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(findViewById(R.id.b_settings)),
+                R.string.coach_lib_settings_title, R.string.coach_lib_settings_body));
+        CoachMarkOverlay.start(this, Onboarding.LIBRARY, steps);
     }
 
     public void changeTextAnimation(TextView text, String NewText){
@@ -744,8 +816,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     public void addSong(View view){
-        // Cloud pipeline requires an authenticated server. In local mode, prompt
-        // the login dialog instead of opening the import UI.
+        // Local mode: songs come as ready-made folders.
+        if (AuthManager.get(this).isLocalMode()) {
+            confirmImportFolder();
+            return;
+        }
+        // Cloud pipeline requires an authenticated server: prompt the login dialog.
         if (!AuthManager.get(this).isLoggedIn()) {
             Toast.makeText(this, R.string.local_mode_import_blocked, Toast.LENGTH_LONG).show();
             LoginDialog.show(this, true, new LoginDialog.Callback() {
@@ -759,6 +835,70 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             return;
         }
         songPicker.launch(new String[]{"audio/*"});
+    }
+
+    // === Local mode: song folder import ===
+
+    private final androidx.activity.result.ActivityResultLauncher<android.net.Uri> folderPicker =
+            registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
+                    uri -> { if (uri != null) runFolderImport(uri); });
+
+    private void confirmImportFolder() {
+        BlurDialogs.confirm(this, R.drawable.ic_folder_import,
+                getString(R.string.import_folder_confirm),
+                getString(R.string.import_folder_pick), getString(R.string.NO),
+                () -> folderPicker.launch(null));
+    }
+
+    /** Copies and checks the folder off the main thread behind a progress dialog. */
+    private void runFolderImport(android.net.Uri uri) {
+        View v = LayoutInflater.from(this).inflate(R.layout.delete_alert_dialog, null);
+        ((ImageView) v.findViewById(R.id.iv_alertDialog_ic)).setImageResource(R.drawable.ic_folder_import);
+        ((TextView) v.findViewById(R.id.tv_alertDialog_text)).setText(R.string.import_folder_checking);
+        v.findViewById(R.id.b_yes).setVisibility(View.GONE);
+        v.findViewById(R.id.b_no).setVisibility(View.GONE);
+        android.widget.ProgressBar pb = new android.widget.ProgressBar(this);
+        pb.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this)));
+        ((android.view.ViewGroup) v).addView(pb);
+        androidx.appcompat.app.AlertDialog progress = BlurDialogs.show(this, v);
+        progress.setCancelable(false);
+        new Thread(() -> {
+            SongFolderImporter.Result r = SongFolderImporter.importTree(getApplicationContext(), uri);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                progress.dismiss();
+                if (r.ok) {
+                    refreshSongList();
+                    Toast.makeText(this, getString(R.string.import_folder_done, r.name),
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    showImportError(r.name != null ? getString(r.error, r.name) : getString(r.error));
+                }
+            });
+        }, "SongFolderImport").start();
+    }
+
+    private void showImportError(CharSequence message) {
+        View v = LayoutInflater.from(this).inflate(R.layout.delete_alert_dialog, null);
+        ((ImageView) v.findViewById(R.id.iv_alertDialog_ic)).setImageResource(R.drawable.ic_warning);
+        ((TextView) v.findViewById(R.id.tv_alertDialog_text)).setText(message);
+        v.findViewById(R.id.b_no).setVisibility(View.GONE);
+        android.widget.Button ok = v.findViewById(R.id.b_yes);
+        ok.setText(android.R.string.ok);
+        androidx.appcompat.app.AlertDialog dlg = BlurDialogs.show(this, v);
+        ok.setOnClickListener(x -> dlg.dismiss());
+    }
+
+    /** Add button and empty list follow the mode: folder import in local mode. */
+    private void refreshAddAffordance() {
+        boolean local = AuthManager.get(this).isLocalMode();
+        if (b_add != null) b_add.setImageResource(local ? R.drawable.ic_folder_import : R.drawable.ic_fision_mark);
+        ImageView firstIcon = findViewById(R.id.iv_songsAddFirst);
+        TextView firstText = findViewById(R.id.tv_songsAddFirst);
+        if (firstIcon != null) firstIcon.setImageResource(local ? R.drawable.ic_folder_import : R.drawable.ic_add);
+        if (firstText != null) firstText.setText(local ? R.string.songs_empty_local : R.string.songs_empty);
     }
 
     /** Add flow: the picker opens first; the import screen only appears with
@@ -1110,17 +1250,21 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  (grey button and add-first card) and cloud-only rows show a lock. */
     private void applySessionGate() {
         boolean loggedIn = AuthManager.get(this).isLoggedIn();
+        // Local mode adds songs by importing folders; only an expired or
+        // missing session without local mode leaves the add actions off.
+        boolean canAdd = loggedIn || AuthManager.get(this).isLocalMode();
         if (b_add != null) {
             b_add.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    loggedIn ? Color.WHITE : 0xFF4A4A4A));
-            b_add.setEnabled(loggedIn);
+                    canAdd ? Color.WHITE : 0xFF4A4A4A));
+            b_add.setEnabled(canAdd);
         }
         if (llSongsAddFirst == null) llSongsAddFirst = findViewById(R.id.ll_songsAddFirst);
         if (llSongsAddFirst instanceof android.view.ViewGroup) {
-            llSongsAddFirst.setEnabled(loggedIn);
+            llSongsAddFirst.setEnabled(canAdd);
             android.view.ViewGroup g = (android.view.ViewGroup) llSongsAddFirst;
-            for (int i = 0; i < g.getChildCount(); i++) g.getChildAt(i).setAlpha(loggedIn ? 1f : 0.4f);
+            for (int i = 0; i < g.getChildCount(); i++) g.getChildAt(i).setAlpha(canAdd ? 1f : 0.4f);
         }
+        refreshAddAffordance();
         // Rows only need a rebind when the session state actually flips.
         if (gateLoggedIn != null && gateLoggedIn != loggedIn && rvSongList != null) refreshSongList();
         gateLoggedIn = loggedIn;
@@ -1880,6 +2024,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Expired session: prompt now, or as soon as it happens while visible.
         AuthManager.get(this).addSessionExpiredListener(sessionExpiredListener);
         if (AuthManager.get(this).isSessionExpired()) showSessionExpiredLogin();
+        // First-visit tour, once the list has settled.
+        if (rvSongList != null) rvSongList.postDelayed(this::maybeStartLibraryTour, 700);
     }
 
     private final AuthManager.SessionExpiredListener sessionExpiredListener =

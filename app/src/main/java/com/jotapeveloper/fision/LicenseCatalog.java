@@ -96,9 +96,10 @@ public class LicenseCatalog {
     private static final String LIC_KEMAR =
             "KEMAR HRTF Measurements\n" +
             "Bill Gardner and Keith Martin, MIT Media Lab, 1995\n\n" +
-            "These measurements are provided free of charge for research and\n" +
-            "personal use. Please cite the original publication when using this\n" +
-            "dataset:\n\n" +
+            "This data is Copyright 1994 by the MIT Media Laboratory. It is\n" +
+            "provided free with no restrictions on use, provided the authors are\n" +
+            "cited when the data is used in any research or commercial\n" +
+            "application:\n\n" +
             "Gardner, W. G., and Martin, K. D. (1995). \"HRTF measurements of a\n" +
             "KEMAR.\" Journal of the Acoustical Society of America, 97(6),\n" +
             "3907-3908.\n\n" +
@@ -135,7 +136,7 @@ public class LicenseCatalog {
                 "Copyright (c) 2016 David Rubert\n\n" + LIC_MIT));
         ENTRIES.add(new LicenseEntry(
                 "KEMAR HRTF dataset", "Bill Gardner, Keith Martin — MIT Media Lab",
-                "Research / Personal use", "https://sound.media.mit.edu/resources/KEMAR.html",
+                "Free use with attribution","https://sound.media.mit.edu/resources/KEMAR.html",
                 LIC_KEMAR));
         ENTRIES.add(new LicenseEntry(
                 "Material Components", "Google",

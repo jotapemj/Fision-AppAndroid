@@ -67,9 +67,10 @@ public class SettingsActivity extends AppCompatActivity
     private static final String ID_VERSION   = "server_version";
     private static final String ID_TEST      = "server_test";
     private static final String ID_ABOUT     = "about";
+    private static final String ID_TOUR      = "tour";
     private static final String ID_LOGOUT    = "logout";
     private static final String ID_GITHUB    = "github";
-    private static final String GITHUB_URL   = "https://github.com/jotapemj/FisionApp-Android";
+    private static final String GITHUB_URL   = "https://github.com/jotapemj/Fision-AppAndroid";
     private static final String ID_DONATE    = "donate";
     private static final String DONATION_URL =
             "https://www.paypal.com/donate/?hosted_button_id=7XGEUCU59RRE4";
@@ -193,6 +194,9 @@ public class SettingsActivity extends AppCompatActivity
         // Section: About
         items.add(SettingsItem.section("sec_about",
                 getString(R.string.settings_section_about)));
+        items.add(SettingsItem.card(ID_TOUR, R.drawable.ic_tour,
+                getString(R.string.settings_tour_title),
+                getString(R.string.settings_tour_summary)));
         items.add(SettingsItem.card(ID_ABOUT, R.drawable.ic_info,
                 getString(R.string.about_title),
                 null));
@@ -217,6 +221,18 @@ public class SettingsActivity extends AppCompatActivity
             logout.iconTintOverride = R.color.cloud_offline;
             items.add(logout);
         }
+    }
+
+    /** Every guided tour shows again; back to the library, where the first one starts. */
+    private void replayTours() {
+        com.jotapeveloper.fision.onboarding.Onboarding.resetAll(this);
+        android.widget.Toast.makeText(this, R.string.settings_tour_reset,
+                android.widget.Toast.LENGTH_SHORT).show();
+        // Debug builds also preview the welcome screens (the choice is ignored).
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            startActivity(new android.content.Intent(this, WelcomeActivity.class));
+        }
+        finish();
     }
 
     private CharSequence gpuSubtitle() {
@@ -260,6 +276,7 @@ public class SettingsActivity extends AppCompatActivity
             case ID_GPU:      onGpuClicked();      break;
             case ID_TEST:     runConnectionTest(); break;
             case ID_ABOUT:    showAboutDialog();   break;
+            case ID_TOUR:     replayTours();       break;
             case ID_LOGOUT:   onLogoutClicked();   break;
             case ID_GITHUB:   openUrl(GITHUB_URL);   break;
             case ID_DONATE:   openUrl(DONATION_URL); break;

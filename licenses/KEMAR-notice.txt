@@ -1,0 +1,17 @@
+KEMAR HRTF Measurements
+Bill Gardner and Keith Martin, MIT Media Lab
+Source: https://sound.media.mit.edu/resources/KEMAR.html (compact.zip)
+
+Notice published with the data:
+
+  This data is Copyright 1994 by the MIT Media Laboratory. It is provided
+  free with no restrictions on use, provided the authors are cited when the
+  data is used in any research or commercial application.
+
+Citation:
+
+  Gardner, W. G., and Martin, K. D. (1995). "HRTF measurements of a KEMAR."
+  Journal of the Acoustical Society of America, 97(6), 3907-3908.
+
+The binary table bundled with the app (app/src/main/assets/hrtf/hrtf_horizontal.bin)
+is generated from compact.zip by tools/gen_hrtf_bin.py.
