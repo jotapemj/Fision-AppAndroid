@@ -57,6 +57,8 @@ public class AvatarStudioDialog {
         void onAvatarComposed(byte[] jpegBytes);
         /** User asked for the classic device-gallery path. */
         void onPickFromDevice();
+        /** Studio closed by Apply, Cancel or back (not by the gallery path). */
+        default void onClosed() {}
     }
 
     // Subject tint palette. First entry (BASE) means "no tint": preserves the
@@ -239,7 +241,9 @@ public class AvatarStudioDialog {
             renderPreview();
         });
 
+        final boolean[] toDevice = {false};
         bFromDevice.setOnClickListener(x -> {
+            toDevice[0] = true;
             dlg.dismiss();
             if (callback != null) callback.onPickFromDevice();
         });
@@ -253,7 +257,10 @@ public class AvatarStudioDialog {
         });
 
         applyActivityBlur();
-        dlg.setOnDismissListener(d -> removeActivityBlur());
+        dlg.setOnDismissListener(d -> {
+            removeActivityBlur();
+            if (!toDevice[0] && callback != null) callback.onClosed();
+        });
         // Apply the blur again once the window is attached: dismissing the
         // account dialog (which owns its own blur) fires removeActivityBlur
         // asynchronously and would strip the studio blur one frame after it
@@ -363,10 +370,7 @@ public class AvatarStudioDialog {
     }
 
     private void applyActivityBlur() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            host.getWindow().getDecorView().setRenderEffect(
-                    RenderEffect.createBlurEffect(40f, 40f, Shader.TileMode.CLAMP));
-        }
+        BlurDialogs.applyBlur(host);
     }
 
     private void removeActivityBlur() {

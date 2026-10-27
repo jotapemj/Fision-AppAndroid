@@ -117,8 +117,8 @@
     <string name="export_back">Назад</string>
     <string name="export_include_metronome">Добавить метроном в микс</string>
     <string name="export_permission_title">Нужен доступ к хранилищу</string>
-    <string name="export_permission_body">Чтобы сохранять экспорт, разрешите Fision доступ ко всем файлам. Откроются системные настройки: включите доступ для Fision и вернитесь.</string>
-    <string name="export_permission_continue">Открыть настройки</string>
+    <string name="export_permission_body">Чтобы сохранять экспорт в папку «Музыка», Fision нужен доступ к хранилищу.</string>
+    <string name="export_permission_continue">Разрешить</string>
     <string name="export_solo_title">Соло включено</string>
     <string name="export_solo_body">Экспорт не учитывает соло: каждая дорожка звучит со своей громкостью.</string>
     <string name="export_solo_continue">Продолжить</string>
@@ -209,7 +209,6 @@
     <string name="avatar_instrument_winds">Духовые</string>
     <string name="avatar_instrument_other">Другое</string>
     <string name="settings_header_local_title">Локальный режим</string>
-    <string name="settings_header_local_email">Войдите для синхронизации с сервером Fision</string>
     <string name="settings_section_server">Сервер</string>
     <string name="settings_section_app">Приложение</string>
     <string name="settings_section_about">О приложении</string>
@@ -221,22 +220,22 @@
     <string name="design_song_colors_summary">Плеер берёт цвета из обложки</string>
     <string name="close">Закрыть</string>
     <string name="performance_title">Производительность</string>
-    <string name="performance_audio3d_title">Вид 3D-звука</string>
-    <string name="performance_audio3d_scene">3D-сцена (полная)</string>
-    <string name="performance_audio3d_flat">Плоский вид (лёгкий)</string>
+    <string name="performance_audio3d_scene">3D-сцена</string>
+    <string name="performance_audio3d_flat">2D-сцена</string>
     <string name="settings_language_dialog_title">Выберите язык</string>
     <string name="settings_language_system">Язык системы</string>
     <string name="settings_logout_title">Выйти</string>
+    <string name="settings_logout_confirm">Вы выйдете из аккаунта. Продолжить?</string>
 
     <!--- Fision server -->
     <string name="about_title">О Fision</string>
     <string name="server_auth_unavailable">Биометрия недоступна на этом устройстве</string>
     <string name="server_status_online">Сервер в сети</string>
     <string name="server_status_offline">Сервер не в сети</string>
-    <string name="server_test_title">Проверить соединение</string>
-    <string name="server_test_summary">Ручной пинг настроенного сервера для проверки соединения</string>
+    <string name="server_test_title">Проверить соединение с сервером</string>
     <string name="server_gpu_title">Состояние GPU</string>
     <string name="server_version_title">Версия сервера</string>
+    <string name="server_version_incompatible">Сервер: %1$s\nСовместимо: %2$s</string>
     <string name="server_gpu_unknown">Войдите, чтобы увидеть данные GPU</string>
     <string name="server_gpu_ok_short">GPU доступен</string>
     <string name="server_gpu_missing">GPU недоступен</string>
@@ -268,7 +267,6 @@
     <string name="login_err_bad_url">Неверный URL сервера</string>
     <string name="login_err_server">Ошибка сервера</string>
     <string name="login_session_expired">Сеанс истёк, войдите снова</string>
-    <string name="account_url_line">Сервер: %1$s</string>
     <string name="account_change_password">Сменить пароль</string>
     <string name="local_mode_import_blocked">Войдите, чтобы обрабатывать новые песни на сервере</string>
     <string name="change_password_title">Смена пароля</string>
@@ -334,6 +332,14 @@
     <string name="cloud_state_cloud_only">В облаке</string>
     <string name="cloud_state_locked">Войдите, чтобы слушать</string>
     <string name="cloud_state_error">Ошибка</string>
+    <string name="job_err_cancelled">Отменено</string>
+    <string name="job_err_gpu_busy">GPU занят</string>
+    <string name="job_err_timeout">Слишком долго</string>
+    <string name="job_err_pipeline_failed">Ошибка обработки</string>
+    <string name="job_err_lyrics_failed">Ошибка распознавания</string>
+    <string name="job_err_input_missing">Нет исходного аудио</string>
+    <string name="job_err_vocals_missing">Нет вокала для текста</string>
+    <string name="job_err_internal">Непредвиденная ошибка</string>
     <string name="cloud_delete_cloud">Удалить из облака</string>
     <string name="cloud_delete_cloud_confirm">Удалить эту песню и с сервера?</string>
     <string name="cloud_cancel_queue">Отменить (очередь)</string>
@@ -402,6 +408,8 @@
     <!-- Playlists -->
     <string name="tab_songs">Песни</string>
     <string name="tab_playlists">Плейлисты</string>
+    <string name="tv_title_search_playlist">Поиск плейлиста</string>
+    <string name="te_find_playlist">Поиск в ваших плейлистах</string>
     <string name="playlist_new">Новый плейлист</string>
     <plurals name="playlist_count">
         <item quantity="one">%d плейлист</item>
@@ -427,8 +435,15 @@
         <item quantity="many">Выбрано %d</item>
         <item quantity="other">Выбрано %d</item>
     </plurals>
-    <string name="playlists_empty">Создайте первый плейлист</string>
-    <string name="songs_empty">Добавьте первую песню</string>
+    <string name="playlists_empty_nosongs_title">И здесь пусто</string>
+    <string name="playlists_empty_nosongs_hint">Добавьте хотя бы одну песню, чтобы создать плейлист</string>
+    <string name="playlists_empty_title">Плейлистов пока нет</string>
+    <string name="playlists_empty_hint">%1$s, чтобы создать</string>
+    <string name="songs_empty_title">Здесь пока пусто</string>
+    <string name="songs_empty_tap">Нажмите</string>
+    <string name="songs_empty_hint">%1$s, чтобы добавить первую песню</string>
+    <string name="songs_add_bar">Добавить песню</string>
+    <string name="songs_import_bar">Импорт папки</string>
     <string name="playlists_need_login">Войдите, чтобы пользоваться плейлистами</string>
     <string name="playlist_reorder">Изменить порядок</string>
     <string name="playlist_remove_song">Убрать из плейлиста</string>
@@ -505,8 +520,10 @@
     <string name="cd_stem_options">Параметры дорожки</string>
     <string name="cd_drumset">Ударная установка</string>
     <string name="cd_expand_collapse">Развернуть или свернуть</string>
-    <string name="dance_swing">покачивание</string>
-    <string name="dance_randomize_swing">Случайное покачивание</string>
+    <string name="dance_swing">swing</string>
+    <string name="dance_randomize_swing">Случайный swing</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s об/с</string>
     <string name="export_include_fx">Включить эффекты</string>
     <string name="coach_next">Далее</string>
     <string name="coach_skip">Пропустить</string>
@@ -517,13 +534,14 @@
     <string name="coach_lib_search_body">Ищите песни по названию или исполнителю и меняйте порядок списка.</string>
     <string name="coach_lib_song_title">Ваши песни</string>
     <string name="coach_lib_song_body">Нажмите на песню, чтобы включить её. Долгое нажатие открывает опции: изменить, повторить или удалить.</string>
+    <string name="coach_lib_song_empty_body">Здесь появятся ваши песни.</string>
     <string name="coach_lib_playlists_title">Плейлисты</string>
     <string name="coach_lib_playlists_body">Ваши плейлисты хранятся на сервере и доступны офлайн.</string>
     <string name="coach_lib_cloud_title">Состояние сервера</string>
     <string name="coach_lib_cloud_body">Показывает, когда сервер недоступен.</string>
     <string name="coach_lib_settings_title">Настройки и аккаунт</string>
     <string name="coach_lib_settings_body">Сведения о сервере, настройки и ваш аккаунт.</string>
-    <string name="coach_pl_chords_title">Лента аккордов</string>
+    <string name="coach_pl_chords_title">Карусель аккордов</string>
     <string name="coach_pl_chords_body">Одна ячейка на долю с её аккордом. Нажмите на ячейку, чтобы перейти туда, или потяните, чтобы посмотреть дальше.</string>
     <string name="coach_pl_icon_title">Соло и заглушить</string>
     <string name="coach_pl_icon_body">Нажмите на значок дорожки, чтобы включить соло или заглушить её. Соло можно включить сразу на нескольких.</string>
@@ -540,8 +558,7 @@
     <string name="coach_pl_bar_3d">3D-звук</string>
     <string name="coach_pl_menu_title">Другие опции</string>
     <string name="coach_pl_menu_body">Запись аккордов, следующая песня, сброс и экспорт.</string>
-    <string name="settings_tour_title">Показать тур снова</string>
-    <string name="settings_tour_summary">Обзор библиотеки и плеера</string>
+    <string name="settings_tour_title">Смотреть тур</string>
     <string name="settings_tour_reset">Тур снова появится в библиотеке и плеере</string>
     <string name="welcome_intro_title">Добро пожаловать в Fision</string>
     <string name="welcome_intro_body">Разделяйте песни на дорожки инструментов, слушайте или играйте вместе с ними.</string>
@@ -557,7 +574,7 @@
     <string name="welcome_local">Локальный режим</string>
     <string name="coach_lib_import_title">Импорт песни</string>
     <string name="coach_lib_import_body">Выберите папку с уже разделённой песней. Каждый файл проверяется перед добавлением.</string>
-    <string name="songs_empty_local">Импортируйте первую папку с песней</string>
+    <string name="songs_empty_hint_local">%1$s, чтобы импортировать первую папку с песней</string>
     <string name="import_folder_confirm">Импортировать папку с песней?</string>
     <string name="import_folder_pick">Выбрать папку</string>
     <string name="import_folder_checking">Проверка песни…</string>

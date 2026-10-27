@@ -69,6 +69,22 @@
         app:rippleColor="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_about_tour"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:padding="10dp"
+        android:text="@string/settings_tour_title"
+        android:textColor="@color/AppWhite"
+        app:icon="@drawable/ic_tour"
+        app:iconGravity="textStart"
+        app:iconTint="?attr/colorPrimary"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
+        app:cornerRadius="20dp" />
+
     <!-- Legacy TextView kept for compatibility with existing find-by-id code
          but no longer rendered. Height 0 keeps it invisible without touching
          the About activity setup. -->

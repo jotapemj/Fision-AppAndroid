@@ -117,8 +117,8 @@
     <string name="export_back">Voltar</string>
     <string name="export_include_metronome">Incluir metrônomo na mixagem</string>
     <string name="export_permission_title">Permissão de armazenamento necessária</string>
-    <string name="export_permission_body">Para salvar as exportações, permita que o Fision acesse todos os arquivos. As configurações do sistema vão abrir: ative o acesso para o Fision e volte.</string>
-    <string name="export_permission_continue">Abrir configurações</string>
+    <string name="export_permission_body">Para salvar as exportações na pasta Música, o Fision precisa de acesso ao armazenamento.</string>
+    <string name="export_permission_continue">Permitir</string>
     <string name="export_solo_title">Solo ativo</string>
     <string name="export_solo_body">A exportação ignora o solo: cada faixa toca no próprio volume.</string>
     <string name="export_solo_continue">Continuar</string>
@@ -209,7 +209,6 @@
     <string name="avatar_instrument_winds">Sopros</string>
     <string name="avatar_instrument_other">Outro</string>
     <string name="settings_header_local_title">Modo local</string>
-    <string name="settings_header_local_email">Entre para sincronizar com o servidor Fision</string>
     <string name="settings_section_server">Servidor</string>
     <string name="settings_section_app">App</string>
     <string name="settings_section_about">Sobre</string>
@@ -221,22 +220,22 @@
     <string name="design_song_colors_summary">O player usa as cores da capa</string>
     <string name="close">Fechar</string>
     <string name="performance_title">Desempenho</string>
-    <string name="performance_audio3d_title">Visualização de Áudio 3D</string>
-    <string name="performance_audio3d_scene">Cena 3D (completa)</string>
-    <string name="performance_audio3d_flat">Visualização plana (leve)</string>
+    <string name="performance_audio3d_scene">Cena 3D</string>
+    <string name="performance_audio3d_flat">Cena 2D</string>
     <string name="settings_language_dialog_title">Escolher idioma</string>
     <string name="settings_language_system">Idioma do sistema</string>
     <string name="settings_logout_title">Sair</string>
+    <string name="settings_logout_confirm">Sua sessão será encerrada. Continuar?</string>
 
     <!--- Fision server -->
     <string name="about_title">Sobre o Fision</string>
     <string name="server_auth_unavailable">Biometria indisponível neste dispositivo</string>
     <string name="server_status_online">Servidor on-line</string>
     <string name="server_status_offline">Servidor off-line</string>
-    <string name="server_test_title">Testar conexão</string>
-    <string name="server_test_summary">Ping manual ao servidor configurado para verificar a conexão</string>
+    <string name="server_test_title">Testar conexão com o servidor</string>
     <string name="server_gpu_title">Status da GPU</string>
     <string name="server_version_title">Versão do servidor</string>
+    <string name="server_version_incompatible">Servidor: %1$s\nCompatível: %2$s</string>
     <string name="server_gpu_unknown">Entre para ler as informações da GPU</string>
     <string name="server_gpu_ok_short">GPU disponível</string>
     <string name="server_gpu_missing">GPU indisponível</string>
@@ -267,7 +266,6 @@
     <string name="login_err_bad_url">URL do servidor inválida</string>
     <string name="login_err_server">Erro do servidor</string>
     <string name="login_session_expired">Sessão expirada, entre novamente</string>
-    <string name="account_url_line">Servidor: %1$s</string>
     <string name="account_change_password">Alterar senha</string>
     <string name="local_mode_import_blocked">Entre para processar novas músicas no servidor</string>
     <string name="change_password_title">Alterar senha</string>
@@ -333,6 +331,14 @@
     <string name="cloud_state_cloud_only">Na nuvem</string>
     <string name="cloud_state_locked">Entre para usar</string>
     <string name="cloud_state_error">Erro</string>
+    <string name="job_err_cancelled">Cancelado</string>
+    <string name="job_err_gpu_busy">GPU ocupada</string>
+    <string name="job_err_timeout">Demorou demais</string>
+    <string name="job_err_pipeline_failed">Falha no processamento</string>
+    <string name="job_err_lyrics_failed">Falha na transcrição</string>
+    <string name="job_err_input_missing">Falta o áudio original</string>
+    <string name="job_err_vocals_missing">Sem vozes para a letra</string>
+    <string name="job_err_internal">Erro inesperado</string>
     <string name="cloud_delete_cloud">Excluir da nuvem</string>
     <string name="cloud_delete_cloud_confirm">Excluir esta música também do servidor?</string>
     <string name="cloud_cancel_queue">Cancelar (fila)</string>
@@ -401,6 +407,8 @@
     <!-- Playlists -->
     <string name="tab_songs">Músicas</string>
     <string name="tab_playlists">Playlists</string>
+    <string name="tv_title_search_playlist">Buscar playlist</string>
+    <string name="te_find_playlist">Buscar nas suas playlists</string>
     <string name="playlist_new">Nova playlist</string>
     <plurals name="playlist_count">
         <item quantity="one">%d playlist</item>
@@ -422,8 +430,15 @@
         <item quantity="many">%d selecionadas</item>
         <item quantity="other">%d selecionadas</item>
     </plurals>
-    <string name="playlists_empty">Crie sua primeira playlist</string>
-    <string name="songs_empty">Adicione sua primeira música</string>
+    <string name="playlists_empty_nosongs_title">Por aqui também não</string>
+    <string name="playlists_empty_nosongs_hint">Adicione pelo menos uma música para criar uma playlist</string>
+    <string name="playlists_empty_title">Nenhuma playlist criada</string>
+    <string name="playlists_empty_hint">%1$s para criar uma</string>
+    <string name="songs_empty_title">Nada por aqui ainda</string>
+    <string name="songs_empty_tap">Toque</string>
+    <string name="songs_empty_hint">%1$s para adicionar sua primeira música</string>
+    <string name="songs_add_bar">Adicionar música</string>
+    <string name="songs_import_bar">Importar pasta</string>
     <string name="playlists_need_login">Entre para usar playlists</string>
     <string name="playlist_reorder">Reordenar</string>
     <string name="playlist_remove_song">Remover da playlist</string>
@@ -500,8 +515,10 @@
     <string name="cd_stem_options">Opções do stem</string>
     <string name="cd_drumset">Bateria</string>
     <string name="cd_expand_collapse">Expandir ou recolher</string>
-    <string name="dance_swing">balanço</string>
-    <string name="dance_randomize_swing">Balanço aleatório</string>
+    <string name="dance_swing">swing</string>
+    <string name="dance_randomize_swing">Swing aleatório</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s voltas/s</string>
     <string name="export_include_fx">Incluir efeitos</string>
     <string name="coach_next">Próximo</string>
     <string name="coach_skip">Pular</string>
@@ -512,13 +529,14 @@
     <string name="coach_lib_search_body">Encontre músicas por título ou artista e mude a ordem da lista.</string>
     <string name="coach_lib_song_title">Suas músicas</string>
     <string name="coach_lib_song_body">Toque numa música para tocá-la. Toque e segure para ver as opções: editar, tentar de novo ou excluir.</string>
+    <string name="coach_lib_song_empty_body">Suas músicas vão aparecer aqui.</string>
     <string name="coach_lib_playlists_title">Playlists</string>
     <string name="coach_lib_playlists_body">Suas playlists, salvas no servidor e disponíveis offline.</string>
     <string name="coach_lib_cloud_title">Status do servidor</string>
     <string name="coach_lib_cloud_body">Avisa quando o servidor está inacessível.</string>
     <string name="coach_lib_settings_title">Configurações e conta</string>
     <string name="coach_lib_settings_body">Informações do servidor, configurações e sua conta.</string>
-    <string name="coach_pl_chords_title">Faixa de acordes</string>
+    <string name="coach_pl_chords_title">Carrossel de acordes</string>
     <string name="coach_pl_chords_body">Uma célula por batida com seu acorde. Toque numa célula para pular até ela ou arraste para ver o que vem.</string>
     <string name="coach_pl_icon_title">Solo e mudo</string>
     <string name="coach_pl_icon_body">Toque no ícone de uma faixa para deixá-la em solo ou mudá-la. Várias faixas podem ficar em solo ao mesmo tempo.</string>
@@ -535,8 +553,7 @@
     <string name="coach_pl_bar_3d">Áudio 3D</string>
     <string name="coach_pl_menu_title">Mais opções</string>
     <string name="coach_pl_menu_body">Notação de acordes, próxima música, redefinir e exportar.</string>
-    <string name="settings_tour_title">Ver o tour de novo</string>
-    <string name="settings_tour_summary">Tour guiado da biblioteca e do player</string>
+    <string name="settings_tour_title">Ver tour</string>
     <string name="settings_tour_reset">O tour será mostrado de novo na biblioteca e no player</string>
     <string name="welcome_intro_title">Boas-vindas ao Fision</string>
     <string name="welcome_intro_body">Separe suas músicas em faixas de instrumentos, ouça ou toque junto com elas.</string>
@@ -552,7 +569,7 @@
     <string name="welcome_local">Usar modo local</string>
     <string name="coach_lib_import_title">Importar música</string>
     <string name="coach_lib_import_body">Escolha uma pasta com uma música já separada. Cada arquivo é verificado antes de adicioná-la.</string>
-    <string name="songs_empty_local">Importe sua primeira pasta de música</string>
+    <string name="songs_empty_hint_local">%1$s para importar sua primeira pasta de música</string>
     <string name="import_folder_confirm">Importar pasta de música?</string>
     <string name="import_folder_pick">Escolher pasta</string>
     <string name="import_folder_checking">Verificando a música…</string>

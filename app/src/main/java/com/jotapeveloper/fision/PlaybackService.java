@@ -191,7 +191,16 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         setupAudioFocus();
         loadRepeatPrefs();
         FisionApplication.setForegroundListener(fg -> mainHandler.post(this::reevaluateIdleStop));
+        com.jotapeveloper.fision.cloud.AuthManager.get(this).addLibraryChangedListener(libraryChanged);
     }
+
+    /** Another account's library became active: its song stops and Auto relists. */
+    private final com.jotapeveloper.fision.cloud.AuthManager.LibraryChangedListener libraryChanged = () -> {
+        if (currentSongPath != null && !SongStorage.isActive(this, currentSongPath)) {
+            releaseSongAndStop();
+        }
+        notifyChildrenChanged(BROWSE_ROOT);
+    };
 
     /** Song loaded, not playing (and not waiting to resume after a call),
      *  with no app activity on screen. */
@@ -277,7 +286,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     }
 
     private File songsRoot() {
-        return new File(getExternalFilesDir(null), "Songs");
+        return SongStorage.root(this);
     }
 
     /** content:// URI of the song cover (local artcover, cloud cover or the
@@ -376,6 +385,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     @Override
     public void onDestroy() {
         FisionApplication.setForegroundListener(null);
+        com.jotapeveloper.fision.cloud.AuthManager.get(this).removeLibraryChangedListener(libraryChanged);
         mainHandler.removeCallbacks(idleStop);
         unregisterNoisyReceiver();
         // A decode still running finishes on its own; its result is discarded

@@ -65,7 +65,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private EditText et_find;
     private TextView tv_title;
     private TextView tv_SongsCount;
-    private android.widget.ImageButton b_add;
+    private View b_add;
+    private ImageView ivAddIcon;
+    private TextView tvAddLabel;
     private List<String> SongsInDirectory;
     private android.widget.ImageButton b_orderBy;
 
@@ -79,9 +81,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private static final int COVER_HD_MAX_PX = 1024;
 
     private Uri SongFolderUri;
-
-    private  File AppFolder;
-    private  File SongFolder;
 
     private RecyclerView rvSongList;
     private SwipeRefreshLayout refreshSongList;
@@ -105,7 +104,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private View playlistsTab;
     private RecyclerView rvPlaylists;
     private TextView tvPlaylistsCount, tvPlaylistsEmpty;
-    private MaterialButton bNewPlaylist;
+    private View bAddPlaylist;
+    private com.jotapeveloper.fision.brand.EmptyBlobsView vEmptyBlobs;
+    /** Signed in with no playlists: the playlists empty notice is up. */
+    private boolean playlistsEmptyShown;
     private View llPlaylistsAddFirst;
     private PlaylistListAdapter playlistAdapter;
     private final com.jotapeveloper.fision.cloud.PlaylistRepository.Listener playlistListener =
@@ -253,8 +255,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
 
+    /** Song folders of the active account: changes with login and logout. */
     public File getSongFolder() {
-        return SongFolder;
+        return SongStorage.root(this);
     }
 
     @Override
@@ -275,6 +278,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         tv_title = findViewById(R.id.tv_title);
         tv_SongsCount = findViewById(R.id.tv_SongsCount);
         b_add = findViewById(R.id.b_add);
+        ivAddIcon = findViewById(R.id.iv_addIcon);
+        tvAddLabel = findViewById(R.id.tv_addLabel);
+        vEmptyBlobs = findViewById(R.id.v_emptyBlobs);
         b_orderBy = findViewById(R.id.b_orderBy);
         ivCloudStatus = findViewById(R.id.iv_cloud_status);
         flAvatar = findViewById(R.id.fl_avatar);
@@ -331,89 +337,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         });
 
 
-        // Main songs directory checks
-
-        AppFolder = getExternalFilesDir(null);
-        SongFolder = new File(AppFolder, "Songs");
-        if (!SongFolder.exists()) {
-            SongFolder.mkdirs(); // Create subdirectory if does not exist.
-        }
-
         // Load Main Activity RecyclerView with songs
         refreshSongList();
+        AuthManager.get(this).addLibraryChangedListener(libraryChangedListener);
 
-        // Listener for searching for song
-        // The clear (X) icon stays installed so the text never shifts; only its
-        // alpha changes, with a short fade.
-        clearIcon = et_find.getCompoundDrawables()[2].mutate();
-        clearIcon.setAlpha(0);
-        et_find.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean hasFocus) {
-                if (hasFocus){
-                    if (b_add.getVisibility() == View.VISIBLE){
-                        buttonAnimation(false, b_add);}
-                    if(tv_title.getText().toString().equals(getString(R.string.tv_title))){
-                        changeTextAnimation(tv_title, getString(R.string.tv_title_search));}
-                }
-            }
-        });
-        et_find.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-            }
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                boolean TextEmpty = TextUtils.isEmpty(charSequence.toString());
-                showClearButton(!TextEmpty);
-
-                // Pull-to-refresh only without a query.
-                refreshSongList.setEnabled(TextEmpty);
-                if (TextEmpty) {
-                    // Empty query: rebuild the full merged list (local + cloud +
-                    // sticky order).
-                    refreshSongList();
-                } else {
-                    applySearchFilter(charSequence.toString());
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable editable) {
-
-            }
-        });
-
-
-        et_find.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                // Tap on the X (only while it is shown): the icon plus its
-                // end padding, in view coordinates.
-                if (!clearVisible || clearIcon == null) return false;
-                if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                    int hitStart = et_find.getWidth() - et_find.getPaddingEnd()
-                            - clearIcon.getBounds().width() - et_find.getCompoundDrawablePadding();
-                    if (motionEvent.getX() >= hitStart) {
-                        et_find.setText("");
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
-
-        // Keyboard "Search" key: hide the keyboard and leave the results on screen.
-        et_find.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) return false;
-            android.view.inputmethod.InputMethodManager imm =
-                    (android.view.inputmethod.InputMethodManager)
-                            getSystemService(INPUT_METHOD_SERVICE);
-            if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
-            return true;
-        });
 
         // First-run flow: prompt the sign-in dialog on the very first launch. The
         // user can either authenticate against a server or skip into local mode.
@@ -428,7 +355,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (!AuthManager.get(this).isFirstRun()) {
             // Debug builds preview the welcome once per app start, whatever the
             // session; the choice is then ignored.
-            if (isDebuggable() && !welcomePreviewShown) {
+            if (com.jotapeveloper.fision.onboarding.Onboarding.debugAlwaysShow(this) && !welcomePreviewShown) {
                 welcomePreviewShown = true;
                 startActivity(new Intent(this, WelcomeActivity.class));
             }
@@ -501,8 +428,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(et_find, b_orderBy),
                 R.string.coach_lib_search_title, R.string.coach_lib_search_body).corner(16));
         View firstSong = rvSongList.getChildCount() > 0 ? rvSongList.getChildAt(0) : null;
-        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(firstSong),
-                R.string.coach_lib_song_title, R.string.coach_lib_song_body).corner(16));
+        if (firstSong != null) {
+            steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(firstSong),
+                    R.string.coach_lib_song_title, R.string.coach_lib_song_body).corner(16));
+        } else {
+            // Empty library: the empty notice stands in for the first song.
+            steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(findViewById(R.id.ll_songsEmptyText)),
+                    R.string.coach_lib_song_title, R.string.coach_lib_song_empty_body).corner(16));
+        }
         steps.add(new CoachMarkOverlay.Step(
                 CoachMarkOverlay.views(bnvMain.findViewById(R.id.tab_playlists)),
                 R.string.coach_lib_playlists_title, R.string.coach_lib_playlists_body).corner(16));
@@ -569,7 +502,22 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         rvPlaylists = findViewById(R.id.rv_playlists);
         tvPlaylistsCount = findViewById(R.id.tv_playlistsCount);
         tvPlaylistsEmpty = findViewById(R.id.tv_playlistsEmpty);
-        bNewPlaylist = findViewById(R.id.b_newPlaylist);
+        bAddPlaylist = findViewById(R.id.b_addPlaylist);
+
+        songSearch = new SearchBar(et_find, b_add, R.string.tv_title, R.string.tv_title_search, q -> {
+            boolean empty = q.isEmpty();
+            // Pull-to-refresh only without a query.
+            refreshSongList.setEnabled(empty);
+            if (empty) {
+                // Empty query: rebuild the full merged list (local + cloud +
+                // sticky order).
+                refreshSongList();
+            } else {
+                applySearchFilter(q);
+            }
+        });
+        playlistSearch = new SearchBar(findViewById(R.id.et_findPlaylist), bAddPlaylist,
+                R.string.tab_playlists, R.string.tv_title_search_playlist, q -> refreshPlaylistsTab());
 
         int coverPx = (int) (52 * getResources().getDisplayMetrics().density);
         playlistAdapter = new PlaylistListAdapter(coverPx, new PlaylistListAdapter.OnPlaylistClick() {
@@ -584,7 +532,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         });
         rvPlaylists.setLayoutManager(new LinearLayoutManager(this));
         rvPlaylists.setAdapter(playlistAdapter);
-        bNewPlaylist.setOnClickListener(v ->
+        bAddPlaylist.setOnClickListener(v ->
                 startActivity(new Intent(this, PlaylistEditActivity.class)));
         llPlaylistsAddFirst = findViewById(R.id.ll_playlistsAddFirst);
         llPlaylistsAddFirst.setOnClickListener(v ->
@@ -629,6 +577,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         fadeTop.setVisibility(View.INVISIBLE);
         fadeBottom.setVisibility(View.INVISIBLE);
+        // Blobs stay put between two empty tabs; otherwise they fade.
+        updateEmptyBlobs();
         for (View v : out) {
             v.animate().cancel();
             v.animate().alpha(0f).translationX(-dir * dx).setDuration(TAB_OUT_MS)
@@ -653,20 +603,18 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void showTab(int tab) {
-        // Leaving the songs tab ends a search in progress.
-        if (tab != TAB_SONGS && (et_find.hasFocus() || et_find.length() > 0)) {
-            et_find.clearFocus();
-            et_find.setText("");
-            if (b_add.getVisibility() != View.VISIBLE) buttonAnimation(true, b_add);
-            hideKeyboard();
-        }
+        // Leaving a tab ends its search in progress.
+        if (tab != TAB_SONGS && songSearch.isActive()) songSearch.close(false);
+        if (tab != TAB_PLAYLISTS && playlistSearch.isActive()) playlistSearch.close(false);
         currentTab = tab;
         targetTab = tab;
         boolean songs = tab == TAB_SONGS;
-        int sv = songs ? View.VISIBLE : View.GONE;
-        et_find.setVisibility(sv);
-        b_add.setVisibility(sv);
-        refreshSongList.setVisibility(sv);
+        // INVISIBLE, not GONE: the shared blobs hang from the songs header.
+        et_find.setVisibility(songs && !isAddWide(b_add) ? View.VISIBLE : View.INVISIBLE);
+        b_add.setVisibility(songs ? View.VISIBLE : View.INVISIBLE);
+        // Also INVISIBLE: the count line is chained to the list, and a GONE
+        // list lets it (and the blobs under it) drift down.
+        refreshSongList.setVisibility(songs ? View.VISIBLE : View.INVISIBLE);
         applySongsEmptyState();
         if (tvNoResults != null && !songs) tvNoResults.setVisibility(View.GONE);
         playlistsTab.setVisibility(songs ? View.GONE : View.VISIBLE);
@@ -687,7 +635,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void hideKeyboard() {
         android.view.inputmethod.InputMethodManager imm =
                 (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        if (imm != null) imm.hideSoftInputFromWindow(et_find.getWindowToken(), 0);
+        if (imm != null) imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
     }
 
     /** Repaints the Playlists tab from the repository (cheap; no network). */
@@ -696,21 +644,61 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         com.jotapeveloper.fision.cloud.PlaylistRepository repo =
                 com.jotapeveloper.fision.cloud.PlaylistRepository.get(this);
         List<com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist> list = repo.getAll();
-        playlistAdapter.submit(list);
-        tvPlaylistsCount.setText(getResources().getQuantityString(
-                R.plurals.playlist_count, list.size(), list.size()));
-        tvPlaylistsCount.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
+        boolean none = list.isEmpty();
+        // Last playlist gone mid-search: the search row itself goes away.
+        if (none && playlistSearch.isActive()) playlistSearch.close(currentTab == TAB_PLAYLISTS);
+        String query = playlistSearch.query();
+        List<com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist> shown = list;
+        if (!query.isEmpty()) {
+            String k = foldForSearch(query);
+            shown = new ArrayList<>();
+            for (com.jotapeveloper.fision.cloud.PlaylistRepository.Playlist p : list) {
+                if (foldForSearch(p.title).contains(k)) shown.add(p);
+            }
+        }
+        playlistAdapter.submit(shown);
+        tvPlaylistsCount.setText(query.isEmpty()
+                ? getResources().getQuantityString(R.plurals.playlist_count, list.size(), list.size())
+                : getResources().getQuantityString(R.plurals.search_result_count, shown.size(), shown.size()));
         boolean loggedIn = AuthManager.get(this).isLoggedIn();
-        // Signed out: plain message. Signed in and empty: dashed "add first" card.
-        tvPlaylistsEmpty.setText(R.string.playlists_need_login);
-        tvPlaylistsEmpty.setVisibility(loggedIn ? View.GONE : View.VISIBLE);
-        llPlaylistsAddFirst.setVisibility(loggedIn && list.isEmpty() ? View.VISIBLE : View.GONE);
+        // No playlists: the add button widens into "New playlist" in the search slot.
+        View notice = llPlaylistsAddFirst;
+        setAddWide(bAddPlaylist, findViewById(R.id.tv_addPlaylistLabel), playlistSearch.field, none,
+                currentTab == TAB_PLAYLISTS, tvPlaylistsCount, notice);
+        playlistSearch.field.setVisibility(none ? View.INVISIBLE : View.VISIBLE);
+        // INVISIBLE keeps the list where the songs list starts (shared blobs).
+        tvPlaylistsCount.setVisibility(none ? View.INVISIBLE : View.VISIBLE);
+        playlistsEmptyShown = loggedIn && none;
+        // A playlist needs at least one song in the cloud library.
+        boolean hasSongs = SongCatalog.hasCloudSongs(this);
+        // Signed out: plain message. Search with no matches: "No results".
+        // Signed in and empty: blobs notice.
+        if (!loggedIn) {
+            tvPlaylistsEmpty.setText(R.string.playlists_need_login);
+            tvPlaylistsEmpty.setVisibility(View.VISIBLE);
+        } else if (!query.isEmpty() && shown.isEmpty()) {
+            tvPlaylistsEmpty.setText(R.string.no_results);
+            tvPlaylistsEmpty.setVisibility(View.VISIBLE);
+        } else {
+            tvPlaylistsEmpty.setVisibility(View.GONE);
+        }
+        llPlaylistsAddFirst.setVisibility(loggedIn && none ? View.VISIBLE : View.GONE);
         // Creating needs the server; offline the list stays playable.
-        boolean canEdit = repo.canEdit() && list.size() < com.jotapeveloper.fision.cloud.PlaylistRepository.MAX_PLAYLISTS;
-        bNewPlaylist.setEnabled(canEdit);
-        bNewPlaylist.setAlpha(canEdit ? 1f : 0.4f);
-        llPlaylistsAddFirst.setEnabled(canEdit);
-        llPlaylistsAddFirst.setAlpha(canEdit ? 1f : 0.4f);
+        boolean canEdit = hasSongs && repo.canEdit()
+                && list.size() < com.jotapeveloper.fision.cloud.PlaylistRepository.MAX_PLAYLISTS;
+        bAddPlaylist.setEnabled(canEdit);
+        bAddPlaylist.setAlpha(canEdit ? 1f : 0.4f);
+        llPlaylistsAddFirst.setClickable(canEdit);
+        updateEmptyBlobs();
+        TextView emptyTitle = findViewById(R.id.tv_playlistsEmptyTitle);
+        TextView emptyHint = findViewById(R.id.tv_playlistsEmptyHint);
+        if (!hasSongs) {
+            emptyTitle.setText(R.string.playlists_empty_nosongs_title);
+            emptyHint.setText(R.string.playlists_empty_nosongs_hint);
+        } else {
+            emptyTitle.setText(R.string.playlists_empty_title);
+            emptyHint.setText(accentTap(R.string.playlists_empty_hint));
+        }
         if (currentTab == TAB_PLAYLISTS) miniPlayer.invalidateBlur();
     }
 
@@ -769,22 +757,98 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         fadeBottom.setVisibility(rvSongList.canScrollVertically(1) ? View.VISIBLE : View.INVISIBLE);
     }
 
-    private Drawable clearIcon;
-    private boolean clearVisible = false;
-    private android.animation.ValueAnimator clearAnim;
+    private SearchBar songSearch, playlistSearch;
 
-    /** Fades the search clear (X) icon in or out. */
-    private void showClearButton(boolean visible) {
-        if (clearIcon == null || clearVisible == visible) return;
-        clearVisible = visible;
-        if (clearAnim != null) clearAnim.cancel();
-        clearAnim = android.animation.ValueAnimator.ofInt(clearIcon.getAlpha(), visible ? 255 : 0);
-        clearAnim.setDuration(visible ? 160 : 120);
-        clearAnim.addUpdateListener(a -> {
-            clearIcon.setAlpha((int) a.getAnimatedValue());
-            et_find.invalidate();
-        });
-        clearAnim.start();
+    interface QueryListener { void onQuery(@NonNull String query); }
+
+    /**
+     * Search bar of a library tab. With focus the add button steps aside and
+     * the title switches to the search wording; the clear (X) fades in with
+     * text (it stays installed so the text never shifts); the keyboard Search
+     * key only hides the keyboard and leaves the results on screen.
+     */
+    private final class SearchBar {
+        final EditText field;
+        private final View addButton;
+        private final int titleRes;
+        private final Drawable clearIcon;
+        private boolean clearVisible;
+        private android.animation.ValueAnimator clearAnim;
+
+        SearchBar(EditText field, View addButton, int titleRes, int searchTitleRes,
+                  QueryListener listener) {
+            this.field = field;
+            this.addButton = addButton;
+            this.titleRes = titleRes;
+            clearIcon = field.getCompoundDrawables()[2].mutate();
+            clearIcon.setAlpha(0);
+            field.setOnFocusChangeListener((v, hasFocus) -> {
+                if (!hasFocus) return;
+                if (addButton.getVisibility() == View.VISIBLE) buttonAnimation(false, addButton);
+                if (tv_title.getText().toString().equals(getString(titleRes))) {
+                    changeTextAnimation(tv_title, getString(searchTitleRes));
+                }
+            });
+            field.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
+                    String q = s.toString();
+                    showClear(!TextUtils.isEmpty(q));
+                    listener.onQuery(q);
+                }
+                @Override public void afterTextChanged(Editable e) {}
+            });
+            field.setOnTouchListener((v, ev) -> {
+                // Tap on the X (only while it is shown): the icon plus its
+                // end padding, in view coordinates.
+                if (!clearVisible) return false;
+                if (ev.getAction() == MotionEvent.ACTION_UP) {
+                    int hitStart = field.getWidth() - field.getPaddingEnd()
+                            - clearIcon.getBounds().width() - field.getCompoundDrawablePadding();
+                    if (ev.getX() >= hitStart) {
+                        field.setText("");
+                        return true;
+                    }
+                }
+                return false;
+            });
+            field.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) return false;
+                hideKeyboard();
+                return true;
+            });
+        }
+
+        boolean isActive() {
+            return field.hasFocus() || field.length() > 0;
+        }
+
+        String query() {
+            return field.getText().toString();
+        }
+
+        /** Ends the search: query cleared, add button back, keyboard down.
+         *  [restoreTitle] fades the tab title back (not when the tab changes). */
+        void close(boolean restoreTitle) {
+            field.clearFocus();
+            field.setText("");
+            if (addButton.getVisibility() != View.VISIBLE) buttonAnimation(true, addButton);
+            if (restoreTitle) changeTextAnimation(tv_title, getString(titleRes));
+            hideKeyboard();
+        }
+
+        private void showClear(boolean visible) {
+            if (clearVisible == visible) return;
+            clearVisible = visible;
+            if (clearAnim != null) clearAnim.cancel();
+            clearAnim = android.animation.ValueAnimator.ofInt(clearIcon.getAlpha(), visible ? 255 : 0);
+            clearAnim.setDuration(visible ? 160 : 120);
+            clearAnim.addUpdateListener(a -> {
+                clearIcon.setAlpha((int) a.getAnimatedValue());
+                field.invalidate();
+            });
+            clearAnim.start();
+        }
     }
 
     public List<String> getSubdirectories(File Folder, ContentResolver contentResolver){
@@ -894,11 +958,28 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Add button and empty list follow the mode: folder import in local mode. */
     private void refreshAddAffordance() {
         boolean local = AuthManager.get(this).isLocalMode();
-        if (b_add != null) b_add.setImageResource(local ? R.drawable.ic_folder_import : R.drawable.ic_fision_mark);
-        ImageView firstIcon = findViewById(R.id.iv_songsAddFirst);
+        if (ivAddIcon != null) {
+            ivAddIcon.setImageResource(local ? R.drawable.ic_folder_import : R.drawable.ic_fision_mark);
+            tvAddLabel.setText(local ? R.string.songs_import_bar : R.string.songs_add_bar);
+        }
         TextView firstText = findViewById(R.id.tv_songsAddFirst);
-        if (firstIcon != null) firstIcon.setImageResource(local ? R.drawable.ic_folder_import : R.drawable.ic_add);
-        if (firstText != null) firstText.setText(local ? R.string.songs_empty_local : R.string.songs_empty);
+        if (firstText != null) {
+            firstText.setText(accentTap(local ? R.string.songs_empty_hint_local : R.string.songs_empty_hint));
+        }
+    }
+
+    /** Hint with "Tap" in the accent, wherever the language puts it. */
+    private CharSequence accentTap(int hintRes) {
+        String tap = getString(R.string.songs_empty_tap);
+        String hint = getString(hintRes, tap);
+        android.text.SpannableString s = new android.text.SpannableString(hint);
+        int at = hint.indexOf(tap);
+        if (at >= 0) {
+            s.setSpan(new android.text.style.ForegroundColorSpan(
+                            com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this)),
+                    at, at + tap.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return s;
     }
 
     /** Add flow: the picker opens first; the import screen only appears with
@@ -924,7 +1005,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      */
     private SongListData buildSongListData(String folderName) {
         SongListData s = new SongListData(folderName, "Stems");
-        SongMetadata meta = SongMetadata.read(new File(SongFolder, folderName));
+        SongMetadata meta = SongMetadata.read(new File(getSongFolder(), folderName));
         if (meta.displayTitle != null) s.setDisplayTitle(meta.displayTitle);
         if (meta.artist != null)       s.setArtist(meta.artist);
         if (meta.coverPath != null)    s.setCoverPath(meta.coverPath);
@@ -933,7 +1014,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     public void refreshSongList(){
         ContentResolver contentResolver = getContentResolver();
-        SongsInDirectory = getSubdirectories(SongFolder, contentResolver);
+        SongsInDirectory = getSubdirectories(getSongFolder(), contentResolver);
         applySortToSongs(SongsInDirectory);
 
         // Notify the repository about local folders (marks LOCAL_AND_CLOUD / LOCAL_ONLY)
@@ -964,6 +1045,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         }
 
         updateSearchState(query);
+        // The playlists empty state depends on having songs.
+        if (currentTab == TAB_PLAYLISTS) refreshPlaylistsTab();
     }
 
     /** Count line and "No results" notice for the current query. */
@@ -974,22 +1057,120 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (tvNoResults == null) tvNoResults = findViewById(R.id.tv_noResults);
         tvNoResults.setVisibility(!query.isEmpty() && Songs.length == 0
                 ? View.VISIBLE : View.GONE);
+        boolean wasEmpty = libraryEmpty;
         libraryEmpty = query.isEmpty() && Songs.length == 0;
         applySongsEmptyState();
+        // The shine pace follows the library: restart it when it empties or fills up.
+        if (wasEmpty != libraryEmpty && shineRunning) startAddShine();
     }
 
     private TextView tvNoResults;
     private View llSongsAddFirst;
     private boolean libraryEmpty;
 
-    /** Empty library: no count line, dashed "add first song" card instead. */
+    private com.jotapeveloper.fision.brand.ButtonShine addShine;
+    /** Between onStart and onStop. */
+    private boolean shineRunning;
+    private final java.util.Random shineRandom = new java.util.Random();
+
+    /**
+     * Glossy sweep on the add (split) button: often while the library is
+     * empty (first after 5-10 s, then every 20-30 s), about every 5 minutes
+     * once there are songs. Same in local mode, where the button imports. As
+     * a bar (empty library) the label lights up with the icon.
+     */
+    private void startAddShine() {
+        if (b_add == null) return;
+        if (addShine == null) addShine = new com.jotapeveloper.fision.brand.ButtonShine(b_add, ivAddIcon, tvAddLabel,
+                com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
+        shineRunning = true;
+        addShine.start(first -> {
+            if (!libraryEmpty) return randomMs(240_000, 360_000);
+            return first ? randomMs(5_000, 10_000) : randomMs(20_000, 30_000);
+        });
+    }
+
+    private long randomMs(long min, long max) {
+        return min + (long) (shineRandom.nextDouble() * (max - min));
+    }
+
+    /** Empty library: the add button widens into a labelled bar in the search
+     *  slot, no count line, the blobs notice that adds the first song. */
     private void applySongsEmptyState() {
         if (llSongsAddFirst == null) llSongsAddFirst = findViewById(R.id.ll_songsAddFirst);
         boolean songsTab = currentTab == TAB_SONGS;
-        int countVis = !songsTab ? View.GONE : (libraryEmpty ? View.INVISIBLE : View.VISIBLE);
+        // Nothing to search: a search with focus ends first.
+        if (libraryEmpty && songSearch != null && songSearch.field.hasFocus()) songSearch.close(true);
+        setAddWide(b_add, tvAddLabel, et_find, libraryEmpty, songsTab,
+                tv_SongsCount, b_orderBy, llSongsAddFirst);
+        // INVISIBLE, not GONE: the shared blobs hang from the count line.
+        int countVis = songsTab && !libraryEmpty ? View.VISIBLE : View.INVISIBLE;
         tv_SongsCount.setVisibility(countVis);
         b_orderBy.setVisibility(countVis);
         llSongsAddFirst.setVisibility(songsTab && libraryEmpty ? View.VISIBLE : View.GONE);
+        updateEmptyBlobs();
+    }
+
+    /** Blobs behind the empty notice of the tab shown (or being switched to). */
+    private void updateEmptyBlobs() {
+        if (vEmptyBlobs == null) return;
+        vEmptyBlobs.setShown(targetTab == TAB_SONGS ? libraryEmpty : playlistsEmptyShown);
+    }
+
+    private static final long ADD_MORPH_MS = 300;
+
+    private boolean isAddWide(View button) {
+        return button.getLayoutParams().width == 0;
+    }
+
+    /**
+     * Add button of a tab: the square beside the search bar, or, with nothing
+     * to search, a bar with its label in the search slot. [animate] = the tab
+     * is on screen: morphs between both (the bar shrinks into the square, the
+     * search fades in) and cross-fades [others] (count line, empty notice) in
+     * the same pass.
+     */
+    private void setAddWide(View button, View label, EditText search, boolean wide,
+                            boolean animate, View... others) {
+        if (isAddWide(button) == wide) return;
+        if (animate && button.isLaidOut()) {
+            androidx.transition.TransitionSet set = new androidx.transition.TransitionSet()
+                    .addTransition(new androidx.transition.ChangeBounds())
+                    .addTransition(new androidx.transition.Fade())
+                    .setOrdering(androidx.transition.TransitionSet.ORDERING_TOGETHER)
+                    .setDuration(ADD_MORPH_MS)
+                    .setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator());
+            // The centered icon + label group slides as the label comes and goes.
+            set.addTarget(button).addTarget((View) label.getParent())
+                    .addTarget(label).addTarget(search);
+            for (View o : others) set.addTarget(o);
+            // The growing field passes through widths that may scroll it again.
+            if (!wide) set.addListener(new androidx.transition.TransitionListenerAdapter() {
+                @Override public void onTransitionEnd(@NonNull androidx.transition.Transition t) {
+                    search.scrollTo(0, 0);
+                }
+            });
+            androidx.transition.TransitionManager.beginDelayedTransition(
+                    (android.view.ViewGroup) button.getParent(), set);
+        }
+        androidx.constraintlayout.widget.ConstraintLayout.LayoutParams lp = (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) button.getLayoutParams();
+        float d = getResources().getDisplayMetrics().density;
+        if (wide) {
+            lp.width = 0;
+            lp.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID;
+            lp.setMarginStart((int) (20 * d));
+        } else {
+            lp.width = (int) (53 * d);
+            lp.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET;
+            lp.setMarginStart(0);
+        }
+        button.setLayoutParams(lp);
+        // Behind the bar the field is squeezed to zero width, where any cursor
+        // update scrolls the text far right; it reappears scrolled to its start.
+        if (!wide) search.scrollTo(0, 0);
+        label.setVisibility(wide ? View.VISIBLE : View.GONE);
+        // A hidden tab keeps its search hidden; showing the tab restores it.
+        search.setVisibility(!wide && animate ? View.VISIBLE : View.INVISIBLE);
     }
 
     private String currentQuery() {
@@ -1105,7 +1286,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  sticky if present, otherwise server created_at (stable order, does not change on
      *  reprocess), otherwise updated_at, otherwise the local folder's lastModified. */
     private long tsForItem(SongListData s) {
-        return SongOrder.timestamp(this, s.cloud, new File(SongFolder, s.getTitle()));
+        return SongOrder.timestamp(this, s.cloud, new File(getSongFolder(), s.getTitle()));
     }
 
     /** Tie-break key matching SongOrder.sortedSongFolders: the song hash. */
@@ -1254,8 +1435,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // missing session without local mode leaves the add actions off.
         boolean canAdd = loggedIn || AuthManager.get(this).isLocalMode();
         if (b_add != null) {
-            b_add.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    canAdd ? Color.WHITE : 0xFF4A4A4A));
+            int fg = canAdd ? Color.WHITE : 0xFF4A4A4A;
+            ivAddIcon.setImageTintList(android.content.res.ColorStateList.valueOf(fg));
+            tvAddLabel.setTextColor(fg);
             b_add.setEnabled(canAdd);
         }
         if (llSongsAddFirst == null) llSongsAddFirst = findViewById(R.id.ll_songsAddFirst);
@@ -1422,11 +1604,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Blurs the activity decorView (Android 12+). Only affects the background; the dialog stays sharp. */
     private void applyActivityBlur() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getWindow().getDecorView().setRenderEffect(
-                    android.graphics.RenderEffect.createBlurEffect(
-                            40f, 40f, android.graphics.Shader.TileMode.CLAMP));
-        }
+        BlurDialogs.applyBlur(this);
     }
 
     private void removeActivityBlur() {
@@ -1492,7 +1670,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         final boolean canRetry = song.cloud != null
                 && song.cloud.state == CloudItem.State.ERROR
                 && song.cloud.hasLocalCopy()
-                && CloudRepository.isRetryableJobError(song.cloud.errorMessage);
+                && CloudRepository.isRetryableJobError(song.cloud.errorCode);
         if (retryButton != null) {
             retryButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
             retryButton.setOnClickListener(v -> {
@@ -1524,7 +1702,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (songs == null || songs.size() < 2) return;
         java.util.Map<String, Long> mtimeCache = new java.util.HashMap<>();
         for (String name : songs) {
-            mtimeCache.put(name, new File(SongFolder, name).lastModified());
+            mtimeCache.put(name, new File(getSongFolder(), name).lastModified());
         }
         java.util.Collections.sort(songs, (a, b) -> {
             long la = mtimeCache.getOrDefault(a, 0L);
@@ -1588,7 +1766,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  it when the user taps an item stuck on this error. */
     void showJobRetryDialog(String hash) {
         CloudItem item = CloudRepository.get(this).getByHash(hash);
-        boolean timedOut = item != null && CloudRepository.isTimeoutError(item.errorMessage);
+        boolean timedOut = item != null && CloudRepository.isTimeoutError(item.errorCode);
         LayoutInflater inflater = LayoutInflater.from(this);
         View dv = inflater.inflate(R.layout.delete_alert_dialog, null);
         android.widget.ImageView icon = dv.findViewById(R.id.iv_alertDialog_ic);
@@ -1675,7 +1853,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 CloudRepository.get(this).deleteFromCloud(song.cloud.hash, () ->
                         Toast.makeText(this, R.string.cloud_delete_busy, Toast.LENGTH_LONG).show());
             } else {
-                File target = new File(SongFolder, folderName);
+                File target = new File(getSongFolder(), folderName);
                 // When the song is also on the cloud, remember its current order date so
                 // after deletion the entry stays "sticky" at its position as CLOUD_ONLY.
                 long lm = SongOrder.timestamp(this, song.cloud, target);
@@ -1739,7 +1917,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         etArtist.setText(artistName);
 
         // Read-only folder info: date, format, size, duration, stems.
-        populateSongInfo(dialogView, new File(SongFolder, folderName));
+        populateSongInfo(dialogView, new File(getSongFolder(), folderName));
 
         AlertDialog renameDialog = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
                 .setView(dialogView)
@@ -1755,7 +1933,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         save.setOnClickListener(v -> {
             String newSong   = etSong.getText().toString().trim();
             String newArtist = etArtist.getText().toString().trim();
-            File folder = new File(SongFolder, folderName);
+            File folder = new File(getSongFolder(), folderName);
             if (writeMetadata(folder, newSong, newArtist)) {
                 refreshSongList();
             } else {
@@ -1962,17 +2140,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     public void onBackPressed() {
 
-        // Back from the Playlists tab returns to the songs.
-        if (currentTab == TAB_PLAYLISTS) {
-            bnvMain.setSelectedItemId(R.id.tab_songs);
+        // Back first ends a search with focus.
+        SearchBar search = currentTab == TAB_PLAYLISTS ? playlistSearch : songSearch;
+        if (search.field.hasFocus()) {
+            search.close(true);
             return;
         }
 
-        if(et_find.hasFocus()){
-            buttonAnimation(true, b_add);
-            changeTextAnimation(tv_title, getString(R.string.tv_title));
-            et_find.clearFocus();
-            et_find.setText("");
+        // Back from the Playlists tab returns to the songs.
+        if (currentTab == TAB_PLAYLISTS) {
+            bnvMain.setSelectedItemId(R.id.tab_songs);
             return;
         }
 
@@ -1989,8 +2166,15 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        AuthManager.get(this).removeLibraryChangedListener(libraryChangedListener);
         super.onDestroy();
     }
+
+    /** Login, logout or local mode switched the library: list the new one. */
+    private final AuthManager.LibraryChangedListener libraryChangedListener = () -> {
+        if (isFinishing() || isDestroyed()) return;
+        refreshSongList();
+    };
 
     @Override
     protected void onStart() {
@@ -2000,6 +2184,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         com.jotapeveloper.fision.design.AccentColorManager.get(this)
                 .maybeRecreateForAccent(this);
         miniPlayer.onStart();
+        startAddShine();
 
         // Live server state
         CloudRepository.get(this).addListener(cloudListener);
@@ -2063,6 +2248,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     protected void onStop() {
         super.onStop();
         miniPlayer.onStop();
+        shineRunning = false;
+        if (addShine != null) addShine.stop();
         CloudRepository.get(this).removeListener(cloudListener);
         CloudRepository.get(this).stopPolling();
         AvatarManager.get(this).removeListener(avatarListener);

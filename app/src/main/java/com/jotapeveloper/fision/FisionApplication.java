@@ -39,6 +39,8 @@ public class FisionApplication extends Application {
         super.onCreate();
         installCrashFilter();
         installMainLoopGuard();
+        // No export runs at process start: temporary renders left behind are garbage.
+        new Thread(() -> ExportStore.cleanTemp(this), "ExportClean").start();
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityStarted(android.app.Activity a) {
                 if (++startedActivities == 1 && foregroundListener != null) {

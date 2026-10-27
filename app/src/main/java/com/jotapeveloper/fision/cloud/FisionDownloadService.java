@@ -152,6 +152,8 @@ public class FisionDownloadService extends Service {
             unzip(tmpZip, hashDir);
             tmpZip.delete();
 
+            // Account switched meanwhile: the song stays in its own account's library.
+            if (!outDir.equals(DownloadManagerLite.songsDir(this))) return;
             CloudItem snap = repo.getByHash(hash);
             String displayName = snap != null ? snap.displayName : hash;
             repo.onLocalCommit(hash, hash);

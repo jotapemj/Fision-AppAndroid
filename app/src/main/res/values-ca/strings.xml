@@ -122,8 +122,8 @@
     <string name="export_back">Enrere</string>
     <string name="export_include_metronome">Incloure metrònom a la mescla</string>
     <string name="export_permission_title">Permís d\'emmagatzematge</string>
-    <string name="export_permission_body">Per desar exportacions, Fision necessita accés a tots els fitxers. S\'obriran els Ajustaments — activa l\'accés i torna a l\'app.</string>
-    <string name="export_permission_continue">Obrir Ajustaments</string>
+    <string name="export_permission_body">Per desar exportacions a la carpeta Música, Fision necessita accés a l\'emmagatzematge.</string>
+    <string name="export_permission_continue">Permetre</string>
     <string name="export_solo_title">Solo actiu</string>
     <string name="export_solo_body">L\'exportació ignora el solo: cada pista sona amb el seu volum.</string>
     <string name="export_solo_continue">Continua</string>
@@ -215,7 +215,6 @@
     <string name="avatar_instrument_winds">Vents</string>
     <string name="avatar_instrument_other">Altre</string>
     <string name="settings_header_local_title">Mode local</string>
-    <string name="settings_header_local_email">Inicia sessió per sincronitzar amb Fision</string>
     <string name="settings_section_server">Servidor</string>
     <string name="settings_section_app">Aplicació</string>
     <string name="settings_section_about">Sobre</string>
@@ -227,12 +226,12 @@
     <string name="design_song_colors_summary">El reproductor pren els colors de la portada</string>
     <string name="close">Tanca</string>
     <string name="performance_title">Rendiment</string>
-    <string name="performance_audio3d_title">Vista Àudio 3D</string>
-    <string name="performance_audio3d_scene">Escena 3D (completa)</string>
-    <string name="performance_audio3d_flat">Vista plana (lleugera)</string>
+    <string name="performance_audio3d_scene">Escena 3D</string>
+    <string name="performance_audio3d_flat">Escena 2D</string>
     <string name="settings_language_dialog_title">Tria idioma</string>
     <string name="settings_language_system">Idioma del sistema</string>
     <string name="settings_logout_title">Tanca sessió</string>
+    <string name="settings_logout_confirm">Es tancarà la sessió. Vols continuar?</string>
 
     <!--- Fision server -->
     <string name="about_title">Sobre Fision</string>
@@ -241,10 +240,10 @@
     <string name="server_auth_unavailable">Biometria no disponible en aquest dispositiu</string>
     <string name="server_status_online">Servidor en línia</string>
     <string name="server_status_offline">Servidor sense connexió</string>
-    <string name="server_test_title">Provar connexió</string>
-    <string name="server_test_summary">Ping manual al servidor configurat per comprovar la connexió</string>
+    <string name="server_test_title">Provar connexió al servidor</string>
     <string name="server_gpu_title">Estat GPU</string>
     <string name="server_version_title">Versió del servidor</string>
+    <string name="server_version_incompatible">Servidor: %1$s\nCompatible: %2$s</string>
     <string name="server_version_fmt">v%1$s</string>
     <string name="server_gpu_unknown">Inicia sessió per llegir la GPU</string>
     <string name="server_gpu_ok_fmt">%1$s · %2$d GB VRAM</string>
@@ -277,7 +276,6 @@
     <string name="login_err_bad_url">URL del servidor no vàlida</string>
     <string name="login_err_server">Error del servidor</string>
     <string name="login_session_expired">La sessió ha caducat, torna a entrar</string>
-    <string name="account_url_line">Servidor: %1$s</string>
     <string name="account_change_password">Canvia la contrasenya</string>
     <string name="local_mode_import_blocked">Inicia sessió per processar cançons noves al servidor</string>
     <string name="change_password_title">Canviar contrasenya</string>
@@ -343,6 +341,14 @@
     <string name="cloud_state_cloud_only">Al núvol</string>
     <string name="cloud_state_locked">Inicia sessió per fer-la servir</string>
     <string name="cloud_state_error">Error</string>
+    <string name="job_err_cancelled">Cancel·lat</string>
+    <string name="job_err_gpu_busy">GPU ocupada</string>
+    <string name="job_err_timeout">Ha trigat massa</string>
+    <string name="job_err_pipeline_failed">Ha fallat el processament</string>
+    <string name="job_err_lyrics_failed">Ha fallat la transcripció</string>
+    <string name="job_err_input_missing">Falta l\'àudio original</string>
+    <string name="job_err_vocals_missing">Sense veus per a la lletra</string>
+    <string name="job_err_internal">Error inesperat</string>
     <string name="cloud_delete_cloud">Esborrar del núvol</string>
     <string name="cloud_delete_cloud_confirm">Vols esborrar la cançó també del servidor?</string>
     <string name="cloud_cancel_queue">Cancel·lar (cua)</string>
@@ -411,6 +417,8 @@
     <!-- Playlists -->
     <string name="tab_songs">Cançons</string>
     <string name="tab_playlists">Playlists</string>
+    <string name="tv_title_search_playlist">Cerca playlist</string>
+    <string name="te_find_playlist">Troba a les teves playlists</string>
     <string name="playlist_new">Nova playlist</string>
     <plurals name="playlist_count">
         <item quantity="one">%d playlist</item>
@@ -431,8 +439,15 @@
         <item quantity="many">%d seleccionades</item>
         <item quantity="other">%d seleccionades</item>
     </plurals>
-    <string name="playlists_empty">Crea la teva primera playlist</string>
-    <string name="songs_empty">Afegeix la teva primera cançó</string>
+    <string name="playlists_empty_nosongs_title">Tampoc per aquí</string>
+    <string name="playlists_empty_nosongs_hint">Afegeix almenys una cançó per crear una playlist</string>
+    <string name="playlists_empty_title">Cap playlist creada</string>
+    <string name="playlists_empty_hint">%1$s per crear-ne una</string>
+    <string name="songs_empty_title">Encara no hi ha res</string>
+    <string name="songs_empty_tap">Toca</string>
+    <string name="songs_empty_hint">%1$s per afegir la teva primera cançó</string>
+    <string name="songs_add_bar">Afegeix cançó</string>
+    <string name="songs_import_bar">Importa carpeta</string>
     <string name="playlists_need_login">Inicia sessió per fer servir les playlists</string>
     <string name="playlist_reorder">Reordenar</string>
     <string name="playlist_remove_song">Treure de la playlist</string>
@@ -508,8 +523,10 @@
     <string name="cd_stem_options">Opcions del stem</string>
     <string name="cd_drumset">Bateria</string>
     <string name="cd_expand_collapse">Desplega o plega</string>
-    <string name="dance_swing">balanceig</string>
-    <string name="dance_randomize_swing">Balanceig aleatori</string>
+    <string name="dance_swing">swing</string>
+    <string name="dance_randomize_swing">Swing aleatori</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s voltes/s</string>
     <string name="export_include_fx">Inclou els efectes</string>
     <string name="coach_next">Següent</string>
     <string name="coach_skip">Omet</string>
@@ -520,13 +537,14 @@
     <string name="coach_lib_search_body">Troba cançons per títol o artista i canvia l\'ordre de la llista.</string>
     <string name="coach_lib_song_title">Les teves cançons</string>
     <string name="coach_lib_song_body">Toca una cançó per reproduir-la. Mantén premut per veure\'n les opcions: editar, reintentar o esborrar.</string>
+    <string name="coach_lib_song_empty_body">Aquí apareixeran les teves cançons.</string>
     <string name="coach_lib_playlists_title">Llistes</string>
     <string name="coach_lib_playlists_body">Les teves llistes, desades al servidor i disponibles sense connexió.</string>
     <string name="coach_lib_cloud_title">Estat del servidor</string>
     <string name="coach_lib_cloud_body">Avisa quan no es pot connectar amb el servidor.</string>
     <string name="coach_lib_settings_title">Ajustaments i compte</string>
     <string name="coach_lib_settings_body">Informació del servidor, ajustaments i el teu compte.</string>
-    <string name="coach_pl_chords_title">Tira d\'acords</string>
+    <string name="coach_pl_chords_title">Carrusel d\'acords</string>
     <string name="coach_pl_chords_body">Una casella per pulsació amb el seu acord. Toca\'n una per saltar-hi o arrossega per veure el que ve.</string>
     <string name="coach_pl_icon_title">Solo i silenci</string>
     <string name="coach_pl_icon_body">Toca la icona d\'una pista per posar-la en solo o silenciar-la. Pots tenir-ne diverses en solo alhora.</string>
@@ -543,8 +561,7 @@
     <string name="coach_pl_bar_3d">Àudio 3D</string>
     <string name="coach_pl_menu_title">Més opcions</string>
     <string name="coach_pl_menu_body">Xifrat d\'acords, següent cançó, restablir i exportar.</string>
-    <string name="settings_tour_title">Torna a veure el tour</string>
-    <string name="settings_tour_summary">Guia de la biblioteca i del reproductor</string>
+    <string name="settings_tour_title">Veure el tour</string>
     <string name="settings_tour_reset">El tour es tornarà a mostrar a la biblioteca i al reproductor</string>
     <string name="welcome_intro_title">Et donem la benvinguda a Fision</string>
     <string name="welcome_intro_body">Separa les teves cançons en pistes d\'instruments, escolta-les o toca amb elles.</string>
@@ -560,7 +577,7 @@
     <string name="welcome_local">Fes servir el mode local</string>
     <string name="coach_lib_import_title">Importa una cançó</string>
     <string name="coach_lib_import_body">Tria una carpeta amb una cançó ja separada. Cada fitxer es comprova abans d\'afegir-la.</string>
-    <string name="songs_empty_local">Importa la teva primera carpeta de cançó</string>
+    <string name="songs_empty_hint_local">%1$s per importar la teva primera carpeta de cançó</string>
     <string name="import_folder_confirm">Vols importar una carpeta de cançó?</string>
     <string name="import_folder_pick">Tria la carpeta</string>
     <string name="import_folder_checking">S\'està comprovant la cançó…</string>

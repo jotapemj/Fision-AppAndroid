@@ -131,8 +131,8 @@
     <string name="export_back">Back</string>
     <string name="export_include_metronome">Include metronome in mix</string>
     <string name="export_permission_title">Storage permission needed</string>
-    <string name="export_permission_body">To save exports, allow Fision to access all files. The system Settings will open — toggle the access for Fision and come back.</string>
-    <string name="export_permission_continue">Open Settings</string>
+    <string name="export_permission_body">To save exports in the Music folder, Fision needs storage access.</string>
+    <string name="export_permission_continue">Allow</string>
     <string name="export_solo_title">Solo active</string>
     <string name="export_solo_body">The export ignores the solo: every stem plays at its own volume.</string>
     <string name="export_solo_continue">Continue</string>
@@ -236,7 +236,6 @@
     <string name="avatar_instrument_winds">Winds</string>
     <string name="avatar_instrument_other">Other</string>
     <string name="settings_header_local_title">Local mode</string>
-    <string name="settings_header_local_email">Sign in to sync with Fision server</string>
     <string name="settings_section_server">Server</string>
     <string name="settings_section_app">App</string>
     <string name="settings_section_about">About</string>
@@ -248,12 +247,12 @@
     <string name="design_song_colors_summary">The player takes its colors from the artwork</string>
     <string name="close">Close</string>
     <string name="performance_title">Performance</string>
-    <string name="performance_audio3d_title">3D Audio view</string>
-    <string name="performance_audio3d_scene">3D scene (full)</string>
-    <string name="performance_audio3d_flat">Flat view (light)</string>
+    <string name="performance_audio3d_scene">3D scene</string>
+    <string name="performance_audio3d_flat">2D scene</string>
     <string name="settings_language_dialog_title">Choose language</string>
     <string name="settings_language_system">System default</string>
     <string name="settings_logout_title">Sign out</string>
+    <string name="settings_logout_confirm">You will be signed out. Continue?</string>
 
     <!--- Fision server -->
     <string name="about_title">About Fision</string>
@@ -262,10 +261,10 @@
     <string name="server_auth_unavailable">Biometrics not available on this device</string>
     <string name="server_status_online">Server online</string>
     <string name="server_status_offline">Server offline</string>
-    <string name="server_test_title">Test connection</string>
-    <string name="server_test_summary">Manual ping to the configured server to check the connection</string>
+    <string name="server_test_title">Test server connection</string>
     <string name="server_gpu_title">GPU status</string>
     <string name="server_version_title">Server version</string>
+    <string name="server_version_incompatible">Server: %1$s\nCompatible: %2$s</string>
     <string name="server_version_fmt">v%1$s</string>
     <string name="server_gpu_unknown">Sign in to read GPU info</string>
     <string name="server_gpu_ok_fmt">%1$s · %2$d GB VRAM</string>
@@ -297,7 +296,6 @@
     <string name="login_err_bad_url">Invalid server URL</string>
     <string name="login_err_server">Server error</string>
     <string name="login_session_expired">Session expired, please sign in again</string>
-    <string name="account_url_line">Server: %1$s</string>
     <string name="account_change_password">Change password</string>
     <string name="local_mode_import_blocked">Sign in to process new songs on the server</string>
     <string name="change_password_title">Change password</string>
@@ -363,6 +361,14 @@
     <string name="cloud_state_cloud_only">In the cloud</string>
     <string name="cloud_state_locked">Sign in to use it</string>
     <string name="cloud_state_error">Error</string>
+    <string name="job_err_cancelled">Cancelled</string>
+    <string name="job_err_gpu_busy">GPU busy</string>
+    <string name="job_err_timeout">Took too long</string>
+    <string name="job_err_pipeline_failed">Processing failed</string>
+    <string name="job_err_lyrics_failed">Transcription failed</string>
+    <string name="job_err_input_missing">Original audio missing</string>
+    <string name="job_err_vocals_missing">No vocals for lyrics</string>
+    <string name="job_err_internal">Unexpected error</string>
     <string name="cloud_delete_cloud">Delete from cloud</string>
     <string name="cloud_delete_cloud_confirm">Delete this song from the server too?</string>
     <string name="cloud_cancel_queue">Cancel (queue)</string>
@@ -431,6 +437,8 @@
     <!-- Playlists -->
     <string name="tab_songs">Songs</string>
     <string name="tab_playlists">Playlists</string>
+    <string name="tv_title_search_playlist">Search playlist</string>
+    <string name="te_find_playlist">Find in your playlists</string>
     <string name="playlist_new">New playlist</string>
     <plurals name="playlist_count">
         <item quantity="one">%d playlist</item>
@@ -448,8 +456,15 @@
         <item quantity="one">%d selected</item>
         <item quantity="other">%d selected</item>
     </plurals>
-    <string name="playlists_empty">Create your first playlist</string>
-    <string name="songs_empty">Add your first song</string>
+    <string name="playlists_empty_nosongs_title">Nothing here either</string>
+    <string name="playlists_empty_nosongs_hint">Add at least one song to create a playlist</string>
+    <string name="playlists_empty_title">No playlists yet</string>
+    <string name="playlists_empty_hint">%1$s to create one</string>
+    <string name="songs_empty_title">Nothing here yet</string>
+    <string name="songs_empty_tap">Tap</string>
+    <string name="songs_empty_hint">%1$s to add your first song</string>
+    <string name="songs_add_bar">Add song</string>
+    <string name="songs_import_bar">Import folder</string>
     <string name="playlists_need_login">Sign in to use playlists</string>
     <string name="playlist_reorder">Reorder</string>
     <string name="playlist_remove_song">Remove from playlist</string>
@@ -530,6 +545,8 @@
     <string name="cd_expand_collapse">Expand or collapse</string>
     <string name="dance_swing">swing</string>
     <string name="dance_randomize_swing">Randomize swing</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s turns/s</string>
     <string name="export_include_fx">Include effects</string>
     <string name="coach_next">Next</string>
     <string name="coach_skip">Skip</string>
@@ -540,13 +557,14 @@
     <string name="coach_lib_search_body">Find songs by title or artist, and change the order of the list.</string>
     <string name="coach_lib_song_title">Your songs</string>
     <string name="coach_lib_song_body">Tap a song to play it. Long press for its options: edit info, retry or delete.</string>
+    <string name="coach_lib_song_empty_body">Your songs will appear here.</string>
     <string name="coach_lib_playlists_title">Playlists</string>
     <string name="coach_lib_playlists_body">Your playlists, stored on the server and playable offline.</string>
     <string name="coach_lib_cloud_title">Server status</string>
     <string name="coach_lib_cloud_body">Shows when the server cannot be reached.</string>
     <string name="coach_lib_settings_title">Settings and account</string>
     <string name="coach_lib_settings_body">Server info, settings and your account.</string>
-    <string name="coach_pl_chords_title">Chord strip</string>
+    <string name="coach_pl_chords_title">Chord carousel</string>
     <string name="coach_pl_chords_body">One cell per beat with its chord. Tap a cell to jump there, or drag to look ahead.</string>
     <string name="coach_pl_icon_title">Solo and mute</string>
     <string name="coach_pl_icon_body">Tap a stem\'s icon to solo or mute it. Several stems can be soloed at once.</string>
@@ -563,8 +581,7 @@
     <string name="coach_pl_bar_3d">Audio 3D</string>
     <string name="coach_pl_menu_title">More options</string>
     <string name="coach_pl_menu_body">Chord notation, play next song, reset and export.</string>
-    <string name="settings_tour_title">Show the tour again</string>
-    <string name="settings_tour_summary">Guided tour of the library and the player</string>
+    <string name="settings_tour_title">View tour</string>
     <string name="settings_tour_reset">The tour will show again in the library and the player</string>
     <string name="coach_counter" translatable="false">%1$d/%2$d</string>
     <string name="welcome_intro_title">Welcome to Fision</string>
@@ -581,7 +598,7 @@
     <string name="welcome_local">Use local mode</string>
     <string name="coach_lib_import_title">Import a song</string>
     <string name="coach_lib_import_body">Pick a folder with a song that is already split. Every file is checked before it is added.</string>
-    <string name="songs_empty_local">Import your first song folder</string>
+    <string name="songs_empty_hint_local">%1$s to import your first song folder</string>
     <string name="import_folder_confirm">Import song folder?</string>
     <string name="import_folder_pick">Choose folder</string>
     <string name="import_folder_checking">Checking the song…</string>

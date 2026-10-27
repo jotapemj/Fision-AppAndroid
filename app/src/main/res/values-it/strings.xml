@@ -117,8 +117,8 @@
     <string name="export_back">Indietro</string>
     <string name="export_include_metronome">Includi il metronomo nel mix</string>
     <string name="export_permission_title">Serve l\'autorizzazione di archiviazione</string>
-    <string name="export_permission_body">Per salvare le esportazioni, consenti a Fision di accedere a tutti i file. Si apriranno le impostazioni di sistema: attiva l\'accesso per Fision e torna indietro.</string>
-    <string name="export_permission_continue">Apri impostazioni</string>
+    <string name="export_permission_body">Per salvare le esportazioni nella cartella Musica, Fision ha bisogno di accedere alla memoria.</string>
+    <string name="export_permission_continue">Consenti</string>
     <string name="export_solo_title">Solo attivo</string>
     <string name="export_solo_body">L\'esportazione ignora il solo: ogni traccia suona al suo volume.</string>
     <string name="export_solo_continue">Continua</string>
@@ -209,7 +209,6 @@
     <string name="avatar_instrument_winds">Fiati</string>
     <string name="avatar_instrument_other">Altro</string>
     <string name="settings_header_local_title">Modalità locale</string>
-    <string name="settings_header_local_email">Accedi per sincronizzare con il server Fision</string>
     <string name="settings_section_server">Server</string>
     <string name="settings_section_app">App</string>
     <string name="settings_section_about">Informazioni</string>
@@ -221,22 +220,22 @@
     <string name="design_song_colors_summary">Il lettore prende i colori dalla copertina</string>
     <string name="close">Chiudi</string>
     <string name="performance_title">Prestazioni</string>
-    <string name="performance_audio3d_title">Vista Audio 3D</string>
-    <string name="performance_audio3d_scene">Scena 3D (completa)</string>
-    <string name="performance_audio3d_flat">Vista piatta (leggera)</string>
+    <string name="performance_audio3d_scene">Scena 3D</string>
+    <string name="performance_audio3d_flat">Scena 2D</string>
     <string name="settings_language_dialog_title">Scegli la lingua</string>
     <string name="settings_language_system">Lingua di sistema</string>
     <string name="settings_logout_title">Esci</string>
+    <string name="settings_logout_confirm">La sessione verrà chiusa. Continuare?</string>
 
     <!--- Fision server -->
     <string name="about_title">Informazioni su Fision</string>
     <string name="server_auth_unavailable">Biometria non disponibile su questo dispositivo</string>
     <string name="server_status_online">Server online</string>
     <string name="server_status_offline">Server offline</string>
-    <string name="server_test_title">Prova connessione</string>
-    <string name="server_test_summary">Ping manuale al server configurato per verificare la connessione</string>
+    <string name="server_test_title">Prova connessione al server</string>
     <string name="server_gpu_title">Stato della GPU</string>
     <string name="server_version_title">Versione del server</string>
+    <string name="server_version_incompatible">Server: %1$s\nCompatibile: %2$s</string>
     <string name="server_gpu_unknown">Accedi per leggere le info della GPU</string>
     <string name="server_gpu_ok_short">GPU disponibile</string>
     <string name="server_gpu_missing">GPU non disponibile</string>
@@ -267,7 +266,6 @@
     <string name="login_err_bad_url">URL del server non valido</string>
     <string name="login_err_server">Errore del server</string>
     <string name="login_session_expired">Sessione scaduta, accedi di nuovo</string>
-    <string name="account_url_line">Server: %1$s</string>
     <string name="account_change_password">Cambia password</string>
     <string name="local_mode_import_blocked">Accedi per elaborare nuovi brani sul server</string>
     <string name="change_password_title">Cambia password</string>
@@ -333,6 +331,14 @@
     <string name="cloud_state_cloud_only">Nel cloud</string>
     <string name="cloud_state_locked">Accedi per usarlo</string>
     <string name="cloud_state_error">Errore</string>
+    <string name="job_err_cancelled">Annullato</string>
+    <string name="job_err_gpu_busy">GPU occupata</string>
+    <string name="job_err_timeout">Troppo tempo</string>
+    <string name="job_err_pipeline_failed">Elaborazione non riuscita</string>
+    <string name="job_err_lyrics_failed">Trascrizione non riuscita</string>
+    <string name="job_err_input_missing">Manca l\'audio originale</string>
+    <string name="job_err_vocals_missing">Nessuna voce per il testo</string>
+    <string name="job_err_internal">Errore imprevisto</string>
     <string name="cloud_delete_cloud">Elimina dal cloud</string>
     <string name="cloud_delete_cloud_confirm">Eliminare questo brano anche dal server?</string>
     <string name="cloud_cancel_queue">Annulla (coda)</string>
@@ -401,6 +407,8 @@
     <!-- Playlists -->
     <string name="tab_songs">Brani</string>
     <string name="tab_playlists">Playlist</string>
+    <string name="tv_title_search_playlist">Cerca playlist</string>
+    <string name="te_find_playlist">Cerca nelle tue playlist</string>
     <string name="playlist_new">Nuova playlist</string>
     <plurals name="playlist_count">
         <item quantity="one">%d playlist</item>
@@ -422,8 +430,15 @@
         <item quantity="many">%d selezionati</item>
         <item quantity="other">%d selezionati</item>
     </plurals>
-    <string name="playlists_empty">Crea la tua prima playlist</string>
-    <string name="songs_empty">Aggiungi il tuo primo brano</string>
+    <string name="playlists_empty_nosongs_title">Nemmeno qui</string>
+    <string name="playlists_empty_nosongs_hint">Aggiungi almeno un brano per creare una playlist</string>
+    <string name="playlists_empty_title">Nessuna playlist creata</string>
+    <string name="playlists_empty_hint">%1$s per crearne una</string>
+    <string name="songs_empty_title">Ancora niente qui</string>
+    <string name="songs_empty_tap">Tocca</string>
+    <string name="songs_empty_hint">%1$s per aggiungere il tuo primo brano</string>
+    <string name="songs_add_bar">Aggiungi brano</string>
+    <string name="songs_import_bar">Importa cartella</string>
     <string name="playlists_need_login">Accedi per usare le playlist</string>
     <string name="playlist_reorder">Riordina</string>
     <string name="playlist_remove_song">Rimuovi dalla playlist</string>
@@ -500,8 +515,10 @@
     <string name="cd_stem_options">Opzioni della traccia</string>
     <string name="cd_drumset">Batteria</string>
     <string name="cd_expand_collapse">Espandi o comprimi</string>
-    <string name="dance_swing">oscillazione</string>
-    <string name="dance_randomize_swing">Oscillazione casuale</string>
+    <string name="dance_swing">swing</string>
+    <string name="dance_randomize_swing">Swing casuale</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s giri/s</string>
     <string name="export_include_fx">Includi gli effetti</string>
     <string name="coach_next">Avanti</string>
     <string name="coach_skip">Salta</string>
@@ -512,13 +529,14 @@
     <string name="coach_lib_search_body">Trova brani per titolo o artista e cambia l\'ordine dell\'elenco.</string>
     <string name="coach_lib_song_title">I tuoi brani</string>
     <string name="coach_lib_song_body">Tocca un brano per riprodurlo. Tieni premuto per le opzioni: modifica, riprova o elimina.</string>
+    <string name="coach_lib_song_empty_body">Qui appariranno i tuoi brani.</string>
     <string name="coach_lib_playlists_title">Playlist</string>
     <string name="coach_lib_playlists_body">Le tue playlist, salvate sul server e riproducibili offline.</string>
     <string name="coach_lib_cloud_title">Stato del server</string>
     <string name="coach_lib_cloud_body">Segnala quando il server non è raggiungibile.</string>
     <string name="coach_lib_settings_title">Impostazioni e account</string>
     <string name="coach_lib_settings_body">Info del server, impostazioni e il tuo account.</string>
-    <string name="coach_pl_chords_title">Striscia degli accordi</string>
+    <string name="coach_pl_chords_title">Carosello degli accordi</string>
     <string name="coach_pl_chords_body">Una casella per battito con il suo accordo. Tocca una casella per saltarci o trascina per guardare avanti.</string>
     <string name="coach_pl_icon_title">Solo e muto</string>
     <string name="coach_pl_icon_body">Tocca l\'icona di una traccia per metterla in solo o silenziarla. Più tracce possono essere in solo insieme.</string>
@@ -535,8 +553,7 @@
     <string name="coach_pl_bar_3d">Audio 3D</string>
     <string name="coach_pl_menu_title">Altre opzioni</string>
     <string name="coach_pl_menu_body">Notazione degli accordi, brano successivo, ripristino ed esportazione.</string>
-    <string name="settings_tour_title">Rivedi il tour</string>
-    <string name="settings_tour_summary">Tour guidato della libreria e del lettore</string>
+    <string name="settings_tour_title">Vedi il tour</string>
     <string name="settings_tour_reset">Il tour verrà mostrato di nuovo nella libreria e nel lettore</string>
     <string name="welcome_intro_title">Benvenuto in Fision</string>
     <string name="welcome_intro_body">Separa i tuoi brani in tracce di strumenti, ascoltale o suona insieme a loro.</string>
@@ -552,7 +569,7 @@
     <string name="welcome_local">Usa la modalità locale</string>
     <string name="coach_lib_import_title">Importa un brano</string>
     <string name="coach_lib_import_body">Scegli una cartella con un brano già separato. Ogni file viene controllato prima di aggiungerlo.</string>
-    <string name="songs_empty_local">Importa la tua prima cartella di brano</string>
+    <string name="songs_empty_hint_local">%1$s per importare la tua prima cartella di brano</string>
     <string name="import_folder_confirm">Importare una cartella di brano?</string>
     <string name="import_folder_pick">Scegli cartella</string>
     <string name="import_folder_checking">Controllo del brano…</string>

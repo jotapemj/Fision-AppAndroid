@@ -2,6 +2,8 @@ package com.jotapeveloper.fision.cloud;
 
 import android.content.Context;
 
+import com.jotapeveloper.fision.SongStorage;
+
 import java.io.File;
 
 /**
@@ -28,11 +30,8 @@ public class DownloadManagerLite {
         FisionDownloadService.enqueue(appCtx, hash);
     }
 
-    /** Songs/ inside the app's external storage: same directory the app already uses. */
+    /** Song folders of the active account. */
     public static File songsDir(Context ctx) {
-        File ext = ctx.getExternalFilesDir(null);
-        File songs = new File(ext, "Songs");
-        if (!songs.exists()) songs.mkdirs();
-        return songs;
+        return SongStorage.root(ctx);
     }
 }

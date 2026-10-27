@@ -1,7 +1,6 @@
 package com.jotapeveloper.fision;
 
 import android.content.Context;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -25,7 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       require plugging the engine in offline mode, out of scope here).
  *       Volume and pan are applied.</li>
  *   <li>Output folder: {@code Music/Fision/<ArtistTitle>/} in the shared
- *       Music folder. Each file has a timestamp to avoid overwrite.</li>
+ *       Music folder, through {@link ExportStore}: each file is rendered to a
+ *       temporary file and published when complete. Each file has a timestamp
+ *       to avoid overwrite.</li>
  *   <li>MP3 has no native encoder on Android — the caller must handle that (toast).</li>
  * </ul>
  */
@@ -38,7 +39,7 @@ public class ExportManager {
 
     public interface Listener {
         void onProgress(int percent);
-        void onDone(File outputFolder, int filesWritten);
+        void onDone(int filesWritten);
         void onCancelled();
         void onError(String message);
     }
@@ -55,13 +56,10 @@ public class ExportManager {
         if (worker != null) worker.interrupt();
     }
 
-    /** Base output folder: {@code Music/Fision/<ArtistTitle>/}. Created when missing. */
-    public static File outputFolderFor(String displayName) {
-        File music = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-        File root = new File(music, "Fision");
-        File song = new File(root, sanitize(displayName));
-        if (!song.exists()) song.mkdirs();
-        return song;
+    /** Song folder inside {@code Music/Fision/}. */
+    private static String folderFor(String displayName) {
+        String n = sanitize(displayName);
+        return n.isEmpty() ? "Export" : n;
     }
 
     private static String sanitize(String s) {
@@ -101,10 +99,9 @@ public class ExportManager {
         mixFxBpm = bpm;
         _listener = listener;
         worker = new Thread(() -> {
+            File outFile = ExportStore.tempFile(ctx, extFor(format));
             try {
-                File outDir = outputFolderFor(displayName);
-                String baseName = sanitize(displayName) + "_mix_" + timestamp();
-                File outFile = new File(outDir, baseName + extFor(format));
+                String fileName = sanitize(displayName) + "_mix_" + timestamp() + extFor(format);
 
                 // Mixdown
                 MixResult mix = mixStems(songFolder, stemOrder, currentSettings, volSrc,
@@ -114,16 +111,18 @@ public class ExportManager {
                 // Write in the requested format
                 writeOutput(outFile, mix.samples, mix.sampleRate, mix.channels, format, 70, 100, listener);
                 if (cancelled.get()) {
-                    if (outFile.exists()) outFile.delete();
                     post(listener, l -> l.onCancelled());
                     return;
                 }
-                post(listener, l -> l.onDone(outDir, 1));
+                ExportStore.publish(ctx, outFile, folderFor(displayName), fileName);
+                post(listener, l -> l.onDone(1));
             } catch (Throwable e) {
                 Log.e(TAG, "mix export fail", e);
                 final String msg = e.getClass().getSimpleName()
                         + (e.getMessage() != null ? (": " + e.getMessage()) : "");
                 post(listener, l -> l.onError(msg));
+            } finally {
+                ExportStore.discard(outFile);
             }
         }, "ExportMix");
         worker.start();
@@ -142,7 +141,6 @@ public class ExportManager {
         _listener = listener;
         worker = new Thread(() -> {
             try {
-                File outDir = outputFolderFor(displayName);
                 String stamp = timestamp();
                 int n = stemOrder.size();
                 int written = 0;
@@ -151,30 +149,36 @@ public class ExportManager {
                     String stem = stemOrder.get(i);
                     File src = AudioIO.findStemFile(songFolder, stem);
                     if (src == null) continue;
-                    File outFile = new File(outDir,
-                            sanitize(displayName) + "_" + stem + "_" + stamp + extFor(format));
+                    String fileName = sanitize(displayName) + "_" + stem + "_" + stamp + extFor(format);
+                    File outFile = ExportStore.tempFile(ctx, extFor(format));
 
                     final int base = i * 100 / n;
                     final int top  = (i + 1) * 100 / n;
                     boolean srcIsWav = src.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".wav");
                     StemFx fx = stemFx != null ? stemFx.get(stem) : null;
-                    if (fx != null && fx.isActive()) {
-                        WavIO.WavData d = AudioIO.read(src);
-                        float[] out = renderStemFx(d, fx, bpm);
-                        softLimit(out);
-                        writeOutput(outFile, out, d.sampleRate, 2, format, base, top, listener);
-                    } else if (format == Format.WAV && srcIsWav) {
-                        // Bit-for-bit copy only when source and destination are WAV
-                        WavIO.copyFile(src, outFile);
-                        post(listener, l -> l.onProgress(top));
-                    } else {
-                        WavIO.WavData d = AudioIO.read(src);
-                        writeOutput(outFile, d.samples, d.sampleRate, d.channels, format, base, top, listener);
+                    try {
+                        if (fx != null && fx.isActive()) {
+                            WavIO.WavData d = AudioIO.read(src);
+                            float[] out = renderStemFx(d, fx, bpm);
+                            softLimit(out);
+                            writeOutput(outFile, out, d.sampleRate, 2, format, base, top, listener);
+                        } else if (format == Format.WAV && srcIsWav) {
+                            // Bit-for-bit copy only when source and destination are WAV
+                            WavIO.copyFile(src, outFile);
+                            post(listener, l -> l.onProgress(top));
+                        } else {
+                            WavIO.WavData d = AudioIO.read(src);
+                            writeOutput(outFile, d.samples, d.sampleRate, d.channels, format, base, top, listener);
+                        }
+                        if (cancelled.get()) { post(listener, l -> l.onCancelled()); return; }
+                        ExportStore.publish(ctx, outFile, folderFor(displayName), fileName);
+                    } finally {
+                        ExportStore.discard(outFile);
                     }
                     written++;
                 }
                 final int total = written;
-                post(listener, l -> l.onDone(outDir, total));
+                post(listener, l -> l.onDone(total));
             } catch (Throwable e) {
                 Log.e(TAG, "separate export fail", e);
                 final String msg = e.getClass().getSimpleName()
@@ -200,15 +204,15 @@ public class ExportManager {
         cancelled.set(false);
         _listener = listener;
         worker = new Thread(() -> {
+            File outFile = null;
             try {
                 File src = AudioIO.findStemFile(songFolder, stem);
                 if (src == null) {
                     post(listener, l -> l.onError("stem not found: " + stem));
                     return;
                 }
-                File outDir = outputFolderFor(displayName);
-                File outFile = new File(outDir,
-                        sanitize(displayName) + "_" + stem + "_" + timestamp() + extFor(format));
+                String fileName = sanitize(displayName) + "_" + stem + "_" + timestamp() + extFor(format);
+                outFile = ExportStore.tempFile(ctx, extFor(format));
 
                 boolean srcIsWav = src.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".wav");
                 if (fx != null && fx.isActive()) {
@@ -237,16 +241,18 @@ public class ExportManager {
                     writeOutput(outFile, mix.samples, mix.sampleRate, mix.channels, format, 70, 100, listener);
                 }
                 if (cancelled.get()) {
-                    if (outFile.exists()) outFile.delete();
                     post(listener, l -> l.onCancelled());
                     return;
                 }
-                post(listener, l -> l.onDone(outDir, 1));
+                ExportStore.publish(ctx, outFile, folderFor(displayName), fileName);
+                post(listener, l -> l.onDone(1));
             } catch (Throwable e) {
                 Log.e(TAG, "single export fail", e);
                 final String msg = e.getClass().getSimpleName()
                         + (e.getMessage() != null ? (": " + e.getMessage()) : "");
                 post(listener, l -> l.onError(msg));
+            } finally {
+                ExportStore.discard(outFile);
             }
         }, "ExportSingle");
         worker.start();

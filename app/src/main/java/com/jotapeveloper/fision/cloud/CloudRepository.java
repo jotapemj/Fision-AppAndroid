@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.jotapeveloper.fision.SongOrder;
+import com.jotapeveloper.fision.SongStorage;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -68,24 +69,43 @@ public class CloudRepository {
         default void onRetryableJobError(String hash) {}
     }
 
-    /** Exact error string the server returns when the 10-minute wait for the
-     *  GPU elapses. Compared case-insensitively. */
-    private static final String ERROR_GPU_BUSY = "GPU ocupada";
+    /** Stable job failure reasons of the server (`error_code`). */
+    public static final String ERR_CANCELLED       = "cancelled";
+    public static final String ERR_GPU_BUSY        = "gpu_busy";
+    public static final String ERR_TIMEOUT         = "timeout";
+    public static final String ERR_PIPELINE_FAILED = "pipeline_failed";
+    public static final String ERR_LYRICS_FAILED   = "lyrics_failed";
+    public static final String ERR_INPUT_MISSING   = "input_missing";
+    public static final String ERR_VOCALS_MISSING  = "vocals_missing";
+    public static final String ERR_INTERNAL        = "internal";
 
-    /** True for the server's "GPU ocupada" abort. */
-    public static boolean isGpuBusyError(String error) {
-        return ERROR_GPU_BUSY.equalsIgnoreCase(error);
+    /** True for the server's processing time limit abort. */
+    public static boolean isTimeoutError(String code) {
+        return ERR_TIMEOUT.equals(code);
     }
 
-    /** True for the server's processing time limit abort: "timeout (2400 s)". */
-    public static boolean isTimeoutError(String error) {
-        return error != null
-                && error.trim().toLowerCase(java.util.Locale.ROOT).startsWith("timeout");
+    /** Errors solved by reprocessing with the same config: no free VRAM
+     *  after the wait, or the processing time limit. */
+    public static boolean isRetryableJobError(String code) {
+        return ERR_GPU_BUSY.equals(code) || ERR_TIMEOUT.equals(code);
     }
 
-    /** Errors solved by reprocessing with the same config. */
-    public static boolean isRetryableJobError(String error) {
-        return isGpuBusyError(error) || isTimeoutError(error);
+    /** Translated reason for an `error_code`; generic "Error" when unknown. */
+    public static String errorText(Context ctx, String code) {
+        int res;
+        if (code == null) return ctx.getString(com.jotapeveloper.fision.R.string.cloud_state_error);
+        switch (code) {
+            case ERR_CANCELLED:       res = com.jotapeveloper.fision.R.string.job_err_cancelled; break;
+            case ERR_GPU_BUSY:        res = com.jotapeveloper.fision.R.string.job_err_gpu_busy; break;
+            case ERR_TIMEOUT:         res = com.jotapeveloper.fision.R.string.job_err_timeout; break;
+            case ERR_PIPELINE_FAILED: res = com.jotapeveloper.fision.R.string.job_err_pipeline_failed; break;
+            case ERR_LYRICS_FAILED:   res = com.jotapeveloper.fision.R.string.job_err_lyrics_failed; break;
+            case ERR_INPUT_MISSING:   res = com.jotapeveloper.fision.R.string.job_err_input_missing; break;
+            case ERR_VOCALS_MISSING:  res = com.jotapeveloper.fision.R.string.job_err_vocals_missing; break;
+            case ERR_INTERNAL:        res = com.jotapeveloper.fision.R.string.job_err_internal; break;
+            default:                  res = com.jotapeveloper.fision.R.string.cloud_state_error; break;
+        }
+        return ctx.getString(res);
     }
 
     private static CloudRepository INSTANCE;
@@ -95,7 +115,10 @@ public class CloudRepository {
     }
 
     private final Context appCtx;
-    private final SharedPreferences prefs;
+    /** State of the active account's library (see {@link SongStorage}); swapped on account change. */
+    private volatile SharedPreferences prefs;
+    /** Bumped on account change: list responses of the previous session are dropped. */
+    private volatile int accountGen;
     private final Handler main = new Handler(Looper.getMainLooper());
 
     /** Told on the main thread when a song's chord files were replaced. */
@@ -145,11 +168,34 @@ public class CloudRepository {
 
     private CloudRepository(Context ctx) {
         this.appCtx = ctx;
-        this.prefs  = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        this.prefs  = prefsFor(ctx, SongStorage.activeKey(ctx));
         restorePendingJobs();
         restoreStickyMetadata();
         restoreOrderTs();
         sanitizeCoverCache();
+    }
+
+    private static SharedPreferences prefsFor(Context ctx, String accountKey) {
+        return ctx.getSharedPreferences(PREFS + "_" + accountKey, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * The active library switched to another account (login, logout, local
+     * mode): forgets every item of the previous one and loads the persisted
+     * state of the new one. Called before polling restarts.
+     */
+    public void onAccountChanged() {
+        synchronized (this) {
+            accountGen++;
+            items.clear();
+            cachedOrderTs.clear();
+            chordsInFlight.clear();
+            prefs = prefsFor(appCtx, SongStorage.activeKey(appCtx));
+            restorePendingJobs();
+            restoreStickyMetadata();
+            restoreOrderTs();
+        }
+        notifyChanged();
     }
 
     /** Last known server order date of [hash], 0 when never seen. */
@@ -380,7 +426,7 @@ public class CloudRepository {
             it.jobId = null;
         } else {
             it.jobId = r.jobId;
-            it.state = "running".equalsIgnoreCase(r.estado)
+            it.state = "running".equalsIgnoreCase(r.state)
                     ? CloudItem.State.RUNNING : CloudItem.State.QUEUED;
             savePendingJobs();
         }
@@ -449,9 +495,10 @@ public class CloudRepository {
                     CloudItem ci = items.get(hash);
                     if (ci == null) return;
                     ci.jobId = resp.jobId;
-                    ci.state = "running".equalsIgnoreCase(resp.estado)
+                    ci.state = "running".equalsIgnoreCase(resp.state)
                             ? CloudItem.State.RUNNING : CloudItem.State.QUEUED;
                     ci.errorMessage = null;
+                    ci.errorCode = null;
                     savePendingJobs();
                 }
                 notifyChanged();
@@ -534,9 +581,10 @@ public class CloudRepository {
     private void syncActiveJobs() {
         FisionApi api = ApiClient.get(appCtx).api();
         if (api == null) return;
+        final int gen = accountGen;
         api.listActiveJobs().enqueue(new Callback<List<JobStatusResponse>>() {
             @Override public void onResponse(Call<List<JobStatusResponse>> c, Response<List<JobStatusResponse>> r) {
-                if (!r.isSuccessful() || r.body() == null) return;
+                if (gen != accountGen || !r.isSuccessful() || r.body() == null) return;
                 mergeActiveJobs(r.body());
             }
             @Override public void onFailure(Call<List<JobStatusResponse>> c, Throwable t) { /* keep going */ }
@@ -553,8 +601,8 @@ public class CloudRepository {
                 items.put(js.hash, it);
                 dirty = true;
             }
-            if (js.nombre != null && (it.displayName == null || it.displayName.isEmpty())) {
-                it.displayName = js.nombre;
+            if (js.filename != null && (it.displayName == null || it.displayName.isEmpty())) {
+                it.displayName = js.filename;
                 dirty = true;
             }
             if (js.jobId != null && !js.jobId.equals(it.jobId)) {
@@ -562,11 +610,11 @@ public class CloudRepository {
                 savePendingJobs();
                 dirty = true;
             }
-            if (js.posicion != null && js.posicion != it.queuePosition) {
-                it.queuePosition = js.posicion;
+            if (js.position != null && js.position != it.queuePosition) {
+                it.queuePosition = js.position;
                 dirty = true;
             }
-            String est = js.estado != null ? js.estado.toLowerCase() : "";
+            String est = js.state != null ? js.state.toLowerCase() : "";
             CloudItem.State target = "running".equals(est)     ? CloudItem.State.RUNNING
                                     : "waiting_gpu".equals(est) ? CloudItem.State.WAITING_GPU
                                     : "queued".equals(est)      ? CloudItem.State.QUEUED
@@ -579,12 +627,13 @@ public class CloudRepository {
                 }
                 dirty = true;
             }
-            // Server-side abort ("GPU ocupada", "timeout (N s)", ...). Keep the
-            // exact reason so the UI can offer the retry dialog.
+            // Server-side abort (gpu_busy, timeout, ...). Keep the reason so
+            // the UI can offer the retry dialog.
             if ("error".equals(est) && !it.isLocal()) {
                 CloudItem.State prev = it.state;
                 it.state = CloudItem.State.ERROR;
                 it.errorMessage = js.error;
+                it.errorCode = js.errorCode;
                 if (prev != CloudItem.State.ERROR) dirty = true;
             }
         }
@@ -594,8 +643,10 @@ public class CloudRepository {
     private void refreshLibrary() {
         FisionApi api = ApiClient.get(appCtx).api();
         if (api == null) { notifyConnectivity(false); return; }
+        final int gen = accountGen;
         api.listLibrary().enqueue(new Callback<List<LibraryEntry>>() {
             @Override public void onResponse(Call<List<LibraryEntry>> c, Response<List<LibraryEntry>> r) {
+                if (gen != accountGen) return;
                 if (!r.isSuccessful() || r.body() == null) { notifyConnectivity(false); return; }
                 notifyConnectivity(true);
                 mergeLibrary(r.body());
@@ -626,22 +677,21 @@ public class CloudRepository {
             }
             // Before the server fields: a readable sticky title beats a bare filename.
             applyPersistedSticky(it);
-            // displayName preference: title from meta.json > nombre (filename) > hash.
+            // displayName preference: title from meta.json > filename > hash.
             // When the server sends a readable title, it wins absolutely.
             if (e.title != null && !e.title.isEmpty()) {
                 it.displayName = e.title;
-            } else if (e.nombre != null && !e.nombre.isEmpty()) {
-                boolean looksLikeFilename = e.nombre.matches("(?i).+\\.(mp3|wav|m4a|aac|flac|ogg|opus|aiff?)$");
+            } else if (e.filename != null && !e.filename.isEmpty()) {
+                boolean looksLikeFilename = e.filename.matches("(?i).+\\.(mp3|wav|m4a|aac|flac|ogg|opus|aiff?)$");
                 boolean haveLegibleSticky = it.displayName != null && !it.displayName.isEmpty()
                         && !it.displayName.equals(it.hash)
                         && !it.displayName.matches("(?i).+\\.(mp3|wav|m4a|aac|flac|ogg|opus|aiff?)$");
                 if (!(looksLikeFilename && haveLegibleSticky)) {
-                    it.displayName = e.nombre;
+                    it.displayName = e.filename;
                 }
             }
             if (e.artist != null && !e.artist.isEmpty()) it.artist = e.artist;
-            // serverUpdated: prefer the new updated_at; fall back to legacy actualizado.
-            it.serverUpdated = e.updatedAt != null ? e.updatedAt : e.actualizado;
+            it.serverUpdated = e.updatedAt;
             it.serverCreated = e.createdAt;
             long orderTs = SongOrder.parseIsoTs(it.serverCreated);
             if (orderTs <= 0) orderTs = SongOrder.parseIsoTs(it.serverUpdated);
@@ -661,8 +711,8 @@ public class CloudRepository {
                 if (needFetch) coversToFetch.add(it.hash);
             }
 
-            String est = e.estado != null ? e.estado.toLowerCase() : "";
-            if ("listo".equals(est)) {
+            String est = e.state != null ? e.state.toLowerCase() : "";
+            if ("ready".equals(est)) {
                 // With a matching local folder, it is LOCAL_AND_CLOUD; otherwise CLOUD_ONLY.
                 // Do not stomp DOWNLOADING (already downloading). RUNNING/QUEUED/WAITING_GPU: server confirms
                 // completion, so move the item to CLOUD_ONLY and start the download.
@@ -680,7 +730,7 @@ public class CloudRepository {
                         readyForDownload.add(it.hash);
                     }
                 }
-            } else if ("procesando".equals(est)) {
+            } else if ("processing".equals(est)) {
                 // Server thinks it is processing; the job poll refines it to
                 // RUNNING/QUEUED/WAITING_GPU.
                 if (it.state != CloudItem.State.DOWNLOADING) {
@@ -692,7 +742,7 @@ public class CloudRepository {
                 }
             } else if ("error".equals(est)) {
                 it.state = CloudItem.State.ERROR;
-            } else if ("cancelado".equals(est)) {
+            } else if ("cancelled".equals(est)) {
                 it.state = CloudItem.State.CANCELLED;
             }
         }
@@ -719,7 +769,7 @@ public class CloudRepository {
         }
         if (orderEdit != null) orderEdit.apply();
         notifyChanged();
-        // Auto-start the download of items the server reports as "listo" while they
+        // Auto-start the download of items the server reports as "ready" while they
         // were in flight (RUNNING/QUEUED/WAITING_GPU). Done OUTSIDE the lock to avoid blocking.
         for (String h : readyForDownload) {
             DownloadManagerLite.get(appCtx).start(h);
@@ -880,9 +930,9 @@ public class CloudRepository {
         synchronized (this) {
             CloudItem it = items.get(hash);
             if (it == null) return;
-            String est = js.estado != null ? js.estado.toLowerCase() : "";
+            String est = js.state != null ? js.state.toLowerCase() : "";
             // 1-based queue position; 0 when running; others ignored.
-            if (js.posicion != null) it.queuePosition = js.posicion;
+            if (js.position != null) it.queuePosition = js.position;
             switch (est) {
                 case "queued":
                     it.state = CloudItem.State.QUEUED;
@@ -904,9 +954,10 @@ public class CloudRepository {
                     boolean wasError = it.state == CloudItem.State.ERROR;
                     it.state = CloudItem.State.ERROR;
                     it.errorMessage = js.error;
+                    it.errorCode = js.errorCode;
                     it.jobId = null;
                     savePendingJobs();
-                    if (!wasError && isRetryableJobError(js.error)) {
+                    if (!wasError && isRetryableJobError(js.errorCode)) {
                         retryable = true;
                     }
                     break;

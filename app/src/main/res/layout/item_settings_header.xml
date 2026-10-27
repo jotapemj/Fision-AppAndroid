@@ -34,6 +34,17 @@
             tools:text="JP"
             xmlns:tools="http://schemas.android.com/tools" />
 
+        <!-- No session: dashed empty slot with a person outline -->
+        <ImageView
+            android:id="@+id/iv_settings_emptyAvatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/settings_avatar_empty_bg"
+            android:padding="14dp"
+            android:src="@drawable/ic_person_outline"
+            android:visibility="gone"
+            app:tint="#8A8A8A" />
+
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/iv_settings_avatar"
             android:layout_width="match_parent"

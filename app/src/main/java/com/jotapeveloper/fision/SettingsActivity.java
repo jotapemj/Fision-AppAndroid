@@ -67,7 +67,7 @@ public class SettingsActivity extends AppCompatActivity
     private static final String ID_VERSION   = "server_version";
     private static final String ID_TEST      = "server_test";
     private static final String ID_ABOUT     = "about";
-    private static final String ID_TOUR      = "tour";
+    private static final String ID_DEBUG_ONBOARDING = "debug_onboarding";
     private static final String ID_LOGOUT    = "logout";
     private static final String ID_GITHUB    = "github";
     private static final String GITHUB_URL   = "https://github.com/jotapemj/Fision-AppAndroid";
@@ -89,12 +89,16 @@ public class SettingsActivity extends AppCompatActivity
         com.jotapeveloper.fision.design.AccentColorManager.get(this).applyOverlayTo(this);
         setContentView(R.layout.settings_activity);
 
+        // Gallery path of the avatar studio: picker, then crop; cancelling either
+        // or finishing the crop returns to the account dialog.
+        ActivityResultLauncher<Intent> avatarCrop = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(), r -> showAccountDialog());
         avatarPicker = registerForActivityResult(
                 new ActivityResultContracts.GetContent(), uri -> {
-                    if (uri == null) return;
+                    if (uri == null) { showAccountDialog(); return; }
                     Intent i = new Intent(this, CropAvatarActivity.class);
                     i.putExtra(CropAvatarActivity.EXTRA_SOURCE_URI, uri);
-                    startActivity(i);
+                    avatarCrop.launch(i);
                 });
 
         rv = findViewById(R.id.rv_settings);
@@ -167,15 +171,39 @@ public class SettingsActivity extends AppCompatActivity
         // card is read-only: no chevron and no click handler in the dispatch.
         String serverVersion = ServerInfoManager.get(this).getVersion();
         if (auth.isLoggedIn() && serverVersion != null) {
-            SettingsItem versionCard = SettingsItem.card(ID_VERSION, R.drawable.ic_info,
-                    getString(R.string.server_version_title),
-                    getString(R.string.server_version_fmt, serverVersion));
+            boolean incompatible = ServerInfoManager.get(this).isIncompatible();
+            String ver = getString(R.string.server_version_fmt, serverVersion);
+            CharSequence sub = ver;
+            if (incompatible) {
+                // "Server: v1.x" (version in warning orange) / "Compatible: v2.x".
+                String compat = getString(R.string.server_version_fmt,
+                        ServerInfoManager.SUPPORTED_MAJOR + ".x");
+                String text = getString(R.string.server_version_incompatible, ver, compat);
+                android.text.SpannableString sp = new android.text.SpannableString(text);
+                int at = text.indexOf(ver);
+                if (at >= 0) {
+                    sp.setSpan(new android.text.style.ForegroundColorSpan(
+                                    ContextCompat.getColor(this, R.color.gpu_warning_accent)),
+                            at, at + ver.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    sp.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                            at, at + ver.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+                int c = text.indexOf(compat, at + ver.length());
+                if (c >= 0) sp.setSpan(new android.text.style.ForegroundColorSpan(0xFFF0F0F0),
+                        c, c + compat.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sub = sp;
+            }
+            SettingsItem versionCard = SettingsItem.card(ID_VERSION,
+                    incompatible ? R.drawable.ic_warning : R.drawable.ic_info,
+                    getString(R.string.server_version_title), sub);
             versionCard.showChevron = false;
+            // Other API generation: warning icon in orange.
+            if (incompatible) versionCard.iconTintOverride = R.color.gpu_warning_accent;
             items.add(versionCard);
         }
         items.add(SettingsItem.card(ID_TEST, R.drawable.ic_signal,
                 getString(R.string.server_test_title),
-                getString(R.string.server_test_summary)));
+                null));
     }
 
     private void addAppAndAboutSections(AuthManager auth) {
@@ -186,7 +214,7 @@ public class SettingsActivity extends AppCompatActivity
                 getString(R.string.design_summary)));
         items.add(SettingsItem.card(ID_PERFORMANCE, R.drawable.ic_speedometer,
                 getString(R.string.performance_title),
-                performanceSummary()));
+                null));
         items.add(SettingsItem.card(ID_LANGUAGE, R.drawable.ic_language,
                 getString(R.string.settings_language_title),
                 currentLanguageLabel()));
@@ -194,9 +222,6 @@ public class SettingsActivity extends AppCompatActivity
         // Section: About
         items.add(SettingsItem.section("sec_about",
                 getString(R.string.settings_section_about)));
-        items.add(SettingsItem.card(ID_TOUR, R.drawable.ic_tour,
-                getString(R.string.settings_tour_title),
-                getString(R.string.settings_tour_summary)));
         items.add(SettingsItem.card(ID_ABOUT, R.drawable.ic_info,
                 getString(R.string.about_title),
                 null));
@@ -221,17 +246,23 @@ public class SettingsActivity extends AppCompatActivity
             logout.iconTintOverride = R.color.cloud_offline;
             items.add(logout);
         }
+
+        // Debug builds: welcome and tours always, or as in release. Not translated (debug tool).
+        if (com.jotapeveloper.fision.onboarding.Onboarding.isDebugBuild(this)) {
+            items.add(SettingsItem.section("sec_debug", "Debug"));
+            boolean always = com.jotapeveloper.fision.onboarding.Onboarding.debugAlwaysShow(this);
+            items.add(SettingsItem.card(ID_DEBUG_ONBOARDING, R.drawable.ic_tour,
+                    "Welcome and tours",
+                    always ? "Always shown (tap for release behaviour)"
+                           : "Release behaviour (tap to always show)"));
+        }
     }
 
-    /** Every guided tour shows again; back to the library, where the first one starts. */
+    /** Library and player tours show again; back to the library, where the first one starts. */
     private void replayTours() {
         com.jotapeveloper.fision.onboarding.Onboarding.resetAll(this);
         android.widget.Toast.makeText(this, R.string.settings_tour_reset,
                 android.widget.Toast.LENGTH_SHORT).show();
-        // Debug builds also preview the welcome screens (the choice is ignored).
-        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            startActivity(new android.content.Intent(this, WelcomeActivity.class));
-        }
         finish();
     }
 
@@ -276,7 +307,11 @@ public class SettingsActivity extends AppCompatActivity
             case ID_GPU:      onGpuClicked();      break;
             case ID_TEST:     runConnectionTest(); break;
             case ID_ABOUT:    showAboutDialog();   break;
-            case ID_TOUR:     replayTours();       break;
+            case ID_DEBUG_ONBOARDING:
+                com.jotapeveloper.fision.onboarding.Onboarding.setDebugAlwaysShow(this,
+                        !com.jotapeveloper.fision.onboarding.Onboarding.debugAlwaysShow(this));
+                rebuildItems();
+                break;
             case ID_LOGOUT:   onLogoutClicked();   break;
             case ID_GITHUB:   openUrl(GITHUB_URL);   break;
             case ID_DONATE:   openUrl(DONATION_URL); break;
@@ -408,17 +443,12 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     private void onLogoutClicked() {
-        AuthManager.get(this).logout();
-        rebuildItems();
-    }
-
-    // ---------------- language dialog ----------------
-    private CharSequence performanceSummary() {
-        boolean scene = com.jotapeveloper.fision.audio3d.PerformancePrefs
-                .isAudio3DSceneEnabled(this);
-        return getString(scene
-                ? R.string.performance_audio3d_scene
-                : R.string.performance_audio3d_flat);
+        BlurDialogs.confirm(this, R.drawable.ic_logout,
+                getString(R.string.settings_logout_confirm),
+                getString(R.string.settings_logout_title), getString(R.string.NO), () -> {
+                    AuthManager.get(this).logout();
+                    rebuildItems();
+                });
     }
 
     private void showPerformanceDialog() {
@@ -434,7 +464,23 @@ public class SettingsActivity extends AppCompatActivity
         TextView tvTitle = dialogView.findViewById(R.id.tv_singleChoiceTitle);
         LinearLayout opts = dialogView.findViewById(R.id.ll_singleChoiceOptions);
         MaterialButton bCancel = dialogView.findViewById(R.id.b_singleChoiceCancel);
-        tvTitle.setText(R.string.performance_audio3d_title);
+        tvTitle.setText(R.string.performance_title);
+
+        // Section of the options below (more sections can follow later).
+        TextView section = new TextView(this);
+        section.setText(R.string.audio3d_title);
+        section.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+        section.setTypeface(
+                androidx.core.content.res.ResourcesCompat.getFont(this, R.font.noto_sans_regular),
+                android.graphics.Typeface.BOLD);
+        section.setTextColor(0xFF9A9A9A);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        slp.bottomMargin = (int) (8f * getResources().getDisplayMetrics().density);
+        slp.setMarginStart((int) (4f * getResources().getDisplayMetrics().density));
+        section.setLayoutParams(slp);
+        opts.addView(section);
 
         AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
                 .setView(dialogView)
@@ -552,23 +598,23 @@ public class SettingsActivity extends AppCompatActivity
         dlg.show();
     }
 
-    // ---------------- account dialog (same look as before) ----------------
+    // ---------------- account dialog ----------------
     private void showAccountDialog() {
         View v = getLayoutInflater().inflate(R.layout.account_dialog, null);
         TextView tvInitial = v.findViewById(R.id.tv_accountInitial);
         TextView tvUser    = v.findViewById(R.id.tv_accountUser);
-        TextView tvUrl     = v.findViewById(R.id.tv_accountUrl);
+        TextView tvServer  = v.findViewById(R.id.tv_accountServer);
         ShapeableImageView ivAvatar = v.findViewById(R.id.iv_accountAvatar);
         View avatarWrap = v.findViewById(R.id.fl_accountAvatarWrap);
-        MaterialButton bRemovePhoto = v.findViewById(R.id.b_accountRemovePhoto);
+        View badge = v.findViewById(R.id.iv_accountEditBadge);
         MaterialButton bChange = v.findViewById(R.id.b_accountChangePassword);
 
         ServerPrefs sp = ServerPrefs.get(this);
         String user = sp.getUsername();
         tvInitial.setText(user.isEmpty() ? "?" : user.substring(0, 1).toUpperCase(Locale.ROOT));
         tvUser.setText(user);
-        tvUrl.setText(getString(R.string.account_url_line, sp.getUrl()));
-        paintAvatarInto(user, tvInitial, ivAvatar, bRemovePhoto);
+        tvServer.setText(serverPillText(sp.getUrl()));
+        paintAvatarInto(user, tvInitial, ivAvatar);
 
         AlertDialog dlg = new AlertDialog.Builder(this, R.style.Theme_Fision_BlurDialog)
                 .setView(v)
@@ -578,39 +624,69 @@ public class SettingsActivity extends AppCompatActivity
         if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         applyActivityBlur();
         AvatarManager.Listener live = uname ->
-                paintAvatarInto(sp.getUsername(), tvInitial, ivAvatar, bRemovePhoto);
+                paintAvatarInto(sp.getUsername(), tvInitial, ivAvatar);
         AvatarManager.get(this).addListener(live);
         dlg.setOnDismissListener(d -> {
             AvatarManager.get(this).removeListener(live);
             removeActivityBlur();
         });
 
+        // With a photo: Change / Remove menu on the badge. Without one: straight
+        // to the avatar studio (its "Pick from device" falls back to the gallery).
         avatarWrap.setOnClickListener(x -> {
-            // Open the preset-based avatar studio first. It exposes a
-            // "Pick from device" button that falls back to the gallery picker
-            // for users who prefer their own photo.
-            dlg.dismiss();
-            openAvatarStudio();
-        });
-        bRemovePhoto.setOnClickListener(x -> {
-            bRemovePhoto.setEnabled(false);
-            AvatarManager.get(this).deleteAvatar(user, new AvatarManager.UploadCallback() {
-                @Override public void onSuccess() {
-                    paintAvatarInto(user, tvInitial, ivAvatar, bRemovePhoto);
-                    rebuildItems();
-                }
-                @Override public void onFailure(int code, String reason) {
-                    bRemovePhoto.setEnabled(true);
-                    Toast.makeText(SettingsActivity.this,
-                            R.string.login_err_server, Toast.LENGTH_LONG).show();
-                }
-            });
+            if (AvatarManager.get(this).hasLocalAvatar(user)) {
+                showAvatarMenu(badge, dlg, user, tvInitial, ivAvatar);
+            } else {
+                dlg.dismiss();
+                openAvatarStudio();
+            }
         });
         bChange.setOnClickListener(x -> {
             dlg.dismiss();
             ChangePasswordDialog.show(this, new ChangePasswordDialog.Callback() {});
         });
         dlg.show();
+    }
+
+    /** "host:port · v2.0.0": URL without scheme nor trailing slash, plus the
+     *  server version when known. */
+    private String serverPillText(String url) {
+        String host = url == null ? "" : url.trim()
+                .replaceFirst("(?i)^https?://", "").replaceAll("/+$", "");
+        String ver = ServerInfoManager.get(this).getVersion();
+        return ver == null ? host : host + " · " + getString(R.string.server_version_fmt, ver);
+    }
+
+    /** Change / Remove photo popup anchored to the edit badge. */
+    private void showAvatarMenu(View anchor, AlertDialog dlg, String user,
+                                TextView tvInitial, ShapeableImageView ivAvatar) {
+        View menu = LayoutInflater.from(this).inflate(R.layout.avatar_context_menu, null);
+        android.widget.PopupWindow popup = new android.widget.PopupWindow(menu,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                /*focusable=*/ true);
+        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        popup.setElevation(8f * getResources().getDisplayMetrics().density);
+        popup.setOutsideTouchable(true);
+        menu.findViewById(R.id.tv_avatarMenuChange).setOnClickListener(x -> {
+            popup.dismiss();
+            dlg.dismiss();
+            openAvatarStudio();
+        });
+        menu.findViewById(R.id.tv_avatarMenuRemove).setOnClickListener(x -> {
+            popup.dismiss();
+            AvatarManager.get(this).deleteAvatar(user, new AvatarManager.UploadCallback() {
+                @Override public void onSuccess() {
+                    paintAvatarInto(user, tvInitial, ivAvatar);
+                    rebuildItems();
+                }
+                @Override public void onFailure(int code, String reason) {
+                    Toast.makeText(SettingsActivity.this,
+                            R.string.login_err_server, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+        popup.showAsDropDown(anchor, 0, 0);
     }
 
     /** Opens the preset-based avatar studio. Compose = upload directly.
@@ -625,7 +701,12 @@ public class SettingsActivity extends AppCompatActivity
                 catch (Throwable t) {
                     Toast.makeText(SettingsActivity.this,
                             R.string.crop_read_fail, Toast.LENGTH_LONG).show();
+                    showAccountDialog();
                 }
+            }
+            @Override public void onClosed() {
+                // Back to the account dialog it was opened from
+                showAccountDialog();
             }
         }).show();
     }
@@ -662,8 +743,7 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     private void paintAvatarInto(String user, TextView tvInitial,
-                                 ShapeableImageView ivAvatar,
-                                 MaterialButton bRemove) {
+                                 ShapeableImageView ivAvatar) {
         AvatarManager am = AvatarManager.get(this);
         if (am.hasLocalAvatar(user)) {
             android.graphics.Bitmap bm = ImageDecode.file(
@@ -672,14 +752,11 @@ public class SettingsActivity extends AppCompatActivity
                 ivAvatar.setImageBitmap(bm);
                 ivAvatar.setVisibility(View.VISIBLE);
                 tvInitial.setVisibility(View.GONE);
-                bRemove.setVisibility(View.VISIBLE);
-                bRemove.setEnabled(true);
                 return;
             }
         }
         ivAvatar.setVisibility(View.GONE);
         tvInitial.setVisibility(View.VISIBLE);
-        bRemove.setVisibility(View.GONE);
     }
 
     // ---------------- design dialog ----------------
@@ -755,6 +832,7 @@ public class SettingsActivity extends AppCompatActivity
         View dlgView = getLayoutInflater().inflate(R.layout.about_dialog, null);
         TextView tvVersion = dlgView.findViewById(R.id.tv_about_version);
         MaterialButton bLicenses = dlgView.findViewById(R.id.b_about_licenses);
+        MaterialButton bTour = dlgView.findViewById(R.id.b_about_tour);
         MaterialButton bClose = dlgView.findViewById(R.id.b_about_close);
         String vName = "?";
         try {
@@ -773,6 +851,10 @@ public class SettingsActivity extends AppCompatActivity
         bLicenses.setOnClickListener(x -> {
             dlg.dismiss();
             startActivity(new Intent(this, LicensesActivity.class));
+        });
+        bTour.setOnClickListener(x -> {
+            dlg.dismiss();
+            replayTours();
         });
         bClose.setOnClickListener(x -> dlg.dismiss());
         dlg.show();
@@ -864,10 +946,7 @@ public class SettingsActivity extends AppCompatActivity
 
     // ---------------- blur helpers ----------------
     private void applyActivityBlur() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getWindow().getDecorView().setRenderEffect(
-                    RenderEffect.createBlurEffect(40f, 40f, Shader.TileMode.CLAMP));
-        }
+        BlurDialogs.applyBlur(this);
     }
 
     private void removeActivityBlur() {

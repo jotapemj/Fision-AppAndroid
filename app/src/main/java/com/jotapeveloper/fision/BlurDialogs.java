@@ -15,15 +15,22 @@ import android.widget.TextView;
 import androidx.annotation.DrawableRes;
 import androidx.appcompat.app.AlertDialog;
 
-/** Blur dialog recipe shared by the playlist screens (blur on the host
- *  decorView, transparent window, delete_alert_dialog layout). */
+/** Blur dialog recipe (blur on the host decorView, transparent window,
+ *  delete_alert_dialog layout). {@link #applyBlur} is the one blur of every
+ *  dialog in the app. */
 public final class BlurDialogs {
 
     private BlurDialogs() {}
 
+    /** Blurs the host behind a dialog (Android 12+). Running drawable
+     *  animations (the ripple of the tapped row) end first: one still running
+     *  under the blur redraws only its own rect, and the blur recomputed in
+     *  that rect alone leaves a hard-edged box. */
     public static void applyBlur(Activity a) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            a.getWindow().getDecorView().setRenderEffect(
+            View decor = a.getWindow().getDecorView();
+            decor.jumpDrawablesToCurrentState();
+            decor.setRenderEffect(
                     RenderEffect.createBlurEffect(40f, 40f, Shader.TileMode.CLAMP));
         }
     }

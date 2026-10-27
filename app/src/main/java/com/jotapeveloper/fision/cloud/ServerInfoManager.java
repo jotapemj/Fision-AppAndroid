@@ -81,6 +81,22 @@ public class ServerInfoManager {
         return (v == null || v.isEmpty()) ? null : v;
     }
 
+    /** Server API generation this client speaks (JSON keys and states). */
+    public static final int SUPPORTED_MAJOR = 2;
+
+    /** The server reported a version whose MAJOR differs from
+     *  {@link #SUPPORTED_MAJOR}: app or server needs an update. False when
+     *  the version is unknown or unreadable. */
+    public boolean isIncompatible() {
+        String v = getVersion();
+        if (v == null) return false;
+        try {
+            return Integer.parseInt(v.trim().split("\\.")[0]) != SUPPORTED_MAJOR;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     /** Free VRAM at the last fetch, in MB; -1 when unknown (server before 1.4.0). */
     public int getVramFreeMb() { return prefs.getInt(KEY_VRAM_FREE_MB, -1); }
     /** Minimum free VRAM the server needs for a GPU job, in MB; -1 when unknown. */

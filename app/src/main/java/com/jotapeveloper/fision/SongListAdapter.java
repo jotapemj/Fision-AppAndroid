@@ -207,8 +207,9 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 case WAITING_GPU: return context.getString(R.string.cloud_state_waiting_gpu);
                 case DOWNLOADING: return context.getString(R.string.cloud_state_downloading, c.downloadPct);
                 case CLOUD_ONLY:  return context.getString(R.string.cloud_state_cloud_only);
-                case ERROR:       return context.getString(c.hasLocalCopy()
-                        ? R.string.cloud_state_reprocess_failed : R.string.cloud_state_error);
+                case ERROR:       return c.hasLocalCopy()
+                        ? context.getString(R.string.cloud_state_reprocess_failed)
+                        : CloudRepository.errorText(context, c.errorCode);
                 default: /* LOCAL_AND_CLOUD, LOCAL_ONLY fall through to the normal subtitle */ break;
             }
         }
@@ -353,7 +354,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 // so the user can act on items whose original popup was dismissed.
                 // (with a local copy the song opens; the retry is in its options)
                 if (c.state == CloudItem.State.ERROR && !c.hasLocalCopy()
-                        && CloudRepository.isRetryableJobError(c.errorMessage)) {
+                        && CloudRepository.isRetryableJobError(c.errorCode)) {
                     ParentActivity.showJobRetryDialog(c.hash);
                     return;
                 }

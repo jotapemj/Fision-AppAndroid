@@ -758,8 +758,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (is3DViewShown || isLyricsViewShown || isChordDiagramShown) return;
         if (Onboarding.isDone(this, Onboarding.PLAYER)) return;
         java.util.List<CoachMarkOverlay.Step> steps = new java.util.ArrayList<>();
-        steps.add(new CoachMarkOverlay.Step(CoachMarkOverlay.views(findViewById(R.id.chords_container)),
-                R.string.coach_pl_chords_title, R.string.coach_pl_chords_body).corner(14));
+        // Carousel: full width, but only the tiles' height (the row is taller
+        // than its tiles, which sit at its top).
+        final CoachMarkOverlay.Target chordsRow = CoachMarkOverlay.views(findViewById(R.id.chords_container));
+        steps.add(new CoachMarkOverlay.Step(() -> {
+            android.graphics.RectF r = chordsRow.windowBounds();
+            View tile = rvChords != null && rvChords.getChildCount() > 0
+                    ? rvChords.getChildAt(0).findViewById(R.id.v_beat_bg) : null;
+            if (r == null || tile == null || !tile.isShown()) return r;
+            int[] loc = new int[2];
+            tile.getLocationInWindow(loc);
+            r.top = loc[1];
+            r.bottom = loc[1] + tile.getHeight();
+            return r;
+        }, R.string.coach_pl_chords_title, R.string.coach_pl_chords_body).corner(14));
         StemListAdapter.ViewHolder row = null;
         if (rvStems != null) {
             for (int i = 0; i < rvStems.getChildCount() && row == null; i++) {
@@ -776,8 +788,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     R.string.coach_pl_options_title, R.string.coach_pl_options_body));
         }
         // The bottom bar in a single step, with a legend of its buttons.
+        // Hole around the buttons themselves: the row is taller and its top
+        // reaches the play button.
         CoachMarkOverlay.Step bar = new CoachMarkOverlay.Step(
-                CoachMarkOverlay.views(findViewById(R.id.optionsLayout)),
+                CoachMarkOverlay.views(findViewById(R.id.b_repeat), findViewById(R.id.b_lyrics),
+                        findViewById(R.id.b_pitch), findViewById(R.id.b_metronome),
+                        findViewById(R.id.b_chord), findViewById(R.id.b_3d)),
                 R.string.coach_pl_bar_title, 0).corner(24);
         int[][] legend = {
                 { R.id.b_repeat,    R.string.coach_pl_bar_repeat },
@@ -1533,6 +1549,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Instant consumers that paint from resolveAccent() at bind/draw time.
         if (beatAdapter != null) beatAdapter.notifyDataSetChanged();
         if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.notifyDataSetChanged();
+        refresh3DAccent();
     }
 
     /** Shows or hides the "Reprocess" item depending on whether the current song has
@@ -1731,9 +1748,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Blurs the activity decorView (Android 12+). Only affects the background. */
     private void applyActivityBlur() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getWindow().getDecorView().setRenderEffect(
-                    android.graphics.RenderEffect.createBlurEffect(
-                            40f, 40f, android.graphics.Shader.TileMode.CLAMP));
+            BlurDialogs.applyBlur(this);
             freezeSceneForBlur();
         }
     }
@@ -1792,7 +1807,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // flickered because of dismiss + show per step) and allows navigation back.
     //
     // Possible steps:
-    //   PERM           : explanation + "Open Settings" button when MANAGE_EXTERNAL_STORAGE is missing.
+    //   PERM           : storage permission request (Android 8-9 only; MediaStore needs none).
     //   MIX_OR_SEP     : current mixdown vs separate tracks.
     //   MIX_VOLUME     : default vs current volume (mix only).
     //   MIX_FORMAT     : format + "Include metronome" checkbox (mix only).
@@ -1818,6 +1833,26 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private String  pendingSingleStem = null;
     // Entry mode: signals whether the flow is drawer (mix/sep) or per-stem.
     private boolean wizardForSingleStem = false;
+    /** Step that follows PERM once the permission is granted. */
+    private WizardStep wizardAfterPerm;
+
+    private final androidx.activity.result.ActivityResultLauncher<String> storagePermission =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+                    granted -> {
+                        if (wizardDialog == null || !wizardDialog.isShowing()) return;
+                        if (granted) {
+                            wizardStack.clear();
+                            pushWizardStep(wizardAfterPerm);
+                        } else if (!shouldShowRequestPermissionRationale(
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                            // Denied for good: only the app settings can grant it now.
+                            wizardDialog.dismiss();
+                            try {
+                                startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        android.net.Uri.parse("package:" + getPackageName())));
+                            } catch (Exception ignored) {}
+                        }
+                    });
 
     private void showExportChoiceDialog() {
         wizardForSingleStem = false;
@@ -1826,9 +1861,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         pendingIncludeFx = true;
         // The export ignores the solo: warned first, inside the same wizard.
         boolean solo = playbackService != null && playbackService.isSoloActive();
-        WizardStep first = needsAllFilesPermission() ? WizardStep.PERM
-                : solo ? WizardStep.SOLO_WARNING : WizardStep.MIX_OR_SEP;
-        openWizard(first);
+        wizardAfterPerm = solo ? WizardStep.SOLO_WARNING : WizardStep.MIX_OR_SEP;
+        openWizard(needsStoragePermission() ? WizardStep.PERM : wizardAfterPerm);
     }
 
     /** Per-stem entry (bottom-sheet ic_export button). */
@@ -1837,13 +1871,16 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         pendingSingleStem  = stem;
         pendingIncludeMetronome = false;
         pendingIncludeFx = true;
-        WizardStep first = needsAllFilesPermission() ? WizardStep.PERM : WizardStep.STEM_FORMAT;
-        openWizard(first);
+        wizardAfterPerm = WizardStep.STEM_FORMAT;
+        openWizard(needsStoragePermission() ? WizardStep.PERM : wizardAfterPerm);
     }
 
-    private boolean needsAllFilesPermission() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && !android.os.Environment.isExternalStorageManager();
+    /** Android 8-9 write the shared Music folder directly; newer versions go through MediaStore. */
+    private boolean needsStoragePermission() {
+        return ExportStore.needsWritePermission()
+                && androidx.core.content.ContextCompat.checkSelfPermission(this,
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                   != android.content.pm.PackageManager.PERMISSION_GRANTED;
     }
 
     private void openWizard(WizardStep first) {
@@ -1955,15 +1992,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         float density = getResources().getDisplayMetrics().density;
         body.setPadding((int)(8*density),(int)(4*density),(int)(8*density),(int)(12*density));
         wizardOptions.addView(body);
-        // Single option: open Settings
-        addOptionRow(getString(R.string.export_permission_continue), false, () -> {
-            wizardDialog.dismiss();
-            try {
-                Intent it = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                        android.net.Uri.parse("package:" + getPackageName()));
-                startActivity(it);
-            } catch (Exception ignored) {}
-        });
+        // Single option: the system permission prompt
+        addOptionRow(getString(R.string.export_permission_continue), false, () ->
+                storagePermission.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE));
     }
 
     private void buildStepSoloWarning() {
@@ -2142,7 +2173,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override public void onProgress(int percent) {
                 if (wizardProgressBar != null) wizardProgressBar.setProgress(percent);
             }
-            @Override public void onDone(File outputFolder, int filesWritten) {
+            @Override public void onDone(int filesWritten) {
                 if (wizardDialog != null) wizardDialog.dismiss();
                 android.widget.Toast.makeText(PlayerActivity.this,
                         R.string.export_done, android.widget.Toast.LENGTH_LONG).show();
@@ -4859,10 +4890,35 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return isAudio3DScene() ? view3DSceneRoot : view3DRoot;
     }
 
+    /** Halo layer of bg_3d_synthwave in the player accent (the XML carries
+     *  the default accent). No-op for views without that background. */
+    private void tintSynthwaveHalo(@androidx.annotation.Nullable View root) {
+        if (root == null || !(root.getBackground() instanceof android.graphics.drawable.LayerDrawable)) return;
+        android.graphics.drawable.LayerDrawable ld =
+                (android.graphics.drawable.LayerDrawable) root.getBackground().mutate();
+        if (ld.getNumberOfLayers() < 2
+                || !(ld.getDrawable(1) instanceof android.graphics.drawable.GradientDrawable)) return;
+        int rgb = accent() & 0x00FFFFFF;
+        ((android.graphics.drawable.GradientDrawable) ld.getDrawable(1).mutate())
+                .setColors(new int[] { rgb, 0x33000000 | rgb, 0x00000000 });
+    }
+
+    /** Accent-painted 3D details that are not widgets (ring, halo). */
+    private void refresh3DAccent() {
+        tintSynthwaveHalo(view3DRoot);
+        tintSynthwaveHalo(view3DSceneRoot);
+        if (view3DSceneRoot != null) paintDanceTabs();
+        if (selected3DStem != null) {
+            android.widget.ImageView iv = stem3DIcons.get(selected3DStem);
+            if (iv != null) iv.setBackground(selectedStemRing());
+        }
+    }
+
     /** Lazy init of the 3D view references. Idempotent. */
     private void ensure3DRefs() {
         if (view3DRoot == null) {
             view3DRoot        = findViewById(R.id.view3D_root);
+            tintSynthwaveHalo(view3DRoot);
             fl3DStemContainer = findViewById(R.id.fl_3d_stemContainer);
             iv3DHead          = findViewById(R.id.iv_3d_head);
             sw3DEnabled       = findViewById(R.id.sw_3d_enabled);
@@ -5091,6 +5147,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         android.view.ViewStub stub = findViewById(R.id.stub_3d_scene);
         if (stub == null) return;
         view3DSceneRoot = stub.inflate();
+        tintSynthwaveHalo(view3DSceneRoot);
 
         View infoScene = findViewById(R.id.b_3d_infoScene);
         if (infoScene != null) {
@@ -5138,8 +5195,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         com.google.android.material.button.MaterialButton bResetScene =
                 findViewById(R.id.b_3d_resetScene);
         if (bResetScene != null) bResetScene.setOnClickListener(v -> reset3DPositions());
-        // Inline dance sliders of the scene (speed + distance).
-        View danceSlidersContainerScene = findViewById(R.id.ll_3d_danceSlidersScene);
+        // Dance panel of the scene: tabs + one large slider per value.
+        View dancePanelScene = findViewById(R.id.ll_3d_dancePanelScene);
         com.google.android.material.slider.Slider slSpeedInlineScene =
                 findViewById(R.id.sl_3d_danceSpeedScene);
         com.google.android.material.slider.Slider slDistInlineScene =
@@ -5150,6 +5207,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (!fromUser) return;
                 danceSpeed = val;
                 if (audio3DScene != null) audio3DScene.setDanceSpeed(val);
+                updateDanceValueText();
             });
         }
         if (slDistInlineScene != null) {
@@ -5158,26 +5216,41 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (!fromUser) return;
                 danceDistance = val;
                 if (audio3DScene != null) audio3DScene.setDanceDistance(val);
+                updateDanceValueText();
             });
         }
-        // Wave speed slider: per-stem sine-wave oscillation speed for the
-        // selected stem (stems marked with the wave in the dance dialog).
+        // Swing slider: wave speed of one swinging stem (danceSwingStem).
         com.google.android.material.slider.Slider slOscInlineScene =
                 findViewById(R.id.sl_3d_danceOscScene);
         if (slOscInlineScene != null) {
             slOscInlineScene.setValue(0.5f);
             slOscInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                if (!fromUser) return;
-                if (selected3DStem == null) return;
-                danceOscSpeeds.put(selected3DStem, val);
-                if (audio3DScene != null) audio3DScene.setStemOscSpeed(selected3DStem, val);
+                if (!fromUser || danceSwingStem == null) return;
+                danceOscSpeeds.put(danceSwingStem, val);
+                if (audio3DScene != null) audio3DScene.setStemOscSpeed(danceSwingStem, val);
+                updateDanceValueText();
             });
         }
-        danceInlineSlidersContainer = danceSlidersContainerScene;
+        View tabSpeed = findViewById(R.id.tv_3d_danceTabSpeed);
+        View tabDist  = findViewById(R.id.tv_3d_danceTabDistance);
+        View tabSwing = findViewById(R.id.tv_3d_danceTabSwing);
+        if (tabSpeed != null) tabSpeed.setOnClickListener(v -> selectDanceTab(DANCE_TAB_SPEED, true));
+        if (tabDist  != null) tabDist.setOnClickListener(v -> selectDanceTab(DANCE_TAB_DISTANCE, true));
+        if (tabSwing != null) tabSwing.setOnClickListener(v -> selectDanceTab(DANCE_TAB_SWING, true));
+        View swingStem = findViewById(R.id.iv_3d_danceSwingStem);
+        if (swingStem != null) swingStem.setOnClickListener(v -> nextDanceSwingStem());
+        View chevron = findViewById(R.id.iv_3d_danceChevron);
+        if (chevron != null) chevron.setOnClickListener(v -> setDancePanelCollapsed(!dancePanelCollapsed, true));
+        // Tab widths change with the swing tab: the pill follows without animating.
+        View tabs = findViewById(R.id.fl_3d_danceTabs);
+        if (tabs != null) tabs.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (!danceIndicatorAnimating) placeDanceTabIndicator(false);
+        });
+        danceInlineSlidersContainer = dancePanelScene;
         danceInlineSlSpeed          = slSpeedInlineScene;
         danceInlineSlDistance       = slDistInlineScene;
         setSceneControlsEnabled(is3DEnabled);
-        refreshWaveSliderVisibility();
+        refreshDanceSwingTab();
         // Fresh views carry the theme accent: bring them to the song's.
         recolorToPlayerAccent(view3DSceneRoot);
     }
@@ -5200,10 +5273,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             closeChordDiagrams(this::toggle3DView);
             return;
         }
-        // Never overlap with the lyrics overlay.
-        if (isLyricsViewShown) return;
         // A song load is behind the curtain: ignore the toggle.
         if (loadingCurtain != null) return;
+        // From the lyrics: they leave first, then the 3D view opens.
+        if (isLyricsViewShown) {
+            isLyricsViewShown = false;
+            refreshBLyricsTint();
+            transitionOutOfLyrics(findViewById(R.id.chords_container), this::toggle3DView);
+            return;
+        }
         // First opening of the scene: the chrome appears at once and the
         // engine builds step by step behind it (see transitionIntoScene).
         if (!is3DViewShown) {
@@ -5612,6 +5690,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Reversa hacia el modo stems. Respeta chordsActive: si estaba off, no muestra
      *  the chords_container when returning — it used to force VISIBLE and reappear wrongly. */
     private void transitionOutOf3D(View chordsContainer) {
+        transitionOutOf3D(chordsContainer, null);
+    }
+
+    /** [handoff] (opening the lyrics from the 3D view): the stems and the
+     *  chord row stay out, since the lyrics place them; [handoff] runs once
+     *  the 3D view is gone. Parked chord diagrams stay parked. */
+    private void transitionOutOf3D(View chordsContainer, @androidx.annotation.Nullable Runnable handoff) {
         final long OUT_DUR = 200L;
         final long IN_DUR  = 260L;
         float density = getResources().getDisplayMetrics().density;
@@ -5621,20 +5706,27 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Scene: the opaque surface hides the stems stack until the root is
         // gone, so the stems enter after the cover completes (no overlap).
         final boolean scene = isAudio3DScene();
-        if (scene) {
-            transitionOutOfScene(OUT_DUR);
-        } else {
-            View root = active3DRoot();
-            root.animate().cancel();
-            root.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
-                    .withLayer()
-                    .setDuration(OUT_DUR)
-                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
-                    .withEndAction(() -> {
-                        root.setVisibility(View.GONE);
-                        if (audio3DScene != null) audio3DScene.pause();
-                    }).start();
+        if (handoff != null) {
+            if (scene) transitionOutOfScene(OUT_DUR);
+            else fadeOutFlat3DRoot(OUT_DUR);
+            // Stack back in place but empty: stems box and chord row hidden.
+            View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
+            View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
+            if (stemsBox != null) stemsBox.setVisibility(View.GONE);
+            if (chordsContainer != null) chordsContainer.setVisibility(View.GONE);
+            if (stemsStack != null) {
+                stemsStack.animate().cancel();
+                stemsStack.setAlpha(1f);
+                stemsStack.setTranslationY(0f);
+                stemsStack.setVisibility(View.VISIBLE);
+            }
+            new Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (!isDestroyed) handoff.run();
+            }, OUT_DUR + 40L);
+            return;
         }
+        if (scene) transitionOutOfScene(OUT_DUR);
+        else fadeOutFlat3DRoot(OUT_DUR);
 
         // Restore the stems stack as a block with fade + slide from below.
         View stemsStack = rvStems != null ? (View) rvStems.getParent().getParent() : null;
@@ -5656,6 +5748,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         if (chordDiagramsParked) resumeParkedChordDiagrams(scene ? OUT_DUR : OUT_DUR - 80L);
         else restoreStemsBox();
+    }
+
+    /** Flat 3D view exit: fade + shrink, hidden at the end. */
+    private void fadeOutFlat3DRoot(long outDur) {
+        View root = active3DRoot();
+        root.animate().cancel();
+        root.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+                .withLayer()
+                .setDuration(outDur)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    root.setVisibility(View.GONE);
+                    if (audio3DScene != null) audio3DScene.pause();
+                }).start();
     }
 
     /** Animates the stem icons with a cascaded fade+scale in after the transition.
@@ -6391,15 +6497,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             sb3DDistanceScene.setEnabled(enabled);
             sb3DDistanceScene.setAlpha(alpha);
         }
-        com.google.android.material.slider.Slider slWave =
-                findViewById(R.id.sl_3d_danceOscScene);
-        if (slWave != null) {
-            slWave.setEnabled(enabled);
-            slWave.setAlpha(alpha);
-        }
-        View waveGroup = findViewById(R.id.ll_3d_waveSpeedScene);
-        if (waveGroup != null) {
-            waveGroup.setAlpha(alpha);
+        View dancePanel = findViewById(R.id.ll_3d_dancePanelScene);
+        if (dancePanel != null) dancePanel.setAlpha(alpha);
+        for (int id : new int[] { R.id.sl_3d_danceSpeedScene, R.id.sl_3d_danceDistanceScene,
+                R.id.sl_3d_danceOscScene, R.id.tv_3d_danceTabSpeed, R.id.tv_3d_danceTabDistance,
+                R.id.tv_3d_danceTabSwing, R.id.iv_3d_danceSwingStem }) {
+            View c = findViewById(id);
+            if (c != null) c.setEnabled(enabled);
         }
         if (b3DDanceScene != null) {
             b3DDanceScene.setEnabled(enabled);
@@ -6569,9 +6673,18 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Selection ring: only on the current icon, null on the rest.
         for (java.util.Map.Entry<String, android.widget.ImageView> e : stem3DIcons.entrySet()) {
             android.widget.ImageView iv = e.getValue();
-            iv.setBackgroundResource(e.getKey().equals(stem)
-                    ? R.drawable.ring_stem_selected : 0);
+            iv.setBackground(e.getKey().equals(stem) ? selectedStemRing() : null);
         }
+    }
+
+    /** Selection ring of a flat 3D icon, in the player accent (a drawable XML
+     *  with ?attr/colorPrimary would keep the theme accent). */
+    private android.graphics.drawable.Drawable selectedStemRing() {
+        android.graphics.drawable.GradientDrawable ring = new android.graphics.drawable.GradientDrawable();
+        ring.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        ring.setColor(Color.TRANSPARENT);
+        ring.setStroke((int) (2f * getResources().getDisplayMetrics().density), accent());
+        return ring;
     }
 
     /** Visually enables/disables the elevation slider. Used when the stem
@@ -6593,6 +6706,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void showElevationTooltip(int val) {
         if (tv3DElevation == null || sb3DElevation == null) return;
         tv3DElevation.setText(val + "°");
+        // The XML background resolves the theme accent, not the song's.
+        tv3DElevation.setBackgroundTintList(ColorStateList.valueOf(accent()));
         tv3DElevation.removeCallbacks(hideElevationTooltip);
         tv3DElevation.animate().cancel();
         tv3DElevation.setAlpha(1f);
@@ -6629,27 +6744,236 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         sb3DDistanceScene.setValue(Math.max(0.3f, Math.min(3.0f, val)));
     }
 
-    /** Re-syncs the wave speed slider thumb to the selected stem's stored
-     *  speed whenever a stem is selected, so the control never shows a
-     *  stale position. */
+    /** A tapped swinging stem becomes the one the swing tab edits. */
     private void syncSceneWaveSliderForSelected() {
+        if (selected3DStem == null || !danceSineStems.contains(selected3DStem)) return;
+        danceSwingStem = selected3DStem;
+        refreshDanceSwingTab();
+    }
+
+    // ---- Dance panel (scene): tabs + one large slider ----
+
+    private static final int DANCE_TAB_SPEED = 0, DANCE_TAB_DISTANCE = 1, DANCE_TAB_SWING = 2;
+    private int danceTab = DANCE_TAB_SPEED;
+    /** Stem whose swing speed the swing tab edits (one of danceSineStems). */
+    @androidx.annotation.Nullable private String danceSwingStem;
+
+    /** Swinging stems in the song's stem order. */
+    private java.util.List<String> orderedSwingStems() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        java.util.List<String> order = playbackService != null
+                ? playbackService.getStemOrder() : new java.util.ArrayList<>(danceSineStems);
+        for (String s : order) if (danceSineStems.contains(s)) out.add(s);
+        return out;
+    }
+
+    /** Swing tab only with swinging stems; keeps its target stem valid
+     *  (the selected stem when it swings, else the first) and in sync. */
+    private void refreshDanceSwingTab() {
+        java.util.List<String> swing = orderedSwingStems();
+        if (swing.isEmpty()) {
+            danceSwingStem = null;
+            if (danceTab == DANCE_TAB_SWING) danceTab = DANCE_TAB_SPEED;
+        } else if (danceSwingStem == null || !swing.contains(danceSwingStem)) {
+            danceSwingStem = selected3DStem != null && swing.contains(selected3DStem)
+                    ? selected3DStem : swing.get(0);
+        }
+        android.widget.ImageView iv = findViewById(R.id.iv_3d_danceSwingStem);
+        if (iv != null && danceSwingStem != null) {
+            boolean hasV2 = playbackService != null && playbackService.hasStem("vocals2");
+            iv.setImageResource(StemSpec.iconResource(danceSwingStem, hasV2));
+            iv.setContentDescription(danceSwingStem);
+        }
         com.google.android.material.slider.Slider sl = findViewById(R.id.sl_3d_danceOscScene);
-        if (sl == null || !sl.isEnabled() || selected3DStem == null) return;
-        float val = danceOscSpeeds.getOrDefault(selected3DStem, 0.5f);
-        if (Math.abs(sl.getValue() - val) > 0.001f) {
-            sl.setValue(val);
+        if (sl != null && danceSwingStem != null) {
+            float val = Math.max(sl.getValueFrom(), Math.min(sl.getValueTo(),
+                    danceOscSpeeds.getOrDefault(danceSwingStem, 0.5f)));
+            if (Math.abs(sl.getValue() - val) > 0.001f) sl.setValue(val);
+        }
+        selectDanceTab(danceTab, false);
+    }
+
+    /** Swing tab: next swinging stem, also selected in the scene. */
+    private void nextDanceSwingStem() {
+        java.util.List<String> swing = orderedSwingStems();
+        if (swing.size() < 2) return;
+        int i = swing.indexOf(danceSwingStem);
+        danceSwingStem = swing.get((i + 1) % swing.size());
+        selected3DStem = danceSwingStem;
+        if (audio3DScene != null) audio3DScene.setStemSelected(danceSwingStem);
+        syncSceneDistanceSliderForSelected();
+        refreshDanceSwingTab();
+    }
+
+    private static final int DANCE_TAB_TEXT_ON = 0xFF14100A;
+    private static final long DANCE_TAB_MS = 240L;
+    private boolean danceIndicatorAnimating = false;
+    @androidx.annotation.Nullable private android.animation.ValueAnimator danceIndicatorAnim;
+    /** Panel folded into its chevron tab (in memory, per session). */
+    private boolean dancePanelCollapsed = false;
+
+    private static final int[] DANCE_TAB_IDS = {
+            R.id.tv_3d_danceTabSpeed, R.id.tv_3d_danceTabDistance, R.id.tv_3d_danceTabSwing };
+
+    /** Shows the slider of [tab]; [animate] slides the pill and cross-fades
+     *  the slider row (user taps), otherwise everything snaps. */
+    private void selectDanceTab(int tab, boolean animate) {
+        if (tab == DANCE_TAB_SWING && danceSwingStem == null) tab = DANCE_TAB_SPEED;
+        boolean changed = tab != danceTab;
+        danceTab = tab;
+        android.view.ViewGroup row = findViewById(R.id.ll_3d_danceSliderRow);
+        if (animate && changed && row != null && row.isLaidOut()) {
+            androidx.transition.TransitionManager.beginDelayedTransition(row,
+                    new androidx.transition.TransitionSet()
+                            .addTransition(new androidx.transition.Fade())
+                            .addTransition(new androidx.transition.ChangeBounds())
+                            .setOrdering(androidx.transition.TransitionSet.ORDERING_TOGETHER)
+                            .setDuration(DANCE_TAB_MS)
+                            .setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator()));
+        }
+        int[] sliders = { R.id.sl_3d_danceSpeedScene, R.id.sl_3d_danceDistanceScene, R.id.sl_3d_danceOscScene };
+        for (int i = 0; i < sliders.length; i++) {
+            View sl = findViewById(sliders[i]);
+            if (sl != null) sl.setVisibility(i == tab ? View.VISIBLE : View.GONE);
+        }
+        View swingStem = findViewById(R.id.iv_3d_danceSwingStem);
+        if (swingStem != null) swingStem.setVisibility(tab == DANCE_TAB_SWING ? View.VISIBLE : View.GONE);
+        View swingTab = findViewById(R.id.tv_3d_danceTabSwing);
+        if (swingTab != null) swingTab.setVisibility(danceSwingStem != null ? View.VISIBLE : View.GONE);
+        paintDanceTabs();
+        placeDanceTabIndicator(animate && changed);
+        updateDanceValueText();
+    }
+
+    /** Moves the accent pill under the current tab and fades the tab text
+     *  colors along with it. */
+    private void placeDanceTabIndicator(boolean animate) {
+        View pill = findViewById(R.id.v_3d_danceTabIndicator);
+        View target = findViewById(DANCE_TAB_IDS[danceTab]);
+        if (pill == null || target == null) return;
+        if (target.getWidth() == 0) {
+            target.post(() -> placeDanceTabIndicator(false));
+            return;
+        }
+        final int toX = target.getLeft(), toW = target.getWidth();
+        final float fromX = pill.getTranslationX();
+        final int fromW = pill.getLayoutParams().width;
+        if (danceIndicatorAnim != null) danceIndicatorAnim.cancel();
+        // Text color of every tab blends between its current and target color.
+        final TextView[] tvs = new TextView[DANCE_TAB_IDS.length];
+        final int[] fromC = new int[tvs.length], toC = new int[tvs.length];
+        for (int i = 0; i < tvs.length; i++) {
+            tvs[i] = findViewById(DANCE_TAB_IDS[i]);
+            if (tvs[i] == null) continue;
+            fromC[i] = tvs[i].getCurrentTextColor();
+            toC[i] = i == danceTab ? DANCE_TAB_TEXT_ON : Color.WHITE;
+        }
+        if (!animate || fromW <= 0) {
+            pill.setTranslationX(toX);
+            // Only on a real change: this also runs from the tabs' layout listener.
+            if (fromW != toW) {
+                pill.getLayoutParams().width = toW;
+                pill.requestLayout();
+            }
+            for (int i = 0; i < tvs.length; i++) if (tvs[i] != null) tvs[i].setTextColor(toC[i]);
+            return;
+        }
+        android.animation.ArgbEvaluator argb = new android.animation.ArgbEvaluator();
+        danceIndicatorAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        danceIndicatorAnim.setDuration(DANCE_TAB_MS);
+        danceIndicatorAnim.setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator());
+        danceIndicatorAnim.addUpdateListener(a -> {
+            float f = (float) a.getAnimatedValue();
+            pill.setTranslationX(fromX + (toX - fromX) * f);
+            pill.getLayoutParams().width = (int) (fromW + (toW - fromW) * f);
+            pill.requestLayout();
+            for (int i = 0; i < tvs.length; i++) {
+                if (tvs[i] != null) tvs[i].setTextColor((int) argb.evaluate(f, fromC[i], toC[i]));
+            }
+        });
+        danceIndicatorAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationStart(android.animation.Animator a) { danceIndicatorAnimating = true; }
+            @Override public void onAnimationEnd(android.animation.Animator a) { danceIndicatorAnimating = false; }
+            @Override public void onAnimationCancel(android.animation.Animator a) { danceIndicatorAnimating = false; }
+        });
+        danceIndicatorAnim.start();
+    }
+
+    /** Folds the panel into its chevron tab or opens it; [animate] morphs
+     *  the width and fades the content. */
+    private void setDancePanelCollapsed(boolean collapsed, boolean animate) {
+        dancePanelCollapsed = collapsed;
+        View panel = findViewById(R.id.ll_3d_dancePanelScene);
+        View content = findViewById(R.id.ll_3d_danceContent);
+        View chevron = findViewById(R.id.iv_3d_danceChevron);
+        android.view.ViewGroup bottomRow = findViewById(R.id.ll_3d_bottomRowScene);
+        if (panel == null || content == null) return;
+        if (animate && bottomRow != null && panel.isLaidOut()) {
+            androidx.transition.TransitionManager.beginDelayedTransition(bottomRow,
+                    new androidx.transition.TransitionSet()
+                            .addTransition(new androidx.transition.ChangeBounds())
+                            .addTransition(new androidx.transition.Fade())
+                            .setOrdering(androidx.transition.TransitionSet.ORDERING_TOGETHER)
+                            .setDuration(280L)
+                            .setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator()));
+        }
+        android.widget.LinearLayout.LayoutParams lp =
+                (android.widget.LinearLayout.LayoutParams) panel.getLayoutParams();
+        lp.width = collapsed ? ViewGroup.LayoutParams.WRAP_CONTENT : 0;
+        lp.weight = collapsed ? 0f : 1f;
+        panel.setLayoutParams(lp);
+        content.setVisibility(collapsed ? View.GONE : View.VISIBLE);
+        if (chevron != null) {
+            // Points right to open, left to fold.
+            float rot = collapsed ? 0f : 180f;
+            chevron.animate().cancel();
+            if (animate) chevron.animate().rotation(rot).setDuration(280L).start();
+            else chevron.setRotation(rot);
         }
     }
 
-    /** The wave speed slider only makes sense when at least one stem has
-     *  the sine-wave oscillation enabled in the dance dialog. */
-    /** Swing speed slider: only while the scene dance runs with at least one
-     *  swinging stem — outside the dance it has nothing to act on. */
-    private void refreshWaveSliderVisibility() {
-        View waveGroup = findViewById(R.id.ll_3d_waveSpeedScene);
-        if (waveGroup != null) {
-            boolean dancing = audio3DScene != null && audio3DScene.isDanceActive();
-            waveGroup.setVisibility(dancing && !danceSineStems.isEmpty() ? View.VISIBLE : View.GONE);
+    /** Pill and swing stem badge in the player accent. */
+    private void paintDanceTabs() {
+        float d = getResources().getDisplayMetrics().density;
+        View pill = findViewById(R.id.v_3d_danceTabIndicator);
+        if (pill != null) {
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setCornerRadius(16 * d);
+            bg.setColor(accent());
+            pill.setBackground(bg);
+        }
+        View tabs = findViewById(R.id.fl_3d_danceTabs);
+        if (tabs != null && tabs.getBackground() == null) {
+            android.graphics.drawable.GradientDrawable track = new android.graphics.drawable.GradientDrawable();
+            track.setCornerRadius(16 * d);
+            track.setColor(0xFF2D2822);
+            tabs.setBackground(track);
+        }
+        View swingStem = findViewById(R.id.iv_3d_danceSwingStem);
+        if (swingStem != null) {
+            android.graphics.drawable.GradientDrawable badge = new android.graphics.drawable.GradientDrawable();
+            badge.setCornerRadius(20 * d);
+            badge.setColor(0xFF3C3220);
+            badge.setStroke((int) (2 * d), accent());
+            swingStem.setBackground(badge);
+        }
+    }
+
+    /** Value of the tab shown, with its unit. */
+    private void updateDanceValueText() {
+        TextView tv = findViewById(R.id.tv_3d_danceValue);
+        if (tv == null) return;
+        java.util.Locale l = java.util.Locale.US;
+        switch (danceTab) {
+            case DANCE_TAB_DISTANCE:
+                tv.setText(String.format(l, "%.2f m", danceDistance));
+                break;
+            case DANCE_TAB_SWING:
+                float hz = danceSwingStem != null ? danceOscSpeeds.getOrDefault(danceSwingStem, 0.5f) : 0.5f;
+                tv.setText(String.format(l, "%.2f Hz", hz));
+                break;
+            default:
+                tv.setText(getString(R.string.dance_value_speed, String.format(l, "%.2f", danceSpeed)));
         }
     }
 
@@ -6858,19 +7182,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return (float) (rh / Math.max(0.05f, Math.cos(elevRad)));
     }
 
-    /** Scene mode: inline speed + distance sliders in the bottom row, shown
-     *  only while the dance runs (the setup dialog carries no sliders). */
+    /** Scene mode: dance panel in the bottom row, shown only while the
+     *  dance runs (the setup dialog carries no sliders). */
     private void setSceneDanceSlidersVisible(boolean visible) {
-        View group = findViewById(R.id.ll_3d_danceSlidersScene);
+        View group = findViewById(R.id.ll_3d_dancePanelScene);
         if (group == null) return;
         if (visible) {
             com.google.android.material.slider.Slider sp = findViewById(R.id.sl_3d_danceSpeedScene);
             com.google.android.material.slider.Slider di = findViewById(R.id.sl_3d_danceDistanceScene);
             if (sp != null) sp.setValue(danceSpeed);
             if (di != null) di.setValue(danceDistance);
+            refreshDanceSwingTab();
+            setDancePanelCollapsed(dancePanelCollapsed, false);
         }
         group.setVisibility(visible ? View.VISIBLE : View.GONE);
-        refreshWaveSliderVisibility();
     }
 
     private void showStemsDanceDialog() {
@@ -6931,7 +7256,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             danceSineStems.clear();
             danceSineStems.addAll(adapter.getSine());
             danceRandomSwing = cbRandomSwing.isChecked();
-            refreshWaveSliderVisibility();
+            refreshDanceSwingTab();
             dlg.dismiss();
             if (isAudio3DScene() && audio3DScene != null) {
                 audio3DScene.startDance(new java.util.ArrayList<>(danceStems),
@@ -7475,8 +7800,19 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             closeChordDiagrams(this::toggleLyricsView);
             return;
         }
-        // Never overlap with the 3D view.
-        if (is3DViewShown) return;
+        // From the 3D view: it leaves first, then the lyrics open with their
+        // chord row (the handoff leaves it hidden).
+        if (is3DViewShown) {
+            if (loadingCurtain != null) return;
+            is3DViewShown = false;
+            transitionOutOf3D(findViewById(R.id.chords_container), () -> {
+                toggleLyricsView();
+                if (isLyricsViewShown && chordsActive && mLyricsUiState == LyricsUiState.CONTENT) {
+                    animateChordsOverlayForLyrics(true);
+                }
+            });
+            return;
+        }
         isLyricsViewShown = !isLyricsViewShown;
         refreshBLyricsTint();
         View chordsContainer = findViewById(R.id.chords_container);
@@ -7866,12 +8202,45 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void transitionOutOfLyrics(View chordsContainer) {
+        transitionOutOfLyrics(chordsContainer, null);
+    }
+
+    /** [handoff] (opening the 3D view from the lyrics): the lyrics and their
+     *  chord row fade out together and the stems stay out, since the 3D view
+     *  hides the stack anyway; [handoff] runs once the lyrics are gone.
+     *  Parked chord diagrams stay parked. */
+    private void transitionOutOfLyrics(View chordsContainer, @androidx.annotation.Nullable Runnable handoff) {
         final long OUT_DUR = 200L;
         final long IN_DUR  = 260L;
         float density = getResources().getDisplayMetrics().density;
         float slidePx = 18f * density;
 
         applyToolbarBgForLyrics(false);
+
+        if (handoff != null) {
+            final View chordsRow = findViewById(R.id.chords_container);
+            if (chordsRow != null && chordsRow.getVisibility() == View.VISIBLE) {
+                chordsRow.animate().cancel();
+                chordsRow.animate().alpha(0f).setDuration(OUT_DUR)
+                        .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                        .start();
+            }
+            lyricsRoot.animate().cancel();
+            lyricsRoot.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f)
+                    .withLayer()
+                    .setDuration(OUT_DUR)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        lyricsRoot.setVisibility(View.GONE);
+                        // Overlay look reset (z-order, padding), row kept out.
+                        applyChordsOverlayForLyrics();
+                        if (chordsRow != null) chordsRow.setVisibility(View.GONE);
+                    }).start();
+            new Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (!isDestroyed) handoff.run();
+            }, OUT_DUR + 40L);
+            return;
+        }
 
         // If chords were hidden by the lyrics config screens, restore them
         // with a fade in parallel to the stems slide-in so they don't pop
@@ -8229,7 +8598,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 setLyricsUiState(LyricsUiState.SKELETON);
                 break;
             case ERROR:
-                if ("409".equals(errorMsg)) {
+                if ("409".equals(errorMsg)
+                        || com.jotapeveloper.fision.cloud.CloudRepository.ERR_VOCALS_MISSING.equals(errorMsg)) {
                     android.widget.Toast.makeText(this,
                             R.string.lyrics_no_vocals, android.widget.Toast.LENGTH_SHORT).show();
                     setLyricsUiState(LyricsUiState.PICKER);
@@ -8242,6 +8612,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     // Time limit on the server: back to the picker to retry.
                     android.widget.Toast.makeText(this,
                             R.string.lyrics_timeout, android.widget.Toast.LENGTH_LONG).show();
+                    setLyricsUiState(LyricsUiState.PICKER);
+                } else if (com.jotapeveloper.fision.cloud.CloudRepository.ERR_GPU_BUSY.equals(errorMsg)) {
+                    // No free VRAM after the wait: back to the picker to retry.
+                    android.widget.Toast.makeText(this,
+                            R.string.job_err_gpu_busy, android.widget.Toast.LENGTH_LONG).show();
                     setLyricsUiState(LyricsUiState.PICKER);
                 } else {
                     setLyricsUiState(LyricsUiState.ERROR);

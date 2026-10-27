@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Server pill under the user name in the account dialog. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <stroke android:width="1dp" android:color="#2C2C2C" />
+    <corners android:radius="999dp" />
+</shape>

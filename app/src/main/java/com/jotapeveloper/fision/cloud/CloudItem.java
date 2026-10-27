@@ -35,7 +35,8 @@ public class CloudItem {
     public int downloadPct;              // 0..100 while state=DOWNLOADING
     public long downloadedBytes;
     public long totalBytes;
-    public String errorMessage;          // populated when state=ERROR
+    public String errorMessage;          // free text, populated when state=ERROR
+    public String errorCode;             // stable server reason (gpu_busy, timeout, ...)
     public String localFolderName;       // real folder name inside Songs/ (may match the hash)
     public String serverUpdated;         // server ISO timestamp used for sorting
     public int queuePosition;            // 1..N when state=QUEUED; 0 unknown or running

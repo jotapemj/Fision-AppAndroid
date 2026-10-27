@@ -27,6 +27,7 @@ public class ServerPrefs {
     private static final String KEY_LOCAL_MODE = "local_mode";
     private static final String KEY_FIRST_RUN  = "first_run";
     private static final String KEY_SESSION_EXPIRED = "session_expired";
+    private static final String KEY_ACCOUNT    = "account_key";
 
     private final SharedPreferences plain;
     private final SharedPreferences secure;
@@ -114,6 +115,16 @@ public class ServerPrefs {
 
     public void setSessionExpired(boolean expired) {
         plain.edit().putBoolean(KEY_SESSION_EXPIRED, expired).apply();
+    }
+
+    /** Key of the account whose library is active; empty in local mode. */
+    public String getAccountKey() {
+        String k = plain.getString(KEY_ACCOUNT, "");
+        return k == null ? "" : k;
+    }
+
+    public void setAccountKey(String key) {
+        plain.edit().putString(KEY_ACCOUNT, key == null ? "" : key).apply();
     }
 
     /** True when a login was completed and the token has not been wiped. */

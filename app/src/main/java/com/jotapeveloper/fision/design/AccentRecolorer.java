@@ -214,9 +214,11 @@ public final class AccentRecolorer {
                 (accent & 0x00FFFFFF) | 0x8A000000, trackOff }));
     }
 
-    /** Checkbox tint: checked → [color]; unchecked keeps the original. */
+    /** Checkbox tint: checked → [color]; unchecked keeps the original. A
+     *  single-color tint paints the empty box with the accent too, so it
+     *  moves as a whole. */
     private static ColorStateList retintChecked(@Nullable ColorStateList orig, int color) {
-        if (orig == null) return ColorStateList.valueOf(color);
+        if (orig == null || !orig.isStateful()) return ColorStateList.valueOf(color);
         int unchecked = orig.getColorForState(STATE_ENABLED, orig.getDefaultColor());
         return new ColorStateList(
                 new int[][] { new int[] { android.R.attr.state_checked }, STATE_NONE },

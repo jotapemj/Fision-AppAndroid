@@ -14,6 +14,9 @@ public class AvatarColorAdapter extends RecyclerView.Adapter<AvatarColorAdapter.
 
     public interface OnColorSelected { void onColorPicked(int color); }
 
+    /** Whole swatches on screen; the next one shows cut at the edge. */
+    private static final int VISIBLE_SWATCHES = 6;
+
     private final int[] colors;
     private int selectedIndex;
     private final OnColorSelected listener;
@@ -44,6 +47,13 @@ public class AvatarColorAdapter extends RecyclerView.Adapter<AvatarColorAdapter.
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_avatar_color_swatch, parent, false);
+        // Six and a half swatches across: the cut one at the edge tells
+        // that the row scrolls. Never narrower than the selection ring.
+        int avail = parent.getMeasuredWidth() - parent.getPaddingLeft() - parent.getPaddingRight();
+        if (avail > 0 && colors.length > VISIBLE_SWATCHES) {
+            float d = parent.getResources().getDisplayMetrics().density;
+            v.getLayoutParams().width = Math.max((int) (46 * d), (int) (avail / (VISIBLE_SWATCHES + 0.5f)));
+        }
         return new VH(v);
     }
 

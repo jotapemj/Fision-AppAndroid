@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dance controls card over the 3D scene: dark, slightly see-through. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E6100E0C" />
+    <corners android:radius="22dp" />
+</shape>

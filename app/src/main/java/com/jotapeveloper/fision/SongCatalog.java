@@ -24,7 +24,7 @@ public final class SongCatalog {
         @NonNull public final String title;
         @Nullable public final String artist;
         @Nullable public final String coverPath;
-        /** Downloaded: its folder exists under Songs/. */
+        /** Downloaded: its folder exists in the active library. */
         public final boolean local;
         @Nullable public final CloudItem cloud;
 
@@ -40,7 +40,7 @@ public final class SongCatalog {
     }
 
     public static File songsRoot(Context ctx) {
-        return new File(ctx.getExternalFilesDir(null), "Songs");
+        return SongStorage.root(ctx);
     }
 
     @NonNull
@@ -79,6 +79,12 @@ public final class SongCatalog {
         return ci.state == CloudItem.State.LOCAL_AND_CLOUD
                 || ci.state == CloudItem.State.CLOUD_ONLY
                 || ci.state == CloudItem.State.DOWNLOADING;
+    }
+
+    /** True when at least one song can be added to a playlist. */
+    public static boolean hasCloudSongs(@NonNull Context ctx) {
+        for (CloudItem ci : CloudRepository.get(ctx).snapshot()) if (isInCloud(ci)) return true;
+        return false;
     }
 
     /** Songs that can be added to a playlist, in library order. */

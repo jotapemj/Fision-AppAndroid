@@ -1,32 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Playlists tab of MainActivity: same rhythm as the songs tab
-     (action button, count, list). -->
+<!-- Playlists tab of MainActivity: same rhythm and metrics as the songs tab
+     (search + add button, count, list), so the empty notices of both tabs
+     sit over the same shared blobs. -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/b_newPlaylist"
+    <!-- Search bar + add button, as in the songs tab. With no playlists the
+         search bar hides and the add button widens into a labelled bar
+         (MainActivity.setAddWide). -->
+    <EditText
+        android:id="@+id/et_findPlaylist"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginEnd="20dp"
+        android:layout_height="53dp"
         android:layout_marginTop="20dp"
-        android:backgroundTint="?attr/colorPrimary"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="10dp"
+        android:background="@drawable/rounded_edittext_background"
+        android:ems="10"
         android:fontFamily="@font/noto_sans_regular"
-        android:text="@string/playlist_new"
-        android:textColor="#FFFFFF"
-        app:icon="@drawable/ic_add"
-        app:iconGravity="textStart"
-        app:iconPadding="8dp"
-        app:iconSize="22dp"
-        app:iconTint="#FFFFFF"
-        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MyApp.Button.Circle"
+        android:includeFontPadding="false"
+        android:gravity="center_vertical"
+        android:hint="@string/te_find_playlist"
+        android:drawableLeft="@drawable/ic_search"
+        android:drawablePadding="10dp"
+        android:drawableRight="@drawable/ic_clear"
+        android:inputType="textPersonName"
+        android:imeOptions="actionSearch"
+        android:paddingStart="14dp"
+        android:paddingEnd="12dp"
+        android:textColor="#8A8A8A"
+        android:autofillHints=""
+        android:visibility="invisible"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toStartOf="@+id/b_addPlaylist" />
+
+    <FrameLayout
+        android:id="@+id/b_addPlaylist"
+        android:layout_width="53dp"
+        android:layout_height="53dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/squircle_add_button"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/playlist_new"
+        android:tooltipText="@string/playlist_new"
+        app:layout_constraintTop_toTopOf="@+id/et_findPlaylist"
+        app:layout_constraintBottom_toBottomOf="@+id/et_findPlaylist"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Icon (+ label as a bar), centered either way -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/iv_addPlaylistIcon"
+                android:layout_width="29dp"
+                android:layout_height="29dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_add"
+                android:importantForAccessibility="no"
+                app:tint="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/tv_addPlaylistLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="@font/noto_sans_regular"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/playlist_new"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:visibility="gone"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/tv_playlistsCount"
@@ -34,12 +91,12 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="20dp"
+        android:layout_marginTop="15dp"
         android:fontFamily="@font/noto_sans_regular"
         android:textColor="@color/AppDarkGrey"
         android:textSize="20sp"
-        app:layout_constraintTop_toBottomOf="@+id/b_newPlaylist"
+        android:text=" "
+        app:layout_constraintTop_toBottomOf="@+id/et_findPlaylist"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -70,39 +127,50 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Empty state: dashed card that creates the first playlist -->
-    <LinearLayout
+    <!-- Empty state over the shared blobs of MainActivity (v_emptyBlobs). With
+         songs the area creates the first playlist; without songs it only explains. -->
+    <FrameLayout
         android:id="@+id/ll_playlistsAddFirst"
         android:layout_width="0dp"
-        android:layout_height="140dp"
-        android:layout_marginStart="20dp"
-        android:layout_marginEnd="20dp"
-        android:background="@drawable/dashed_add_card"
+        android:layout_height="0dp"
         android:clickable="true"
         android:focusable="true"
-        android:gravity="center"
-        android:orientation="vertical"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="@+id/rv_playlists"
         app:layout_constraintBottom_toBottomOf="@+id/rv_playlists"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_add"
-            android:importantForAccessibility="no"
-            app:tint="#8A8A8A" />
-
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:fontFamily="@font/noto_sans_regular"
-            android:text="@string/playlists_empty"
-            android:textColor="#8A8A8A"
-            android:textSize="16sp" />
-    </LinearLayout>
+            android:layout_gravity="center"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:id="@+id/tv_playlistsEmptyTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/noto_sans_regular"
+                android:gravity="center"
+                android:textColor="@color/AppWhite"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/tv_playlistsEmptyHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/noto_sans_regular"
+                android:gravity="center"
+                android:textColor="#9A9A9A"
+                android:textSize="15sp" />
+        </LinearLayout>
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

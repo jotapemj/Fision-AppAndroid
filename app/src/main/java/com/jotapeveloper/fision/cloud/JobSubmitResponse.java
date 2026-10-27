@@ -6,6 +6,6 @@ import com.google.gson.annotations.SerializedName;
 public class JobSubmitResponse {
     @SerializedName("hash")    public String hash;
     @SerializedName("job_id")  public String jobId;
-    @SerializedName("estado")  public String estado;
+    @SerializedName("state")   public String state;
     @SerializedName("cached")  public boolean cached;
 }

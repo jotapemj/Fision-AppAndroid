@@ -5,6 +5,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.jotapeveloper.fision.SongStorage;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -102,12 +104,15 @@ public class AuthManager {
     public void enterLocalMode() {
         ServerPrefs prefs = ServerPrefs.get(appCtx);
         String outgoing = prefs.getUsername();
+        String before = SongStorage.activeKey(appCtx);
         prefs.setLocalMode(true);
         prefs.setFirstRunCompleted();
         prefs.setSessionExpired(false);
         // Wipe any lingering token so the ApiClient does not try to auth
         prefs.setToken("");
         prefs.setUsername("");
+        prefs.setAccountKey("");
+        onLibraryMaybeChanged(before);
         ApiClient.get(appCtx).notifyConfigChanged();
         CloudRepository.get(appCtx).notifyConfigChanged();
         AvatarManager.get(appCtx).clearLocal(outgoing);
@@ -125,6 +130,7 @@ public class AuthManager {
             cb.onFailure(0, "empty_fields");
             return;
         }
+        String before = SongStorage.activeKey(appCtx);
         prefs.setUrl(u);
         ApiClient.get(appCtx).notifyConfigChanged();
 
@@ -143,6 +149,8 @@ public class AuthManager {
                     prefs.setLocalMode(false);
                     prefs.setFirstRunCompleted();
                     prefs.setSessionExpired(false);
+                    prefs.setAccountKey(SongStorage.keyFor(u, uname));
+                    onLibraryMaybeChanged(before);
                     ApiClient.get(appCtx).notifyConfigChanged();
                     CloudRepository.get(appCtx).notifyConfigChanged();
                     // Pull the avatar into the local cache so the toolbar can
@@ -325,16 +333,37 @@ public class AuthManager {
         });
     }
 
+    /** Notified on the main thread when the active song library switched to another account. */
+    public interface LibraryChangedListener { void onLibraryChanged(); }
+
+    private final java.util.Set<LibraryChangedListener> libraryListeners =
+            new java.util.concurrent.CopyOnWriteArraySet<>();
+
+    public void addLibraryChangedListener(LibraryChangedListener l) { libraryListeners.add(l); }
+    public void removeLibraryChangedListener(LibraryChangedListener l) { libraryListeners.remove(l); }
+
+    /** Drops the outgoing account's state when the active library is not [before] any more. */
+    private void onLibraryMaybeChanged(String before) {
+        if (before.equals(SongStorage.activeKey(appCtx))) return;
+        CloudRepository.get(appCtx).onAccountChanged();
+        main.post(() -> {
+            for (LibraryChangedListener l : libraryListeners) l.onLibraryChanged();
+        });
+    }
+
     /** Wipes the token/username and switches to local mode. The URL is kept
      *  so the login dialog can pre-fill it next time. The avatar cache for the
      *  outgoing user is dropped so the next login starts from a clean slate. */
     public void logout() {
         ServerPrefs prefs = ServerPrefs.get(appCtx);
         String outgoing = prefs.getUsername();
+        String before = SongStorage.activeKey(appCtx);
         prefs.setToken("");
         prefs.setUsername("");
         prefs.setLocalMode(true);
         prefs.setSessionExpired(false);
+        prefs.setAccountKey("");
+        onLibraryMaybeChanged(before);
         ApiClient.get(appCtx).notifyConfigChanged();
         CloudRepository.get(appCtx).notifyConfigChanged();
         AvatarManager.get(appCtx).clearLocal(outgoing);

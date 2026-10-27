@@ -117,8 +117,8 @@
     <string name="export_back">返回</string>
     <string name="export_include_metronome">在混音中包含节拍器</string>
     <string name="export_permission_title">需要存储权限</string>
-    <string name="export_permission_body">要保存导出文件，请允许 Fision 访问所有文件。系统设置将会打开：为 Fision 开启访问权限后返回。</string>
-    <string name="export_permission_continue">打开设置</string>
+    <string name="export_permission_body">要将导出文件保存到“音乐”文件夹，Fision 需要存储访问权限。</string>
+    <string name="export_permission_continue">允许</string>
     <string name="export_solo_title">独奏已开启</string>
     <string name="export_solo_body">导出会忽略独奏：每个分轨按各自音量播放。</string>
     <string name="export_solo_continue">继续</string>
@@ -209,7 +209,6 @@
     <string name="avatar_instrument_winds">管乐</string>
     <string name="avatar_instrument_other">其他</string>
     <string name="settings_header_local_title">本地模式</string>
-    <string name="settings_header_local_email">登录以与 Fision 服务器同步</string>
     <string name="settings_section_server">服务器</string>
     <string name="settings_section_app">应用</string>
     <string name="settings_section_about">关于</string>
@@ -221,22 +220,22 @@
     <string name="design_song_colors_summary">播放器从封面中取色</string>
     <string name="close">关闭</string>
     <string name="performance_title">性能</string>
-    <string name="performance_audio3d_title">3D 音频视图</string>
-    <string name="performance_audio3d_scene">3D 场景（完整）</string>
-    <string name="performance_audio3d_flat">平面视图（轻量）</string>
+    <string name="performance_audio3d_scene">3D 场景</string>
+    <string name="performance_audio3d_flat">2D 场景</string>
     <string name="settings_language_dialog_title">选择语言</string>
     <string name="settings_language_system">跟随系统</string>
     <string name="settings_logout_title">退出登录</string>
+    <string name="settings_logout_confirm">将退出登录。是否继续？</string>
 
     <!--- Fision server -->
     <string name="about_title">关于 Fision</string>
     <string name="server_auth_unavailable">此设备不支持生物识别</string>
     <string name="server_status_online">服务器在线</string>
     <string name="server_status_offline">服务器离线</string>
-    <string name="server_test_title">测试连接</string>
-    <string name="server_test_summary">手动 ping 已配置的服务器以检查连接</string>
+    <string name="server_test_title">测试服务器连接</string>
     <string name="server_gpu_title">GPU 状态</string>
     <string name="server_version_title">服务器版本</string>
+    <string name="server_version_incompatible">服务器：%1$s\n兼容：%2$s</string>
     <string name="server_gpu_unknown">登录后可查看 GPU 信息</string>
     <string name="server_gpu_ok_short">GPU 可用</string>
     <string name="server_gpu_missing">GPU 不可用</string>
@@ -265,7 +264,6 @@
     <string name="login_err_bad_url">服务器 URL 无效</string>
     <string name="login_err_server">服务器错误</string>
     <string name="login_session_expired">会话已过期，请重新登录</string>
-    <string name="account_url_line">服务器：%1$s</string>
     <string name="account_change_password">修改密码</string>
     <string name="local_mode_import_blocked">登录后才能在服务器上处理新歌曲</string>
     <string name="change_password_title">修改密码</string>
@@ -331,6 +329,14 @@
     <string name="cloud_state_cloud_only">在云端</string>
     <string name="cloud_state_locked">登录后即可使用</string>
     <string name="cloud_state_error">错误</string>
+    <string name="job_err_cancelled">已取消</string>
+    <string name="job_err_gpu_busy">GPU 繁忙</string>
+    <string name="job_err_timeout">耗时过长</string>
+    <string name="job_err_pipeline_failed">处理失败</string>
+    <string name="job_err_lyrics_failed">转写失败</string>
+    <string name="job_err_input_missing">缺少原始音频</string>
+    <string name="job_err_vocals_missing">没有可用于歌词的人声</string>
+    <string name="job_err_internal">意外错误</string>
     <string name="cloud_delete_cloud">从云端删除</string>
     <string name="cloud_delete_cloud_confirm">同时从服务器删除这首歌曲？</string>
     <string name="cloud_cancel_queue">取消（排队）</string>
@@ -399,6 +405,8 @@
     <!-- Playlists -->
     <string name="tab_songs">歌曲</string>
     <string name="tab_playlists">歌单</string>
+    <string name="tv_title_search_playlist">搜索歌单</string>
+    <string name="te_find_playlist">在你的歌单中搜索</string>
     <string name="playlist_new">新建歌单</string>
     <plurals name="playlist_count">
         <item quantity="other">%d 个歌单</item>
@@ -412,8 +420,15 @@
     <plurals name="playlist_selected_count">
         <item quantity="other">已选择 %d 项</item>
     </plurals>
-    <string name="playlists_empty">创建你的第一个歌单</string>
-    <string name="songs_empty">添加你的第一首歌曲</string>
+    <string name="playlists_empty_nosongs_title">这里也空空如也</string>
+    <string name="playlists_empty_nosongs_hint">至少添加一首歌曲才能创建歌单</string>
+    <string name="playlists_empty_title">还没有歌单</string>
+    <string name="playlists_empty_hint">%1$s创建一个</string>
+    <string name="songs_empty_title">这里还什么都没有</string>
+    <string name="songs_empty_tap">轻点</string>
+    <string name="songs_empty_hint">%1$s添加你的第一首歌曲</string>
+    <string name="songs_add_bar">添加歌曲</string>
+    <string name="songs_import_bar">导入文件夹</string>
     <string name="playlists_need_login">登录后即可使用歌单</string>
     <string name="playlist_reorder">调整顺序</string>
     <string name="playlist_remove_song">从歌单中移除</string>
@@ -490,8 +505,10 @@
     <string name="cd_stem_options">音轨选项</string>
     <string name="cd_drumset">架子鼓</string>
     <string name="cd_expand_collapse">展开或收起</string>
-    <string name="dance_swing">摇摆</string>
-    <string name="dance_randomize_swing">随机摇摆</string>
+    <string name="dance_swing">swing</string>
+    <string name="dance_randomize_swing">随机 swing</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s 圈/秒</string>
     <string name="export_include_fx">包含效果</string>
     <string name="coach_next">下一步</string>
     <string name="coach_skip">跳过</string>
@@ -502,13 +519,14 @@
     <string name="coach_lib_search_body">按标题或艺人查找歌曲，并更改列表顺序。</string>
     <string name="coach_lib_song_title">你的歌曲</string>
     <string name="coach_lib_song_body">点按歌曲即可播放。长按查看选项：编辑、重试或删除。</string>
+    <string name="coach_lib_song_empty_body">你的歌曲将显示在这里。</string>
     <string name="coach_lib_playlists_title">播放列表</string>
     <string name="coach_lib_playlists_body">你的播放列表保存在服务器上，可离线播放。</string>
     <string name="coach_lib_cloud_title">服务器状态</string>
     <string name="coach_lib_cloud_body">服务器无法连接时会显示。</string>
     <string name="coach_lib_settings_title">设置和账户</string>
     <string name="coach_lib_settings_body">服务器信息、设置和你的账户。</string>
-    <string name="coach_pl_chords_title">和弦条</string>
+    <string name="coach_pl_chords_title">和弦轮播</string>
     <string name="coach_pl_chords_body">每拍一格，显示对应和弦。点按某格跳转到那里，或拖动查看后面的内容。</string>
     <string name="coach_pl_icon_title">独奏和静音</string>
     <string name="coach_pl_icon_body">点按分轨图标可将其独奏或静音。可同时独奏多个分轨。</string>
@@ -525,8 +543,7 @@
     <string name="coach_pl_bar_3d">3D 音频</string>
     <string name="coach_pl_menu_title">更多选项</string>
     <string name="coach_pl_menu_body">和弦记法、播放下一首、重置和导出。</string>
-    <string name="settings_tour_title">再次查看导览</string>
-    <string name="settings_tour_summary">资料库和播放器的引导导览</string>
+    <string name="settings_tour_title">查看导览</string>
     <string name="settings_tour_reset">导览将在资料库和播放器中再次显示</string>
     <string name="welcome_intro_title">欢迎使用 Fision</string>
     <string name="welcome_intro_body">把歌曲分离成各乐器分轨，聆听或跟着一起演奏。</string>
@@ -542,7 +559,7 @@
     <string name="welcome_local">使用本地模式</string>
     <string name="coach_lib_import_title">导入歌曲</string>
     <string name="coach_lib_import_body">选择一个已分离好的歌曲文件夹。添加前会检查每个文件。</string>
-    <string name="songs_empty_local">导入你的第一个歌曲文件夹</string>
+    <string name="songs_empty_hint_local">%1$s导入你的第一个歌曲文件夹</string>
     <string name="import_folder_confirm">导入歌曲文件夹？</string>
     <string name="import_folder_pick">选择文件夹</string>
     <string name="import_folder_checking">正在检查歌曲…</string>

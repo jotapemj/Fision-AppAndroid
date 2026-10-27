@@ -122,8 +122,8 @@
     <string name="export_back">Назад</string>
     <string name="export_include_metronome">Додати метроном до міксу</string>
     <string name="export_permission_title">Дозвіл на сховище</string>
-    <string name="export_permission_body">Щоб зберігати експорти, Fision потребує доступу до всіх файлів. Відкриються Налаштування — увімкни доступ і повернись до додатка.</string>
-    <string name="export_permission_continue">Відкрити Налаштування</string>
+    <string name="export_permission_body">Щоб зберігати експорти в теці «Музика», Fision потребує доступу до сховища.</string>
+    <string name="export_permission_continue">Дозволити</string>
     <string name="export_solo_title">Соло увімкнено</string>
     <string name="export_solo_body">Експорт не враховує соло: кожна доріжка звучить зі своєю гучністю.</string>
     <string name="export_solo_continue">Продовжити</string>
@@ -215,7 +215,6 @@
     <string name="avatar_instrument_winds">Духові</string>
     <string name="avatar_instrument_other">Інше</string>
     <string name="settings_header_local_title">Локальний режим</string>
-    <string name="settings_header_local_email">Увійдіть, щоб синхронізуватися з Fision</string>
     <string name="settings_section_server">Сервер</string>
     <string name="settings_section_app">Застосунок</string>
     <string name="settings_section_about">Про застосунок</string>
@@ -227,12 +226,12 @@
     <string name="design_song_colors_summary">Плеєр бере кольори з обкладинки</string>
     <string name="close">Закрити</string>
     <string name="performance_title">Продуктивність</string>
-    <string name="performance_audio3d_title">Режим 3D Audio</string>
-    <string name="performance_audio3d_scene">3D-сцена (повна)</string>
-    <string name="performance_audio3d_flat">Плоский вигляд (легкий)</string>
+    <string name="performance_audio3d_scene">3D-сцена</string>
+    <string name="performance_audio3d_flat">2D-сцена</string>
     <string name="settings_language_dialog_title">Обрати мову</string>
     <string name="settings_language_system">Мова системи</string>
     <string name="settings_logout_title">Вийти</string>
+    <string name="settings_logout_confirm">Ви вийдете з акаунта. Продовжити?</string>
 
     <!--- Fision server -->
     <string name="about_title">Про Fision</string>
@@ -241,10 +240,10 @@
     <string name="server_auth_unavailable">Біометрія недоступна на цьому пристрої</string>
     <string name="server_status_online">Сервер у мережі</string>
     <string name="server_status_offline">Сервер недоступний</string>
-    <string name="server_test_title">Перевірити з\'єднання</string>
-    <string name="server_test_summary">Ручний пінг налаштованого сервера для перевірки з\'єднання</string>
+    <string name="server_test_title">Перевірити з\'єднання з сервером</string>
     <string name="server_gpu_title">Стан GPU</string>
     <string name="server_version_title">Версія сервера</string>
+    <string name="server_version_incompatible">Сервер: %1$s\nСумісно: %2$s</string>
     <string name="server_version_fmt">v%1$s</string>
     <string name="server_gpu_unknown">Увійдіть, щоб побачити GPU</string>
     <string name="server_gpu_ok_fmt">%1$s · %2$d ГБ VRAM</string>
@@ -278,7 +277,6 @@
     <string name="login_err_bad_url">Некоректний URL сервера</string>
     <string name="login_err_server">Помилка сервера</string>
     <string name="login_session_expired">Сеанс завершився, увійдіть знову</string>
-    <string name="account_url_line">Сервер: %1$s</string>
     <string name="account_change_password">Змінити пароль</string>
     <string name="local_mode_import_blocked">Увійди, щоб обробляти нові пісні на сервері</string>
     <string name="change_password_title">Зміна пароля</string>
@@ -344,6 +342,14 @@
     <string name="cloud_state_cloud_only">У хмарі</string>
     <string name="cloud_state_locked">Увійдіть, щоб використати</string>
     <string name="cloud_state_error">Помилка</string>
+    <string name="job_err_cancelled">Скасовано</string>
+    <string name="job_err_gpu_busy">GPU зайнятий</string>
+    <string name="job_err_timeout">Надто довго</string>
+    <string name="job_err_pipeline_failed">Помилка обробки</string>
+    <string name="job_err_lyrics_failed">Помилка розпізнавання</string>
+    <string name="job_err_input_missing">Немає вихідного аудіо</string>
+    <string name="job_err_vocals_missing">Немає вокалу для тексту</string>
+    <string name="job_err_internal">Неочікувана помилка</string>
     <string name="cloud_delete_cloud">Видалити з хмари</string>
     <string name="cloud_delete_cloud_confirm">Також видалити пісню із сервера?</string>
     <string name="cloud_cancel_queue">Скасувати (черга)</string>
@@ -412,6 +418,8 @@
     <!-- Playlists -->
     <string name="tab_songs">Пісні</string>
     <string name="tab_playlists">Плейлисти</string>
+    <string name="tv_title_search_playlist">Пошук плейлиста</string>
+    <string name="te_find_playlist">Знайти у ваших плейлистах</string>
     <string name="playlist_new">Новий плейлист</string>
     <plurals name="playlist_count">
         <item quantity="one">%d плейлист</item>
@@ -437,8 +445,15 @@
         <item quantity="many">Вибрано %d</item>
         <item quantity="other">Вибрано %d</item>
     </plurals>
-    <string name="playlists_empty">Створіть свій перший плейлист</string>
-    <string name="songs_empty">Додайте свою першу пісню</string>
+    <string name="playlists_empty_nosongs_title">І тут порожньо</string>
+    <string name="playlists_empty_nosongs_hint">Додайте хоча б одну пісню, щоб створити плейлист</string>
+    <string name="playlists_empty_title">Плейлистів ще немає</string>
+    <string name="playlists_empty_hint">%1$s, щоб створити</string>
+    <string name="songs_empty_title">Тут поки порожньо</string>
+    <string name="songs_empty_tap">Натисніть</string>
+    <string name="songs_empty_hint">%1$s, щоб додати першу пісню</string>
+    <string name="songs_add_bar">Додати пісню</string>
+    <string name="songs_import_bar">Імпорт теки</string>
     <string name="playlists_need_login">Увійдіть, щоб користуватися плейлистами</string>
     <string name="playlist_reorder">Змінити порядок</string>
     <string name="playlist_remove_song">Прибрати з плейлиста</string>
@@ -515,8 +530,10 @@
     <string name="cd_stem_options">Параметри доріжки</string>
     <string name="cd_drumset">Ударна установка</string>
     <string name="cd_expand_collapse">Розгорнути або згорнути</string>
-    <string name="dance_swing">гойдання</string>
-    <string name="dance_randomize_swing">Випадкове гойдання</string>
+    <string name="dance_swing">swing</string>
+    <string name="dance_randomize_swing">Випадковий swing</string>
+    <string name="dance_tab_swing">Swing</string>
+    <string name="dance_value_speed">%1$s об/с</string>
     <string name="export_include_fx">Додати ефекти</string>
     <string name="coach_next">Далі</string>
     <string name="coach_skip">Пропустити</string>
@@ -527,13 +544,14 @@
     <string name="coach_lib_search_body">Шукайте пісні за назвою чи виконавцем і змінюйте порядок списку.</string>
     <string name="coach_lib_song_title">Ваші пісні</string>
     <string name="coach_lib_song_body">Торкніться пісні, щоб відтворити її. Довге натискання відкриває опції: змінити, повторити або видалити.</string>
+    <string name="coach_lib_song_empty_body">Тут з’являться твої пісні.</string>
     <string name="coach_lib_playlists_title">Плейлисти</string>
     <string name="coach_lib_playlists_body">Ваші плейлисти зберігаються на сервері й доступні офлайн.</string>
     <string name="coach_lib_cloud_title">Стан сервера</string>
     <string name="coach_lib_cloud_body">Показує, коли сервер недоступний.</string>
     <string name="coach_lib_settings_title">Налаштування й обліковий запис</string>
     <string name="coach_lib_settings_body">Відомості про сервер, налаштування та ваш обліковий запис.</string>
-    <string name="coach_pl_chords_title">Стрічка акордів</string>
+    <string name="coach_pl_chords_title">Карусель акордів</string>
     <string name="coach_pl_chords_body">Одна клітинка на долю з її акордом. Торкніться клітинки, щоб перейти туди, або потягніть, щоб переглянути далі.</string>
     <string name="coach_pl_icon_title">Соло й вимкнення</string>
     <string name="coach_pl_icon_body">Торкніться значка доріжки, щоб увімкнути соло або вимкнути її. Соло можна ввімкнути на кількох одразу.</string>
@@ -550,8 +568,7 @@
     <string name="coach_pl_bar_3d">3D-звук</string>
     <string name="coach_pl_menu_title">Більше опцій</string>
     <string name="coach_pl_menu_body">Запис акордів, наступна пісня, скидання та експорт.</string>
-    <string name="settings_tour_title">Показати тур знову</string>
-    <string name="settings_tour_summary">Огляд бібліотеки та плеєра</string>
+    <string name="settings_tour_title">Переглянути тур</string>
     <string name="settings_tour_reset">Тур знову з’явиться в бібліотеці та плеєрі</string>
     <string name="welcome_intro_title">Вітаємо у Fision</string>
     <string name="welcome_intro_body">Розділяйте пісні на доріжки інструментів, слухайте або грайте разом із ними.</string>
@@ -567,7 +584,7 @@
     <string name="welcome_local">Локальний режим</string>
     <string name="coach_lib_import_title">Імпорт пісні</string>
     <string name="coach_lib_import_body">Виберіть папку з уже розділеною піснею. Кожен файл перевіряється перед додаванням.</string>
-    <string name="songs_empty_local">Імпортуйте першу папку з піснею</string>
+    <string name="songs_empty_hint_local">%1$s, щоб імпортувати першу папку з піснею</string>
     <string name="import_folder_confirm">Імпортувати папку з піснею?</string>
     <string name="import_folder_pick">Вибрати папку</string>
     <string name="import_folder_checking">Перевірка пісні…</string>

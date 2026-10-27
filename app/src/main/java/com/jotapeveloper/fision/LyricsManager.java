@@ -179,14 +179,16 @@ public class LyricsManager {
                             publishState(State.ERROR, "HTTP " + resp.code());
                             return;
                         }
-                        String est = resp.body().estado;
+                        String est = resp.body().state;
                         if ("done".equalsIgnoreCase(est)) {
                             cancelPolling();
                             publishState(State.DOWNLOADING, null);
                             downloadInto(currentHash, currentFolder);
                         } else if ("error".equalsIgnoreCase(est)) {
                             cancelPolling();
-                            publishState(State.ERROR, resp.body().error);
+                            // Stable reason; the free text only when the server sent none.
+                            String code = resp.body().errorCode;
+                            publishState(State.ERROR, code != null ? code : resp.body().error);
                         } else if ("cancelled".equalsIgnoreCase(est)) {
                             cancelPolling();
                             publishState(State.CANCELLED, null);

@@ -921,7 +921,7 @@ public class ImportActivity extends AppCompatActivity implements ImportStemTileA
                         JobSubmitResponse js = new JobSubmitResponse();
                         js.hash = r.body().hash;
                         js.jobId = jobId;
-                        js.estado = r.body().estado;
+                        js.state = r.body().state;
                         String cover = coverPath != null
                                 ? renameCoverForHash(coverPath, js.hash) : null;
                         CloudRepository.get(ImportActivity.this)

@@ -85,6 +85,9 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         final TextView tvUser;
         final TextView tvEmail;
         final ShapeableImageView ivAvatar;
+        final ImageView ivEmptyAvatar;
+        final ImageView ivEmailIcon;
+        private final android.content.res.ColorStateList defaultEmailColors;
 
         HeaderVH(@NonNull View v) {
             super(v);
@@ -93,20 +96,27 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             tvUser    = v.findViewById(R.id.tv_settings_userName);
             tvEmail   = v.findViewById(R.id.tv_settings_userEmail);
             ivAvatar  = v.findViewById(R.id.iv_settings_avatar);
+            ivEmptyAvatar = v.findViewById(R.id.iv_settings_emptyAvatar);
+            ivEmailIcon   = v.findViewById(R.id.iv_settings_emailIcon);
+            defaultEmailColors = tvEmail.getTextColors();
         }
 
         void bind(SettingsItem item, OnItemClickListener l) {
             Context ctx = root.getContext();
             String user = item.user == null ? "" : item.user;
             tvUser.setText(user.isEmpty() ? ctx.getString(R.string.settings_header_local_title) : user);
-            if (item.email == null || item.email.isEmpty()) {
-                tvEmail.setText(ctx.getString(R.string.settings_header_local_email));
+            // No session: empty dashed slot + "Sign in" in accent, no cloud icon.
+            boolean noSession = user.isEmpty();
+            ivEmailIcon.setVisibility(noSession ? View.GONE : View.VISIBLE);
+            if (noSession) {
+                tvEmail.setText(ctx.getString(R.string.login_submit));
+                tvEmail.setTextColor(
+                        com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx));
             } else {
-                tvEmail.setText(item.email);
+                tvEmail.setText(item.email == null ? "" : item.email);
+                tvEmail.setTextColor(defaultEmailColors);
             }
-            tvInitial.setText(user.isEmpty()
-                    ? "?"
-                    : user.substring(0, 1).toUpperCase(Locale.ROOT));
+            if (!noSession) tvInitial.setText(user.substring(0, 1).toUpperCase(Locale.ROOT));
 
             AvatarManager am = AvatarManager.get(ctx);
             Bitmap bm = null;
@@ -114,7 +124,11 @@ public class SettingsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 File f = am.getLocalFile(user);
                 if (f != null) bm = ImageDecode.file(f.getAbsolutePath(), 512);
             }
-            if (bm != null) {
+            ivEmptyAvatar.setVisibility(noSession ? View.VISIBLE : View.GONE);
+            if (noSession) {
+                ivAvatar.setVisibility(View.GONE);
+                tvInitial.setVisibility(View.GONE);
+            } else if (bm != null) {
                 ivAvatar.setImageBitmap(bm);
                 ivAvatar.setVisibility(View.VISIBLE);
                 tvInitial.setVisibility(View.GONE);

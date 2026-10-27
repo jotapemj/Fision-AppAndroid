@@ -155,10 +155,7 @@ public class LoginDialog {
     }
 
     private static void applyActivityBlur(Activity host) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            host.getWindow().getDecorView().setRenderEffect(
-                    RenderEffect.createBlurEffect(40f, 40f, Shader.TileMode.CLAMP));
-        }
+        BlurDialogs.applyBlur(host);
     }
 
     private static void removeActivityBlur(Activity host) {
