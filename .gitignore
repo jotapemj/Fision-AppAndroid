@@ -52,3 +52,7 @@ docs/fision/
 
 # Local deploy helper (machine specific)
 tools/deploy.py
+
+# Capturas de demo (salida local con portadas reales)
+tools/captures/captures_out/
+__pycache__/
