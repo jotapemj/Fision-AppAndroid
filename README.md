@@ -18,9 +18,15 @@ Fision is a self-hosted stem player. You just send a song to your
 stems with chords, beats and lyrics, and this app plays them through a native
 engine where every stem can be mixed, effected and even placed in 3D space.
 
+<br>
+
 <div align="center">
   <img src="./docs/readme/screens-hero.png" width="860" alt="Fision screens: song library, stem mixer with the chord strip, synced lyrics and the 3D audio scene">
 </div>
+
+<br>
+
+## Features
 
 <div align="center">
   <picture>
