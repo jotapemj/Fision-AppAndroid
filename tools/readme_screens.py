@@ -25,6 +25,8 @@ STRIPS = {
     "screens-hero.png": (["b1_library", "d1_player", "d3_lyrics", "d4_scene_3d"], 400),
     "screens-more-1.png": (["d2_chord_diagrams", "d6_dance", "d7_stem_options", "d8_metronome"], 400),
     "screens-more-2.png": (["c2_playlist_detail", "b2_search", "d11_export", "e1_settings"], 400),
+    # Android Auto head unit captures (1920x720 landscape).
+    "screens-auto.png": (["f1_auto_library", "f2_auto_player"], 828),
 }
 
 # Single cards for the guide.
@@ -44,7 +46,7 @@ def card(name, width):
     im = Image.open(os.path.join(SRC, name + ".png")).convert("RGBA")
     h = round(im.height * width / im.width)
     im = im.resize((width, h), Image.LANCZOS)
-    r = round(width * 0.085)
+    r = round(min(width, h) * 0.085)
     mask = Image.new("L", im.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, h - 1), radius=r, fill=255)
     out = Image.new("RGBA", im.size, (0, 0, 0, 0))
