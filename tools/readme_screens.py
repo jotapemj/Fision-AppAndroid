@@ -35,8 +35,11 @@ GUIDE = [
     "d1_player", "d2_chord_diagrams", "d3_lyrics", "d4_scene_3d",
     "d6_dance", "d7_stem_options", "d8_metronome", "d9_pitch", "d10_drawer",
     "d11_export", "e1_settings", "e2_account",
+    "f1_auto_library", "f2_auto_player",
 ]
 GUIDE_W = 540
+# Landscape head unit captures need more width to stay readable.
+GUIDE_WIDE = {"f1_auto_library": 1280, "f2_auto_player": 1280}
 # Textured 3D scene: as JPEG it weighs a sixth. JPEG has no transparency, so
 # these cards keep square corners on the dark scene instead.
 GUIDE_JPEG = {"d4_scene_3d", "d6_dance"}
@@ -80,7 +83,7 @@ def main():
             im.save(os.path.join(GUIDE_DIR, name + ".jpg"), quality=85, optimize=True, progressive=True)
             print("  docs/screenshots/" + name + ".jpg")
             continue
-        card(name, GUIDE_W).save(os.path.join(GUIDE_DIR, name + ".png"), optimize=True)
+        card(name, GUIDE_WIDE.get(name, GUIDE_W)).save(os.path.join(GUIDE_DIR, name + ".png"), optimize=True)
         print("  docs/screenshots/" + name + ".png")
 
 
