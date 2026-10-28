@@ -14,7 +14,7 @@ How to use each part of the app and its features. For the overview, installation
 ## Connecting to the server
 
 <div align="center">
-  <img src="./screenshots/005.jpeg" width="300" alt="Settings screen with language and server connection">
+  <img src="./screenshots/e1_settings.png" width="300" alt="Settings with the account, the server GPU and version">
 </div>
 
 Fision separates songs on a self-hosted
@@ -41,13 +41,18 @@ a warning icon appears in the toolbar.
 
 ### Profile picture
 
+<div align="center">
+  <img src="./screenshots/e2_account.png" width="300" alt="Account dialog with the profile picture and the server">
+</div>
+
 From the Account dialog, the profile picture can be changed. The selected
 picture is uploaded as a 512×512 JPEG.
 
 ## The song library
 
 <div align="center">
-  <img src="./screenshots/001.jpeg" width="300" alt="Song library">
+  <img src="./screenshots/b1_library.png" width="300" alt="Song library with downloaded and cloud songs">
+  <img src="./screenshots/a1_library_empty.png" width="300" alt="Empty library">
 </div>
 
 The main screen has two tabs, **Songs** and **Playlists**. The song list
@@ -56,7 +61,7 @@ mixes songs on the device and songs on the server.
 ### Adding a song
 
 <div align="center">
-  <img src="./screenshots/012.jpeg" width="300" alt="Choosing the separation for a new song">
+  <img src="./screenshots/b4_add_song.png" width="300" alt="Choosing the separation for a new song">
 </div>
 
 The add button picks an audio file from the device storage.
@@ -119,6 +124,10 @@ Long-pressing a song opens its options:
 
 ### Playlists
 
+<div align="center">
+  <img src="./screenshots/c2_playlist_detail.png" width="300" alt="Playlist with downloaded and cloud songs">
+</div>
+
 Playlists are stored on the server and copied to the device, so they play
 without a connection. Creating or editing them needs the server, which keeps them in sync.
 Each playlist can be customised:
@@ -133,6 +142,10 @@ library.
 
 ### Sorting and search
 
+<div align="center">
+  <img src="./screenshots/b2_search.png" width="300" alt="Library search with filter chips">
+</div>
+
 The list sorts by date added, newest or oldest first, and keeps the same
 order online, offline and at startup. The search bar filters by title or artist.
 
@@ -142,7 +155,9 @@ each with its number. The search works inside the selected chip.
 
 ## The player
 
-![Player](./screenshots/player.png)
+<div align="center">
+  <img src="./screenshots/d1_player.png" width="300" alt="Player with the stem mixer and the chord strip">
+</div>
 
 From top to bottom:
 
@@ -156,6 +171,10 @@ From top to bottom:
   chords, lyrics and 3D audio scene.
 
 ### Chords and chord diagrams
+
+<div align="center">
+  <img src="./screenshots/d2_chord_diagrams.png" width="300" alt="Guitar chord diagrams, current and next chord">
+</div>
 
 The chords button from the bottom bar unfolds into two entries <img src="./screenshots/chord_pill.png" height="44" alt="Chords button unfolded: chord diagrams on top, chord strip below"> :
 one shows or hides the **chord strip**, the other opens the **chord diagrams** , the current and the next
@@ -180,6 +199,10 @@ loads.
 
 ### Stem options and effects
 
+<div align="center">
+  <img src="./screenshots/d7_stem_options.png" width="300" alt="Stem sheet with pan and effects">
+</div>
+
 The options button of a stem opens its sheet: pan, export of that stem,
 and three effects:
 
@@ -195,7 +218,7 @@ Effects are not saved; they reset when another song loads.
 ### Pitch
 
 <div align="center">
-  <img src="./screenshots/010.jpeg" width="300" alt="Pitch picker">
+  <img src="./screenshots/d9_pitch.png" width="300" alt="Pitch picker">
 </div>
 
 The pitch sheet transposes in semitones on a ruler with snap and haptic
@@ -208,7 +231,7 @@ returns to it.
 ### Dynamic metronome and speed
 
 <div align="center">
-  <img src="./screenshots/006.jpeg" width="300" alt="Metronome sheet">
+  <img src="./screenshots/d8_metronome.png" width="300" alt="Metronome sheet">
 </div>
 
 The click is generated on the server from the song's own beats, so it
@@ -229,7 +252,7 @@ pitch.
 ### Drawer
 
 <div align="center">
-  <img src="./screenshots/007.jpeg" width="300" alt="Player drawer">
+  <img src="./screenshots/d10_drawer.png" width="300" alt="Player drawer">
 </div>
 
 Besides the chord options above, the drawer has:
@@ -251,6 +274,10 @@ screen (up to about 140 pulses per minute).
 
 ## Lyrics
 
+<div align="center">
+  <img src="./screenshots/d3_lyrics.png" width="300" alt="Synced lyrics with the sung words lit">
+</div>
+
 The lyrics button asks the server to transcribe the song, in an automatic
 or chosen language (27 options). Once ready, the lyrics are cached on the
 device. Lyrics the server already has (made on another device, or before
@@ -265,7 +292,8 @@ Tapping a line or word jumps there, also while paused.
 ## Audio 3D
 
 <div align="center">
-  <img src="./screenshots/008.jpeg" width="300" alt="Audio 3D view">
+  <img src="./screenshots/d4_scene_3d.jpg" width="300" alt="Audio 3D scene with the stems around the head">
+  <img src="./screenshots/d6_dance.jpg" width="300" alt="Stems dancing, with the dance panel">
 </div>
 
 The 3D view places every stem around your head using HRTF, for a real
@@ -289,6 +317,10 @@ While 3D is on, the volume sliders are locked: distance sets the level,
 and leaving 3D restores the sliders as they were.
 
 ## Exporting
+
+<div align="center">
+  <img src="./screenshots/d11_export.png" width="300" alt="Export dialog">
+</div>
 
 From the drawer you can export the current mix or every stem separately;
 each stem's sheet exports that stem alone. Formats: WAV (16-bit stereo),

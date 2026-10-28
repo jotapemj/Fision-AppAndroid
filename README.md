@@ -19,6 +19,10 @@ stems with chords, beats and lyrics, and this app plays them through a native
 engine where every stem can be mixed, effected and even placed in 3D space.
 
 <div align="center">
+  <img src="./docs/readme/screens-hero.png" width="860" alt="Fision screens: song library, stem mixer with the chord strip, synced lyrics and the 3D audio scene">
+</div>
+
+<div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./docs/readme/features-dark.svg">
     <img src="./docs/readme/features-light.svg" width="860" alt="Fision features: Self-hosted, Stem separation, Stem mixer, 3D audio, Synced Lyrics, Chord diagrams, Pitch and tempo, Dynamic metronome, Android Auto Compatible">
@@ -35,6 +39,16 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 * **Share song to Fision** compatible.
 * **Local mode** to play song folders without a server.
 * **10 languages**
+
+<details>
+<summary><b>More screenshots</b></summary>
+<br>
+<div align="center">
+  <img src="./docs/readme/screens-more-1.png" width="860" alt="Chord diagrams, stems dancing in the 3D scene, stem options with effects, and the dynamic metronome">
+  <br><br>
+  <img src="./docs/readme/screens-more-2.png" width="860" alt="Playlist with downloaded and cloud songs, library search with filter chips, export dialog and settings">
+</div>
+</details>
 
 ## Getting started
 
@@ -127,6 +141,15 @@ code from this repository.
   [MusGlyphs](https://www.notationcentral.com/product/musglyphs/): fonts. SIL Open Font License.
 - [Material Icons](https://fonts.google.com/icons): car icon of the feature
   grid. Apache 2.0.
+
+**Demo song and screenshots**
+
+- "Airplane Mode", the demo song FisionServer adds to every new account, and
+  "Faded War", both by [Josh Woodward](https://www.joshwoodward.com) with the
+  cover of the album *The Beautiful Machine*.
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Stems, chords,
+  beats and lyrics are derived from the recordings. Other covers in the
+  screenshots are pixelated.
 
 **Server pipeline** (runs on FisionServer, listed for attribution)
 
