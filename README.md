@@ -18,6 +18,14 @@ Fision is a self-hosted stem player. You just send a song to your
 stems with chords, beats and lyrics, and this app plays them through a native
 engine where every stem can be mixed, effected and even placed in 3D space.
 
+<p align="center">
+  <a href="docs/GUIDE.md"><b>User guide</b></a> ·
+  <a href="docs/TECHNICAL.md"><b>Technical notes</b></a> ·
+  <a href="https://github.com/jotapemj/Fision-Server"><b>FisionServer</b></a> ·
+  <a href="https://github.com/jotapemj/Fision-AppAndroid/releases"><b>Releases</b></a> ·
+  <a href="https://github.com/jotapemj/Fision-AppAndroid/issues"><b>Report an issue</b></a>
+</p>
+
 <br>
 
 <div align="center">
@@ -53,6 +61,8 @@ engine where every stem can be mixed, effected and even placed in 3D space.
   <img src="./docs/readme/screens-more-1.png" width="860" alt="Chord diagrams, stems dancing in the 3D scene, stem options with effects, and the dynamic metronome">
   <br><br>
   <img src="./docs/readme/screens-more-2.png" width="860" alt="Playlist with downloaded and cloud songs, library search with filter chips, export dialog and settings">
+  <br><br>
+  <img src="./docs/readme/screens-auto.png" width="860" alt="Android Auto: the downloaded songs and the player with the karaoke and backing vocals buttons">
 </div>
 </details>
 
@@ -155,7 +165,8 @@ code from this repository.
   cover of the album *The Beautiful Machine*.
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Stems, chords,
   beats and lyrics are derived from the recordings. Other covers in the
-  screenshots are pixelated.
+  screenshots are pixelated, and so are other apps' icons in the Android
+  Auto ones.
 
 **Server pipeline** (runs on FisionServer, listed for attribution)
 
