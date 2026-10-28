@@ -67,6 +67,16 @@ public final class BlurDialogs {
         return dlg;
     }
 
+    /** For a dialog with no text field: the soft keyboard stays hidden while
+     *  it has focus. Without this, a dialog opened as a bottom sheet closes
+     *  can bring the keyboard up on its own. */
+    public static void noKeyboard(android.app.Dialog dlg) {
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setSoftInputMode(
+                    android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
+    }
+
     /** Yes/no confirmation; [onYes] runs after the dialog is dismissed. */
     public static void confirm(Activity a, @DrawableRes int icon, CharSequence message,
                                CharSequence yes, CharSequence no, Runnable onYes) {
@@ -80,6 +90,7 @@ public final class BlurDialogs {
         bYes.setText(yes);
         bNo.setText(no);
         AlertDialog dlg = show(a, v);
+        noKeyboard(dlg);
         bNo.setOnClickListener(x -> dlg.dismiss());
         bYes.setOnClickListener(x -> {
             dlg.dismiss();

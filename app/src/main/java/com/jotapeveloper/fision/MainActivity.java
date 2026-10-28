@@ -722,6 +722,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         BottomSheetDialog sheet = new BottomSheetDialog(this, R.style.TransparentBottomSheetDialog);
         View v = getLayoutInflater().inflate(R.layout.modal_sheet_dialog, null);
         sheet.setContentView(v);
+        BlurDialogs.noKeyboard(sheet);
         ImageView ivCover = v.findViewById(R.id.iv_cover);
         TextView tvTitle  = v.findViewById(R.id.Title);
         TextView tvSub    = v.findViewById(R.id.Artist);
@@ -1162,9 +1163,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 : new android.graphics.drawable.GradientDrawable();
         bg.setCornerRadius(17 * d);
         bg.setColor((int) ev.evaluate(sel, Color.TRANSPARENT, (accent & 0x00FFFFFF) | 0x30000000));
-        bg.setStroke((int) (1.2f * d), (int) ev.evaluate(sel, 0xFF3A3A3A, accent));
+        bg.setStroke((int) (1.2f * d), (int) ev.evaluate(sel, 0xFF5A5A5A, accent));
         if (chip.getBackground() != bg) chip.setBackground(bg);
-        chip.setTextColor((int) ev.evaluate(sel, 0xFFE6E6E6, accent));
+        chip.setTextColor((int) ev.evaluate(sel, 0xFFC8C8C8, accent));
         chip.setSelected(sel > 0.5f);
     }
 
@@ -1283,14 +1284,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         return et_find != null ? et_find.getText().toString() : "";
     }
 
-    /** Search over the merged list (local and cloud items alike): folder name,
-     *  title and artist, ignoring case and diacritics. */
+    /** Search over the merged list (local and cloud items alike): title, artist
+     *  and a readable folder name, ignoring case and diacritics. A server hash
+     *  folder name is left out: any a-f text would match it at random. */
     private static SongListData[] filterSongs(SongListData[] all, String key) {
         if (key == null || key.isEmpty()) return all;
         String k = foldForSearch(key);
         List<SongListData> out = new ArrayList<>();
         for (SongListData s : all) {
-            if (foldForSearch(s.getTitle()).contains(k)
+            boolean folderReadable = s.getTitle() != null && !CloudItem.isServerHash(s.getTitle());
+            if ((folderReadable && foldForSearch(s.getTitle()).contains(k))
                     || foldForSearch(s.getDisplayTitle()).contains(k)
                     || foldForSearch(s.getArtist()).contains(k)) {
                 out.add(s);
@@ -1734,6 +1737,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         BottomSheetDialog optionsBottomSheet = new BottomSheetDialog(this, R.style.TransparentBottomSheetDialog);
         View bottomSheetView = getLayoutInflater().inflate(R.layout.modal_sheet_dialog, null);
         optionsBottomSheet.setContentView(bottomSheetView);
+        BlurDialogs.noKeyboard(optionsBottomSheet);
 
         ImageView ivCover     = optionsBottomSheet.findViewById(R.id.iv_cover);
         TextView SongTitle    = optionsBottomSheet.findViewById(R.id.Title);
@@ -1933,6 +1937,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 .create();
         android.view.Window win = deleteDialog.getWindow();
         if (win != null) win.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        BlurDialogs.noKeyboard(deleteDialog);
 
         applyActivityBlur();
         deleteDialog.setOnDismissListener(d -> removeActivityBlur());
