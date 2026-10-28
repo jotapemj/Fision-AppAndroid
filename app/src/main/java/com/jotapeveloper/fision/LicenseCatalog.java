@@ -165,6 +165,16 @@ public class LicenseCatalog {
                 "with Meshy (https://www.meshy.ai) and is licensed under the Creative\n" +
                 "Commons Attribution 4.0 International License (CC BY 4.0)."));
         ENTRIES.add(new LicenseEntry(
+                "Airplane Mode (demo song)", "Josh Woodward",
+                "CC BY 4.0", "https://www.joshwoodward.com",
+                "\"Airplane Mode\" by Josh Woodward, from the album \"The Beautiful\n" +
+                "Machine\", with its cover. FisionServer adds it to every new account\n" +
+                "as a demo song; it can be deleted like any other song.\n\n" +
+                "Licensed under the Creative Commons Attribution 4.0 International\n" +
+                "License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/\n\n" +
+                "The stems, chords, beats and lyrics are derived from the original\n" +
+                "recording by FisionServer."));
+        ENTRIES.add(new LicenseEntry(
                 "Noto Sans", "The Noto Project Authors",
                 "SIL OFL 1.1", "https://github.com/notofonts/latin-greek-cyrillic",
                 "Copyright 2022 The Noto Project Authors\n\n" + LIC_OFL));
