@@ -244,7 +244,8 @@ screen (up to about 140 pulses per minute).
 
 The lyrics button asks the server to transcribe the song, in an automatic
 or chosen language (27 options). Once ready, the lyrics are cached on the
-device.
+device. Lyrics the server already has (made on another device, or before
+the song was downloaded again) are fetched when the song opens.
 
 Lines follow the singer: the app measures where the voice really sounds on
 the separated vocal stems, so each line and word lights when it is sung,

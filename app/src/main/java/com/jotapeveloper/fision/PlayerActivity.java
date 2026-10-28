@@ -7879,9 +7879,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     });
                 }
             }, "lyrics-parse").start();
+        } else if (canFetchServerLyrics(folder)) {
+            // The server may already have them (song downloaded again, made
+            // from another device): skeleton while asking, picker on a miss.
+            setLyricsUiState(LyricsUiState.SKELETON);
+            mLyricsMgr.tryFetchExisting(folder.getName(), folder);
         } else {
             setLyricsUiState(LyricsUiState.PICKER);
         }
+    }
+
+    /** Song of the signed-in server account (its folder is the server hash). */
+    private boolean canFetchServerLyrics(java.io.File folder) {
+        com.jotapeveloper.fision.cloud.AuthManager auth = com.jotapeveloper.fision.cloud.AuthManager.get(this);
+        return mLyricsMgr != null && auth.isLoggedIn() && !auth.isLocalMode()
+                && com.jotapeveloper.fision.cloud.CloudItem.isServerHash(folder.getName());
     }
 
     /** Convenience: current accent color resolved against this Activity theme. */
@@ -8624,6 +8636,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 break;
             case CANCELLED:
                 setLyricsUiState(LyricsUiState.PICKER);
+                break;
+            case IDLE:
+                // Nothing on the server for this song: offer to process it.
+                if (LyricsManager.NOT_ON_SERVER.equals(errorMsg)) setLyricsUiState(LyricsUiState.PICKER);
                 break;
             case DONE:
                 // The follow-up onLyricsLoaded promotes state to CONTENT.

@@ -66,6 +66,8 @@ public class LyricsManager {
     private Call<?> inFlightCall;
     private Runnable pollTask;
     private State state = State.IDLE;
+    /** Bumped by release(): late results of a previous song are dropped. */
+    private int generation = 0;
 
     public LyricsManager(Context ctx) {
         this.ctx  = ctx.getApplicationContext();
@@ -157,14 +159,20 @@ public class LyricsManager {
         });
     }
 
-    /** GET /library/{hash}/lyrics — tries to fetch and cache the JSON for a hash
-     *  even if we don't have an active job (e.g. after a warm restart where the
-     *  server finished while the client was away). */
+    /** Reason sent with IDLE when the server has no lyrics for the hash (or
+     *  cannot be reached): the caller offers to process them. */
+    public static final String NOT_ON_SERVER = "not_on_server";
+
+    /** GET /library/{hash}/lyrics — fetches and caches lyrics the server
+     *  already has without a job of this client (song downloaded again,
+     *  another device, app closed during the job). 404 or no network end in
+     *  IDLE + {@link #NOT_ON_SERVER}. */
     public void tryFetchExisting(String hash, File songFolder) {
         currentHash   = hash;
         currentFolder = songFolder;
+        currentJobId  = null;   // no job: a cancel only drops the request
         publishState(State.DOWNLOADING, null);
-        downloadInto(hash, songFolder);
+        downloadInto(hash, songFolder, true);
     }
 
     private void startPolling() {
@@ -183,7 +191,7 @@ public class LyricsManager {
                         if ("done".equalsIgnoreCase(est)) {
                             cancelPolling();
                             publishState(State.DOWNLOADING, null);
-                            downloadInto(currentHash, currentFolder);
+                            downloadInto(currentHash, currentFolder, false);
                         } else if ("error".equalsIgnoreCase(est)) {
                             cancelPolling();
                             // Stable reason; the free text only when the server sent none.
@@ -212,18 +220,22 @@ public class LyricsManager {
         pollTask = null;
     }
 
-    private void downloadInto(String hash, File songFolder) {
+    /** [existing]: probe for lyrics made outside a job of this client; a
+     *  miss is not an error then (see {@link #tryFetchExisting}). */
+    private void downloadInto(String hash, File songFolder, boolean existing) {
         if (songFolder == null) {
             publishState(State.ERROR, "no_folder");
             return;
         }
+        final int gen = generation;
         Call<ResponseBody> call = api().downloadLyrics(hash);
         inFlightCall = call;
         call.enqueue(new Callback<ResponseBody>() {
             @Override public void onResponse(Call<ResponseBody> c, Response<ResponseBody> resp) {
-                if (call.isCanceled()) return;
+                if (call.isCanceled() || gen != generation) return;
                 if (!resp.isSuccessful() || resp.body() == null) {
-                    publishState(State.ERROR, "HTTP " + resp.code());
+                    if (existing && resp.code() == 404) publishState(State.IDLE, NOT_ON_SERVER);
+                    else publishState(State.ERROR, "HTTP " + resp.code());
                     return;
                 }
                 // Retrofit dispatches this on the main thread. Writing to disk
@@ -238,7 +250,7 @@ public class LyricsManager {
                         int n;
                         while ((n = in.read(buf)) > 0) fos.write(buf, 0, n);
                     } catch (Exception e) {
-                        publishState(State.ERROR, e.getMessage());
+                        publishFrom(gen, State.ERROR, e.getMessage());
                         return;
                     } finally {
                         body.close();
@@ -246,6 +258,8 @@ public class LyricsManager {
                     try {
                         Lyrics ly = parseLocal(songFolder);
                         main.post(() -> {
+                            // Released meanwhile (song changed): the file stays, no callback.
+                            if (gen != generation) return;
                             state = State.DONE;
                             if (listener != null) {
                                 listener.onLyricsStateChanged(State.DONE, null);
@@ -253,31 +267,45 @@ public class LyricsManager {
                             }
                         });
                     } catch (IOException e) {
-                        publishState(State.ERROR, e.getMessage());
+                        publishFrom(gen, State.ERROR, e.getMessage());
                     }
                 }, "lyrics-dl").start();
             }
             @Override public void onFailure(Call<ResponseBody> c, Throwable t) {
-                if (call.isCanceled()) return;
-                publishState(State.ERROR, t.getMessage());
+                if (call.isCanceled() || gen != generation) return;
+                // Unreachable server while probing: same as having none.
+                if (existing) publishState(State.IDLE, NOT_ON_SERVER);
+                else publishState(State.ERROR, t.getMessage());
             }
         });
     }
 
     private void publishState(State s, String errorMsg) {
         state = s;
+        final int gen = generation;
         if (listener != null) {
             main.post(() -> {
-                if (listener != null) listener.onLyricsStateChanged(s, errorMsg);
+                if (listener != null && gen == generation) listener.onLyricsStateChanged(s, errorMsg);
             });
         }
     }
 
-    /** Cancels pending polling / calls. Safe to call from onDestroy. */
+    /** publishState from a worker thread, dropped when released meanwhile. */
+    private void publishFrom(int gen, State s, String errorMsg) {
+        main.post(() -> {
+            if (gen == generation) publishState(s, errorMsg);
+        });
+    }
+
+    /** Cancels pending polling / calls and forgets the current hash, so the
+     *  next song starts idle. Safe to call from onDestroy. */
     public void release() {
         cancelPolling();
         if (inFlightCall != null) inFlightCall.cancel();
         inFlightCall = null;
         listener = null;
+        currentJobId = null;
+        generation++;
+        state = State.IDLE;
     }
 }
