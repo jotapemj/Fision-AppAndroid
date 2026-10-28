@@ -347,3 +347,9 @@ the phone. In the car every stem plays at its default level with the
 original pitch and tempo. Two buttons mute the lead vocals (karaoke) and,
 when the song has them, the backing vocals, with a short fade. Nothing is
 saved, and the car never starts playback on its own.
+
+<div align="center">
+  <img src="./screenshots/f1_auto_library.png" width="640" alt="Android Auto with the downloaded songs">
+  <br><br>
+  <img src="./screenshots/f2_auto_player.png" width="640" alt="Android Auto player with the karaoke and backing vocals buttons">
+</div>
