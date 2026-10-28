@@ -136,7 +136,6 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 case RUNNING:     return "running";
                 case WAITING_GPU: return "waiting_gpu";
                 case DOWNLOADING: return "downloading";
-                case CLOUD_ONLY:  return "cloud_only";
                 case ERROR:       return "error";
                 default: break;
             }
@@ -206,11 +205,10 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
                 case RUNNING:     return context.getString(R.string.cloud_state_running);
                 case WAITING_GPU: return context.getString(R.string.cloud_state_waiting_gpu);
                 case DOWNLOADING: return context.getString(R.string.cloud_state_downloading, c.downloadPct);
-                case CLOUD_ONLY:  return context.getString(R.string.cloud_state_cloud_only);
                 case ERROR:       return c.hasLocalCopy()
                         ? context.getString(R.string.cloud_state_reprocess_failed)
                         : CloudRepository.errorText(context, c.errorCode);
-                default: /* LOCAL_AND_CLOUD, LOCAL_ONLY fall through to the normal subtitle */ break;
+                default: /* CLOUD_ONLY (the veil tells it), LOCAL_AND_CLOUD, LOCAL_ONLY: artist */ break;
             }
         }
         return item.getArtist() != null ? item.getArtist() : item.getSubtitle();
@@ -218,6 +216,8 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
 
     private void applyCloudOverlay(ViewHolder h, CloudItem c, boolean animate) {
         boolean locked = isLocked(c);
+        // Ready on the server and not downloaded: the cloud says a tap downloads it.
+        fadeView(h.ivCloud, !locked && c != null && c.state == CloudItem.State.CLOUD_ONLY, animate);
         if (h.ivLock != null) h.ivLock.setVisibility(locked ? View.VISIBLE : View.GONE);
         if (locked) {
             fadeDim(h, true, animate);
@@ -275,25 +275,31 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
 
     /** Shows/hides the grey veil: smooth fade, or instant when not animating. */
     private static void fadeDim(ViewHolder h, boolean visible, boolean animate) {
-        if (h.vCoverDim == null) return;
+        fadeView(h.vCoverDim, visible, animate);
+    }
+
+    /** Cover overlay in or out: smooth fade, or instant when not animating. */
+    private static void fadeView(View v, boolean visible, boolean animate) {
+        if (v == null) return;
         if (!animate) {
-            h.vCoverDim.animate().cancel();
-            h.vCoverDim.setAlpha(1f);
-            h.vCoverDim.setVisibility(visible ? View.VISIBLE : View.GONE);
+            v.animate().cancel();
+            v.setAlpha(1f);
+            v.setVisibility(visible ? View.VISIBLE : View.GONE);
             return;
         }
         if (visible) {
-            if (h.vCoverDim.getVisibility() == View.VISIBLE && h.vCoverDim.getAlpha() >= 0.99f) return;
-            h.vCoverDim.animate().cancel();
-            h.vCoverDim.setVisibility(View.VISIBLE);
-            h.vCoverDim.animate().alpha(1f).setDuration(220).start();
+            if (v.getVisibility() == View.VISIBLE && v.getAlpha() >= 0.99f) return;
+            v.animate().cancel();
+            if (v.getVisibility() != View.VISIBLE) v.setAlpha(0f);
+            v.setVisibility(View.VISIBLE);
+            v.animate().alpha(1f).setDuration(220).start();
         } else {
-            if (h.vCoverDim.getVisibility() != View.VISIBLE) { h.vCoverDim.setAlpha(1f); return; }
-            h.vCoverDim.animate().cancel();
-            h.vCoverDim.animate().alpha(0f).setDuration(180)
+            if (v.getVisibility() != View.VISIBLE) { v.setAlpha(1f); return; }
+            v.animate().cancel();
+            v.animate().alpha(0f).setDuration(180)
                     .withEndAction(() -> {
-                        h.vCoverDim.setVisibility(View.GONE);
-                        h.vCoverDim.setAlpha(1f);
+                        v.setVisibility(View.GONE);
+                        v.setAlpha(1f);
                     }).start();
         }
     }
@@ -314,6 +320,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         CoverFillWaveView vCoverWave;
         ProgressBar pbSpinner;
         View ivLock;
+        View ivCloud;
         String lastSubtitleKind = "";
 
         public ViewHolder(@NonNull View itemView) {
@@ -327,6 +334,7 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             vCoverWave = itemView.findViewById(R.id.v_cover_wave);
             pbSpinner  = itemView.findViewById(R.id.pb_cover_spinner);
             ivLock     = itemView.findViewById(R.id.iv_cover_lock);
+            ivCloud    = itemView.findViewById(R.id.iv_cover_cloud);
             itemView.setOnClickListener(this);
         }
 

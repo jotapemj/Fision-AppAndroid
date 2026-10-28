@@ -99,7 +99,8 @@ While the server works, the song shows its state over the cover:
 * **Running**.
 * **Waiting for GPU**. Shown when the GPU has less free memory than the minimum configured on the server. If the GPU stays busy too long, a dialog offers to retry with the same setup before detaching the job.
 * **Downloading**.
-* **Cloud only**: song on the server, not downloaded yet. Tap to download.
+* **Cloud only**: song on the server, not downloaded yet. The cover is
+    dimmed with a cloud and a download arrow; tap to download.
 * **Error** or **Cancelled**. A downloaded song whose reprocess failed stays
     playable with its previous stems.
 
@@ -126,10 +127,18 @@ Each playlist can be customised:
 * Custom cover, or a mosaic of its songs
 * Order
 
+Songs not downloaded show the same cloud on their cover. Tapping one
+downloads it, and the cover fills up as the download progresses, as in the
+library.
+
 ### Sorting and search
 
 The list sorts by date added, newest or oldest first, and keeps the same
 order online, offline and at startup. The search bar filters by title or artist.
+
+When the library has both downloaded songs and songs only on the server,
+filter chips replace the song count: **All**, **Downloaded** and **Cloud**,
+each with its number. The search works inside the selected chip.
 
 ## The player
 

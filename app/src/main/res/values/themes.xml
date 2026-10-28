@@ -55,6 +55,21 @@
         <item name="cornerSize">10dp</item>
     </style>
 
+    <!-- Library filter chip (All / Downloaded / Cloud); colors set by MainActivity -->
+    <style name="LibraryFilterChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">34dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:fontFamily">@font/noto_sans_regular</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
     <!-- Translucent dialog that allows a blur behind it (Android 12+). Low dim (0.2)
          to keep the frosted glass background visible. -->
     <style name="Theme.Fision.BlurDialog" parent="Theme.AppCompat.Dialog">

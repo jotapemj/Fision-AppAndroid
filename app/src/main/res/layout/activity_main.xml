@@ -100,7 +100,7 @@
                 android:layout_height="26dp"
                 android:layout_marginStart="12dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_cloud"
+                android:src="@drawable/ic_cloud_link"
                 android:contentDescription="@string/server_status_offline"
                 app:tint="@color/cloud_offline"
                 app:layout_constraintStart_toStartOf="parent"
@@ -220,6 +220,43 @@
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="20dp"
         android:layout_marginTop="15dp"/>
+
+    <!-- Library filter chips (signed in, with both downloaded and cloud songs):
+         take the count line's place over it; the count stays INVISIBLE as anchor. -->
+    <HorizontalScrollView
+        android:id="@+id/hsv_songFilters"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:overScrollMode="never"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@+id/tv_SongsCount"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_SongsCount"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/b_orderBy"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="10dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_filterAll"
+                style="@style/LibraryFilterChip" />
+
+            <TextView
+                android:id="@+id/tv_filterDownloaded"
+                style="@style/LibraryFilterChip"
+                android:layout_marginStart="8dp" />
+
+            <TextView
+                android:id="@+id/tv_filterCloud"
+                style="@style/LibraryFilterChip"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <!-- Order by button -->
     <ImageButton

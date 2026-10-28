@@ -50,6 +50,23 @@
             android:background="#A6000000"
             android:visibility="gone" />
 
+        <!-- Downloading: the cover fills up with a wave, as in the song list -->
+        <com.jotapeveloper.fision.CoverFillWaveView
+            android:id="@+id/v_psCoverWave"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <!-- On the server, not downloaded: a tap downloads it -->
+        <ImageView
+            android:id="@+id/iv_psCoverCloud"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_cloud_download"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <!-- Not downloaded while signed out: sign in to use it -->
         <ImageView
             android:id="@+id/iv_psCoverLock"

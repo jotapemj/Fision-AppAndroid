@@ -338,7 +338,6 @@
     <string name="gpu_timeout_retry">Reintentar</string>
     <string name="gpu_timeout_cancel">Cancel·lar</string>
     <string name="cloud_state_downloading">Descarregant %1$d%%</string>
-    <string name="cloud_state_cloud_only">Al núvol</string>
     <string name="cloud_state_locked">Inicia sessió per fer-la servir</string>
     <string name="cloud_state_error">Error</string>
     <string name="job_err_cancelled">Cancel·lat</string>
@@ -434,6 +433,11 @@
         <item quantity="one">%d resultat</item>
         <item quantity="other">%d resultats</item>
     </plurals>
+    <string name="library_filter_all">Totes</string>
+    <string name="library_filter_downloaded">Descarregades</string>
+    <string name="library_filter_cloud">Al núvol</string>
+    <!-- Filter chip: label and its count -->
+    <string name="library_filter_chip">%1$s  %2$d</string>
     <plurals name="playlist_selected_count">
         <item quantity="one">%d seleccionada</item>
         <item quantity="many">%d seleccionades</item>

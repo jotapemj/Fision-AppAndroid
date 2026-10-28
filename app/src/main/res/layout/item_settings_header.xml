@@ -90,7 +90,7 @@
             android:layout_width="14dp"
             android:layout_height="14dp"
             android:layout_marginEnd="6dp"
-            android:src="@drawable/ic_cloud"
+            android:src="@drawable/ic_cloud_link"
             app:tint="#7A7A7A"
             xmlns:app="http://schemas.android.com/apk/res-auto" />
 

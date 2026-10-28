@@ -103,10 +103,28 @@ public class PlaylistSongAdapter extends RecyclerView.Adapter<PlaylistSongAdapte
         h.artist.setText(hasArtist ? s.artist : "");
         h.artist.setVisibility(hasArtist ? View.VISIBLE : View.GONE);
         PlaylistCovers.loadSong(h.cover, s.coverPath, coverPx);
-        // Not downloaded: same grey veil as in the song list.
-        h.dim.setVisibility(s.local ? View.GONE : View.VISIBLE);
-        h.lock.setVisibility(!s.local && !com.jotapeveloper.fision.cloud.AuthManager
-                .get(h.itemView.getContext()).isLoggedIn() ? View.VISIBLE : View.GONE);
+        // Not downloaded: same grey veil as in the song list; downloading: the
+        // cover fills up with the wave instead.
+        boolean downloading = !s.local && s.cloud != null
+                && s.cloud.state == com.jotapeveloper.fision.cloud.CloudItem.State.DOWNLOADING;
+        h.dim.setVisibility(s.local || downloading ? View.GONE : View.VISIBLE);
+        if (downloading) {
+            // The cover bitmap may still be loading; a later rebind picks it up.
+            android.graphics.drawable.Drawable cd = h.cover.getDrawable();
+            h.wave.setCover(cd instanceof android.graphics.drawable.BitmapDrawable
+                    ? ((android.graphics.drawable.BitmapDrawable) cd).getBitmap() : null);
+            h.wave.setProgress(Math.max(0, Math.min(100, s.cloud.downloadPct)) / 100f);
+            h.wave.setVisibility(View.VISIBLE);
+        } else {
+            h.wave.setVisibility(View.GONE);
+        }
+        boolean locked = !s.local && !com.jotapeveloper.fision.cloud.AuthManager
+                .get(h.itemView.getContext()).isLoggedIn();
+        h.lock.setVisibility(locked ? View.VISIBLE : View.GONE);
+        // Ready on the server and not downloaded: the cloud says a tap downloads it.
+        h.cloud.setVisibility(!locked && !s.local && s.cloud != null
+                && s.cloud.state == com.jotapeveloper.fision.cloud.CloudItem.State.CLOUD_ONLY
+                ? View.VISIBLE : View.GONE);
 
         h.drag.setVisibility(mode == Mode.EDIT ? View.VISIBLE : View.GONE);
         switch (mode) {
@@ -156,12 +174,15 @@ public class PlaylistSongAdapter extends RecyclerView.Adapter<PlaylistSongAdapte
 
     static class Holder extends RecyclerView.ViewHolder {
         final ImageView drag, cover;
-        final View dim, lock;
+        final View dim, lock, cloud;
+        final CoverFillWaveView wave;
         final TextView title, artist;
         final ImageButton action;
 
         Holder(View v) {
             super(v);
+            wave = v.findViewById(R.id.v_psCoverWave);
+            cloud = v.findViewById(R.id.iv_psCoverCloud);
             lock = v.findViewById(R.id.iv_psCoverLock);
             drag = v.findViewById(R.id.iv_psDrag);
             cover = v.findViewById(R.id.iv_psCover);

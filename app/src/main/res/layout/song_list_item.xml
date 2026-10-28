@@ -53,6 +53,16 @@
             android:indeterminateTint="@color/AppWhite"
             android:visibility="gone" />
 
+        <!-- On the server, not downloaded: a tap downloads it -->
+        <ImageView
+            android:id="@+id/iv_cover_cloud"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_cloud_download"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <!-- Cloud song without a session: sign in to use it -->
         <ImageView
             android:id="@+id/iv_cover_lock"

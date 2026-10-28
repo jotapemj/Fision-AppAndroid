@@ -65,6 +65,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private EditText et_find;
     private TextView tv_title;
     private TextView tv_SongsCount;
+    private View hsvSongFilters;
+    private TextView[] filterChips;
+    private static final int FILTER_ALL = 0, FILTER_DOWNLOADED = 1, FILTER_CLOUD = 2;
+    /** Library filter; not persisted, every start shows all. */
+    private int songFilter = FILTER_ALL;
+    private boolean songFiltersShown;
     private View b_add;
     private ImageView ivAddIcon;
     private TextView tvAddLabel;
@@ -277,6 +283,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         et_find = findViewById(R.id.et_find);
         tv_title = findViewById(R.id.tv_title);
         tv_SongsCount = findViewById(R.id.tv_SongsCount);
+        hsvSongFilters = findViewById(R.id.hsv_songFilters);
+        filterChips = new TextView[] { findViewById(R.id.tv_filterAll),
+                findViewById(R.id.tv_filterDownloaded), findViewById(R.id.tv_filterCloud) };
+        for (int i = 0; i < filterChips.length; i++) {
+            final int f = i;
+            filterChips[i].setOnClickListener(v -> selectSongFilter(f));
+        }
         b_add = findViewById(R.id.b_add);
         ivAddIcon = findViewById(R.id.iv_addIcon);
         tvAddLabel = findViewById(R.id.tv_addLabel);
@@ -556,7 +569,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Views that make up the content of [tab] (title excluded). */
     private View[] tabViews(int tab) {
         return tab == TAB_SONGS
-                ? new View[] { et_find, b_add, tv_SongsCount, b_orderBy, refreshSongList,
+                ? new View[] { et_find, b_add, tv_SongsCount, hsvSongFilters, b_orderBy, refreshSongList,
                                findViewById(R.id.ll_songsAddFirst) }
                 : new View[] { playlistsTab };
     }
@@ -1030,7 +1043,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         }
         // A rebuild during a search keeps showing only the matches.
         String query = currentQuery();
-        Songs = filterSongs(allSongs, query);
+        Songs = filterSongs(filterByLocation(allSongs), query);
 
         syncSongsWithDatabase();
 
@@ -1049,19 +1062,110 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (currentTab == TAB_PLAYLISTS) refreshPlaylistsTab();
     }
 
-    /** Count line and "No results" notice for the current query. */
+    /** Count line (or filter chips) and "No results" notice for the current query. */
     private void updateSearchState(String query) {
-        int n = query.isEmpty() ? SongsInDirectory.size() : Songs.length;
-        tv_SongsCount.setText(getResources().getQuantityString(query.isEmpty()
-                ? R.plurals.playlist_song_count : R.plurals.search_result_count, n, n));
+        songFiltersShown = songFiltersAvailable(allSongs);
+        if (songFiltersShown) {
+            // Chip counts follow the search.
+            int[] n = locationCounts(filterSongs(allSongs, query));
+            int[] labels = { R.string.library_filter_all, R.string.library_filter_downloaded,
+                    R.string.library_filter_cloud };
+            for (int i = 0; i < filterChips.length; i++) {
+                filterChips[i].setText(getString(R.string.library_filter_chip, getString(labels[i]), n[i]));
+                paintFilterChip(filterChips[i], i == songFilter ? 1f : 0f);
+            }
+        } else if (query.isEmpty()) {
+            tv_SongsCount.setText(getResources().getQuantityString(
+                    R.plurals.playlist_song_count, allSongs.length, allSongs.length));
+        } else {
+            tv_SongsCount.setText(getResources().getQuantityString(
+                    R.plurals.search_result_count, Songs.length, Songs.length));
+        }
         if (tvNoResults == null) tvNoResults = findViewById(R.id.tv_noResults);
-        tvNoResults.setVisibility(!query.isEmpty() && Songs.length == 0
+        tvNoResults.setVisibility(Songs.length == 0 && (!query.isEmpty() || songFilter != FILTER_ALL)
                 ? View.VISIBLE : View.GONE);
         boolean wasEmpty = libraryEmpty;
-        libraryEmpty = query.isEmpty() && Songs.length == 0;
+        libraryEmpty = query.isEmpty() && allSongs.length == 0;
         applySongsEmptyState();
         // The shine pace follows the library: restart it when it empties or fills up.
         if (wasEmpty != libraryEmpty && shineRunning) startAddShine();
+    }
+
+    /** On the device (song folder present). */
+    private static boolean isDownloadedSong(SongListData s) {
+        return s.cloud == null
+                || (s.cloud.state != CloudItem.State.CLOUD_ONLY && !s.cloud.isInFlight());
+    }
+
+    /** Ready on the server, not on the device (or still downloading). */
+    private static boolean isCloudSong(SongListData s) {
+        return s.cloud != null && (s.cloud.state == CloudItem.State.CLOUD_ONLY
+                || s.cloud.state == CloudItem.State.DOWNLOADING);
+    }
+
+    /** {all, downloaded, cloud}; songs still processing count in all only. */
+    private static int[] locationCounts(SongListData[] songs) {
+        int[] n = { songs.length, 0, 0 };
+        for (SongListData s : songs) {
+            if (isDownloadedSong(s)) n[1]++;
+            else if (isCloudSong(s)) n[2]++;
+        }
+        return n;
+    }
+
+    /** Chips only with an account and songs both on the device and in the cloud. */
+    private boolean songFiltersAvailable(SongListData[] all) {
+        if (AuthManager.get(this).isLocalMode()) return false;
+        int[] n = locationCounts(all);
+        return n[1] > 0 && n[2] > 0;
+    }
+
+    /** Songs of the selected filter; back to all when the chips are not offered. */
+    private SongListData[] filterByLocation(SongListData[] all) {
+        if (songFilter != FILTER_ALL && !songFiltersAvailable(all)) songFilter = FILTER_ALL;
+        if (songFilter == FILTER_ALL) return all;
+        List<SongListData> out = new ArrayList<>();
+        for (SongListData s : all) {
+            if (songFilter == FILTER_DOWNLOADED ? isDownloadedSong(s) : isCloudSong(s)) out.add(s);
+        }
+        return out.toArray(new SongListData[0]);
+    }
+
+    private void selectSongFilter(int filter) {
+        if (filter == songFilter) return;
+        int old = songFilter;
+        songFilter = filter;
+        applySearchFilter(currentQuery());
+        rvSongList.scrollToPosition(0);
+        // After the repaint above, which sets the end state at once.
+        animateFilterChip(filterChips[old], 1f, 0f);
+        animateFilterChip(filterChips[filter], 0f, 1f);
+    }
+
+    private static final long FILTER_CHIP_MS = 180;
+
+    private void animateFilterChip(TextView chip, float from, float to) {
+        android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(from, to);
+        a.setDuration(FILTER_CHIP_MS);
+        a.addUpdateListener(an -> paintFilterChip(chip, (float) an.getAnimatedValue()));
+        a.start();
+    }
+
+    /** [sel] 0 = idle (grey outline), 1 = selected (accent outline, tint and text). */
+    private void paintFilterChip(TextView chip, float sel) {
+        int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        android.animation.ArgbEvaluator ev = new android.animation.ArgbEvaluator();
+        float d = getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable bg = chip.getBackground()
+                instanceof android.graphics.drawable.GradientDrawable
+                ? (android.graphics.drawable.GradientDrawable) chip.getBackground()
+                : new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(17 * d);
+        bg.setColor((int) ev.evaluate(sel, Color.TRANSPARENT, (accent & 0x00FFFFFF) | 0x30000000));
+        bg.setStroke((int) (1.2f * d), (int) ev.evaluate(sel, 0xFF3A3A3A, accent));
+        if (chip.getBackground() != bg) chip.setBackground(bg);
+        chip.setTextColor((int) ev.evaluate(sel, 0xFFE6E6E6, accent));
+        chip.setSelected(sel > 0.5f);
     }
 
     private TextView tvNoResults;
@@ -1102,10 +1206,12 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Nothing to search: a search with focus ends first.
         if (libraryEmpty && songSearch != null && songSearch.field.hasFocus()) songSearch.close(true);
         setAddWide(b_add, tvAddLabel, et_find, libraryEmpty, songsTab,
-                tv_SongsCount, b_orderBy, llSongsAddFirst);
+                tv_SongsCount, hsvSongFilters, b_orderBy, llSongsAddFirst);
         // INVISIBLE, not GONE: the shared blobs hang from the count line.
         int countVis = songsTab && !libraryEmpty ? View.VISIBLE : View.INVISIBLE;
-        tv_SongsCount.setVisibility(countVis);
+        // The chips stand in for the count line, which stays as an invisible anchor.
+        tv_SongsCount.setVisibility(songFiltersShown ? View.INVISIBLE : countVis);
+        hsvSongFilters.setVisibility(songFiltersShown ? countVis : View.GONE);
         b_orderBy.setVisibility(countVis);
         llSongsAddFirst.setVisibility(songsTab && libraryEmpty ? View.VISIBLE : View.GONE);
         updateEmptyBlobs();
@@ -1196,7 +1302,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Applies a search query to the current merged list (no disk access).
      *  No animation: it runs on every keystroke. */
     private void applySearchFilter(String key) {
-        Songs = filterSongs(allSongs, key);
+        Songs = filterSongs(filterByLocation(allSongs), key);
         RecyclerView.Adapter<?> current = rvSongList.getAdapter();
         if (current instanceof SongListAdapter) {
             ((SongListAdapter) current).setData(Songs);
@@ -1342,7 +1448,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (!loggedIn) {
             ivCloudStatus.removeCallbacks(cloudReconnectFadeOut);
             ivCloudStatus.animate().cancel();
-            ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+            ivCloudStatus.setImageResource(R.drawable.ic_cloud_link);
             ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
                     ContextCompat.getColor(this, R.color.AppDarkGrey)));
             ivCloudStatus.setContentDescription(getString(R.string.login_status_unauthenticated));
@@ -1370,7 +1476,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         ivCloudStatus.animate().cancel();
         cancelCloudTintAnimator();
         if (!reachable) {
-            ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+            ivCloudStatus.setImageResource(R.drawable.ic_cloud_link);
             ivCloudStatus.setImageTintList(android.content.res.ColorStateList.valueOf(
                     ContextCompat.getColor(this, R.color.cloud_offline)));
             ivCloudStatus.setContentDescription(getString(R.string.server_status_offline));
@@ -1394,7 +1500,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             ivCloudStatus.setAlpha(1f);
             return;
         }
-        ivCloudStatus.setImageResource(R.drawable.ic_cloud);
+        ivCloudStatus.setImageResource(R.drawable.ic_cloud_link);
         ivCloudStatus.setContentDescription(getString(R.string.server_status_online));
         ivCloudStatus.setAlpha(1f);
         ivCloudStatus.setVisibility(View.VISIBLE);

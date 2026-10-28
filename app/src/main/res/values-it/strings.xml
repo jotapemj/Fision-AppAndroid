@@ -328,7 +328,6 @@
     <string name="gpu_timeout_retry">Riprova</string>
     <string name="gpu_timeout_cancel">Annulla</string>
     <string name="cloud_state_downloading">Download %1$d%%</string>
-    <string name="cloud_state_cloud_only">Nel cloud</string>
     <string name="cloud_state_locked">Accedi per usarlo</string>
     <string name="cloud_state_error">Errore</string>
     <string name="job_err_cancelled">Annullato</string>
@@ -425,6 +424,11 @@
         <item quantity="many">%d risultati</item>
         <item quantity="other">%d risultati</item>
     </plurals>
+    <string name="library_filter_all">Tutti</string>
+    <string name="library_filter_downloaded">Scaricati</string>
+    <string name="library_filter_cloud">Cloud</string>
+    <!-- Filter chip: label and its count -->
+    <string name="library_filter_chip">%1$s  %2$d</string>
     <plurals name="playlist_selected_count">
         <item quantity="one">%d selezionato</item>
         <item quantity="many">%d selezionati</item>

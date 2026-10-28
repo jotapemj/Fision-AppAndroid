@@ -85,7 +85,7 @@
             android:layout_height="14dp"
             android:layout_marginEnd="6dp"
             android:importantForAccessibility="no"
-            android:src="@drawable/ic_cloud"
+            android:src="@drawable/ic_cloud_link"
             app:tint="#9A9A9A" />
 
         <TextView

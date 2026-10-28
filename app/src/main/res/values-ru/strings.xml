@@ -329,7 +329,6 @@
     <string name="gpu_timeout_retry">Повторить</string>
     <string name="gpu_timeout_cancel">Отмена</string>
     <string name="cloud_state_downloading">Загрузка %1$d%%</string>
-    <string name="cloud_state_cloud_only">В облаке</string>
     <string name="cloud_state_locked">Войдите, чтобы слушать</string>
     <string name="cloud_state_error">Ошибка</string>
     <string name="job_err_cancelled">Отменено</string>
@@ -429,6 +428,11 @@
         <item quantity="many">%d результатов</item>
         <item quantity="other">%d результата</item>
     </plurals>
+    <string name="library_filter_all">Все</string>
+    <string name="library_filter_downloaded">Скачанные</string>
+    <string name="library_filter_cloud">Облако</string>
+    <!-- Filter chip: label and its count -->
+    <string name="library_filter_chip">%1$s  %2$d</string>
     <plurals name="playlist_selected_count">
         <item quantity="one">Выбрана %d</item>
         <item quantity="few">Выбрано %d</item>
