@@ -2,12 +2,12 @@
 
 Before running: songs on the server for demo, some of them downloaded on the
 phone, none being processed unless that state is wanted in the capture.
-Optional: SEARCH env var with the text for the search capture (default "the").
+Optional: SEARCH env var with the text for the search capture (default "ar"; letters outside a-f so no folder hash matches).
 """
 import os
 from fision_adb import *
 
-query = os.environ.get("SEARCH", "the")
+query = os.environ.get("SEARCH", "ar")
 
 prepare()
 unpark_songs()

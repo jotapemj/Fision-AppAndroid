@@ -173,6 +173,10 @@ def media_pause():
     sh("input keyevent KEYCODE_MEDIA_PAUSE", check=False)
 
 
+def media_play():
+    sh("input keyevent KEYCODE_MEDIA_PLAY", check=False)
+
+
 # ------------------------------------------------------------------ captures
 
 def shot(name):
