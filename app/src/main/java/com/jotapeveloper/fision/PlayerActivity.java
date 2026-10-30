@@ -1,5 +1,6 @@
 package com.jotapeveloper.fision;
 
+import com.jotapeveloper.fision.chords.SlidingChipSelector;
 import com.jotapeveloper.fision.onboarding.CoachMarkOverlay;
 import com.jotapeveloper.fision.onboarding.Onboarding;
 import android.animation.ObjectAnimator;
@@ -103,6 +104,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     // Per-song chord mode: true=basic (chords_basic.txt), false=advanced (chords.txt)
     // Filled from Room in readDataBase and persisted via updateChordsBasicMode.
     private boolean chordsBasicMode = false;
+    // Per-song: chord names drawn above the lyrics (Room v9).
+    private boolean chordsOnLyrics = false;
     // True when chords_basic.txt exists in the song folder. When missing, the drawer
     // option is disabled and advanced is forced (previous behavior).
     private boolean hasBasicChordsFile = false;
@@ -487,6 +490,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             db_SongParameters parameters = parametersList.get(0);
             chordsActive       = parameters.chordsActive;
             chordsBasicMode    = parameters.chordsBasicMode;
+            chordsOnLyrics     = parameters.chordsOnLyrics;
             metronomeEnabled   = parameters.metronomeActive;
             selectedMetronome  = parameters.selectedMetronome;
             metronomeVol       = parameters.metronomeVol;
@@ -528,6 +532,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             // (these fields survive an in-place song switch).
             chordsActive         = true;
             chordsBasicMode      = false;
+            chordsOnLyrics       = false;
             metronomeEnabled     = false;
             selectedMetronome    = 1;
             metronomeVol         = 100;
@@ -539,6 +544,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             stem3DPositions.clear();
             stemSettings.clear();
         }
+        syncLyricsChords();
     }
 
     /** Creates a StemSetting with legacy values when the stem exists in the engine. */
@@ -867,6 +873,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Rhythm visualizer: builds cells from beats/chords/downbeats
         buildBeatCells();
         if (chordDiagrams != null) chordDiagrams.setCells(beatCells);
+        syncLyricsChords();
 
         rvChords = (RecyclerView) findViewById(R.id.rv_chords);
         beatAdapter = new BeatCellAdapter(this, beatCells, beatsPerBar);
@@ -1549,6 +1556,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Instant consumers that paint from resolveAccent() at bind/draw time.
         if (beatAdapter != null) beatAdapter.notifyDataSetChanged();
         if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.notifyDataSetChanged();
+        refreshLyricsChordsButton(false);
         refresh3DAccent();
     }
 
@@ -1634,6 +1642,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             updateCifradoDrawerSubtitle();
             if (beatAdapter != null) beatAdapter.setLatinNotation(latinNotation);
             if (chordDiagrams != null) chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
+            syncLyricsChords();
         });
     }
 
@@ -1653,6 +1662,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             updateNotationDrawerSubtitle();
             if (beatAdapter != null) beatAdapter.setPreferFlat(preferFlat);
             if (chordDiagrams != null) chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
+            syncLyricsChords();
         });
     }
 
@@ -2216,6 +2226,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void applyDisplayShiftToAdapter() {
         if (beatAdapter != null) beatAdapter.setSemitonesShift(currentDisplayShift());
         if (chordDiagrams != null) chordDiagrams.setShift(currentDisplayShift());
+        syncLyricsChords();
     }
 
     /** Extracts a WAV from res/raw into a cache file so a path can be passed to the engine.
@@ -2697,14 +2708,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 getResources().getDisplayMetrics());
     }
 
-    /** Tints the A/B buttons based on which one is active (green = active). */
-    private void tintHalfVariantButtons(TextView a, TextView b) {
-        int active   = accent();
-        int inactive = Color.rgb(255, 255, 255);
-        if (a != null) a.setTextColor(metronomeHalfVariant == 0 ? active : inactive);
-        if (b != null) b.setTextColor(metronomeHalfVariant == 1 ? active : inactive);
-    }
-
     /** Fade-out of the recycler when the song ends, jump to position 0 without visible
      *  scroll (a scan through hundreds of tiles would look ugly) and fade-in. */
     private void fadeChordsToStart() {
@@ -2750,6 +2753,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         filterGhostChords();
         buildBeatCells();
         if (chordDiagrams != null) chordDiagrams.setCells(beatCells);
+        syncLyricsChords();
         if (beatAdapter != null) {
             beatAdapter.notifyDataSetChanged();
             // Reposition to the current beat
@@ -3238,14 +3242,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     public void enableMetronome(
             boolean isEnabled,
-            MaterialButton metronome,
-            com.google.android.material.card.MaterialCardView cardHalf,
-            MaterialButton metronomeDouble, int selectedMetronome,
+            SlidingChipSelector speedSel, SlidingChipSelector halfVariantSel,
+            int selectedMetronome,
             Slider s_pan, Slider s_volume, ImageButton ib_restorePan) {
 
+        enableMetronomeSelectors(isEnabled, speedSel, halfVariantSel);
         if (isEnabled) {
-            enableMetronomeButtons(true, metronome, cardHalf, metronomeDouble);
-            selectButton(selectedMetronome, cardHalf, metronomeDouble, metronome);
             enableMetronomeSliders(true, s_volume, s_pan, ib_restorePan);
 
             android.util.Log.i("Metronome", "enable selected=" + selectedMetronome
@@ -3279,7 +3281,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
 
         } else {
-            enableMetronomeButtons(false, metronome, cardHalf, metronomeDouble);
             enableMetronomeSliders(false, s_volume, s_pan, ib_restorePan);
 
             // Mute all metronome tracks
@@ -3312,39 +3313,71 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
-    private void selectButton(int selection,
-                              com.google.android.material.card.MaterialCardView cardHalf,
-                              MaterialButton metronomeDouble, MaterialButton metronome) {
-        int active = accent();
-        int inactive = Color.parseColor("#FFFFFF");
-        cardHalf.setStrokeColor(selection == 0 ? active : inactive);
-        metronome.setStrokeColor(ColorStateList.valueOf(selection == 1 ? active : inactive));
-        metronomeDouble.setStrokeColor(ColorStateList.valueOf(selection == 2 ? active : inactive));
+    /** Speed and 0.5x phase selectors: dimmed and inert while the metronome is off. */
+    private void enableMetronomeSelectors(boolean isEnabled, SlidingChipSelector speedSel,
+                                          SlidingChipSelector halfVariantSel) {
+        float alpha = isEnabled ? 1f : 0.35f;
+        for (SlidingChipSelector s : new SlidingChipSelector[]{ speedSel, halfVariantSel }) {
+            if (s == null) continue;
+            s.setEnabled(isEnabled);
+            s.setAlpha(alpha);
+        }
     }
 
-    private void enableMetronomeButtons(boolean isEnabled, MaterialButton metronome,
-                                        com.google.android.material.card.MaterialCardView cardHalf,
-                                        MaterialButton metronomeDouble) {
-        int strokeColor = isEnabled ? Color.parseColor("#FFFFFF") : Color.parseColor("#919191");
-        int textColor   = strokeColor;
+    private android.animation.ValueAnimator halfVariantAnim;
 
-        metronome.setEnabled(isEnabled);
-        metronomeDouble.setEnabled(isEnabled);
-        cardHalf.setEnabled(isEnabled);
+    /**
+     * Unfolds or folds the A/B pill by animating its height and top margin,
+     * so the bottom sheet relayouts every frame and its top edge glides
+     * instead of jumping to the final size.
+     */
+    private void animateMetronomeHalfVariant(View v, boolean show, int fullMargin) {
+        if (halfVariantAnim != null) halfVariantAnim.cancel();
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        boolean visible = v.getVisibility() == View.VISIBLE;
+        if (visible == show && lp.height == ViewGroup.LayoutParams.WRAP_CONTENT) return;
+        int unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        v.measure(unspecified, unspecified);
+        int fullH = v.getMeasuredHeight();
+        // Start from the current (possibly mid-animation) size.
+        int h0 = !visible ? 0 : (lp.height >= 0 ? lp.height : fullH);
+        int m0 = !visible ? 0 : lp.topMargin;
+        float a0 = !visible ? 0f : v.getAlpha();
+        int h1 = show ? fullH : 0;
+        int m1 = show ? fullMargin : 0;
+        float a1 = show ? (v.isEnabled() ? 1f : 0.35f) : 0f;
+        lp.height = h0; lp.topMargin = m0;
+        v.setLayoutParams(lp);
+        v.setAlpha(a0);
+        v.setVisibility(View.VISIBLE);
 
-        metronome.setStrokeWidth(4);
-        metronomeDouble.setStrokeWidth(4);
-        cardHalf.setStrokeWidth(4);
-
-        metronome.setStrokeColor(ColorStateList.valueOf(strokeColor));
-        metronomeDouble.setStrokeColor(ColorStateList.valueOf(strokeColor));
-        cardHalf.setStrokeColor(strokeColor);
-
-        metronome.setTextColor(ColorStateList.valueOf(textColor));
-        metronomeDouble.setTextColor(ColorStateList.valueOf(textColor));
-        // The inner "0.5x" TextView is colored separately
-        TextView halfLabel = cardHalf.findViewById(R.id.b_metronomeHalf);
-        if (halfLabel != null) halfLabel.setTextColor(textColor);
+        android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(280);
+        anim.setInterpolator(new android.view.animation.PathInterpolator(0.4f, 0f, 0.2f, 1f));
+        anim.addUpdateListener(a -> {
+            float f = (float) a.getAnimatedValue();
+            lp.height = Math.round(h0 + (h1 - h0) * f);
+            lp.topMargin = Math.round(m0 + (m1 - m0) * f);
+            v.setLayoutParams(lp);
+            // Fade lags the unfold and leads the fold, so the pill never
+            // shows squashed at full opacity.
+            float fa = show ? Math.max(0f, (f - 0.35f) / 0.65f) : Math.min(1f, f / 0.6f);
+            v.setAlpha(a0 + (a1 - a0) * fa);
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            private boolean cancelled;
+            @Override public void onAnimationCancel(android.animation.Animator a) { cancelled = true; }
+            @Override public void onAnimationEnd(android.animation.Animator a) {
+                if (cancelled) return;
+                lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                lp.topMargin = fullMargin;
+                v.setLayoutParams(lp);
+                if (!show) v.setVisibility(View.GONE);
+                v.setAlpha(v.isEnabled() ? 1f : 0.35f);
+            }
+        });
+        halfVariantAnim = anim;
+        anim.start();
     }
 
     public void showMetronomeBottomDialog(){
@@ -3357,15 +3390,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         behavior.setSkipCollapsed(true);
 
         SwitchMaterial sw_enableMetronome = metronomeBottomSheet.findViewById(R.id.sw_enableMetronome);
-        MaterialButton b_metronomeNormal = metronomeBottomSheet.findViewById(R.id.b_metronome);
-        MaterialButton b_metronomeDouble = metronomeBottomSheet.findViewById(R.id.b_metronomeDouble);
-        com.google.android.material.card.MaterialCardView card_metronomeHalf =
-                metronomeBottomSheet.findViewById(R.id.card_metronomeHalf);
-        TextView b_metronomeHalf = metronomeBottomSheet.findViewById(R.id.b_metronomeHalf);
-        LinearLayout panelHalfVariant = metronomeBottomSheet.findViewById(R.id.panel_half_variant);
-        View halfVariantDivider = metronomeBottomSheet.findViewById(R.id.half_variant_divider_top);
-        TextView b_metronomeHalfA = metronomeBottomSheet.findViewById(R.id.b_metronomeHalfA);
-        TextView b_metronomeHalfB = metronomeBottomSheet.findViewById(R.id.b_metronomeHalfB);
+        SlidingChipSelector selSpeed = metronomeBottomSheet.findViewById(R.id.sel_metronomeSpeed);
+        SlidingChipSelector selHalfVariant = metronomeBottomSheet.findViewById(R.id.sel_metronomeHalfVariant);
+        // Option index == selectedMetronome (0 = 0.5x, 1 = 1x, 2 = 2x).
+        selSpeed.setOptions(getString(R.string.b_metronomeHalf), getString(R.string.b_metronome),
+                getString(R.string.b_metronomeDouble));
+        selSpeed.setSelected(selectedMetronome, false);
+        selHalfVariant.setOptions(getString(R.string.metronome_half_variant_a),
+                getString(R.string.metronome_half_variant_b));
+        selHalfVariant.setSelected(metronomeHalfVariant, false);
         ImageButton ib_metronome_restorePan = metronomeBottomSheet.findViewById(R.id.ib_metronome_restorePan);
         Slider s_metronomeVolume = metronomeBottomSheet.findViewById(R.id.s_metronomeVolume);
         s_metronomeVolume.setValue(metronomeVol);
@@ -3393,12 +3426,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         if (metronomeEnabled){
             sw_enableMetronome.setChecked(true);
-            enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
+            enableMetronome(metronomeEnabled, selSpeed, selHalfVariant, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
             tv_metronome_volume.setTextColor(Color.parseColor("#FFFFFF"));
             tv_metronome_panning.setTextColor(Color.parseColor("#FFFFFF"));
         }else{
             sw_enableMetronome.setChecked(false);
-            enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
+            enableMetronome(metronomeEnabled, selSpeed, selHalfVariant, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
             int tv_color = ContextCompat.getColor(getApplicationContext(), R.color.AppDarkGrey);
             tv_metronome_volume.setTextColor(ColorStateList.valueOf(tv_color));
             tv_metronome_panning.setTextColor(ColorStateList.valueOf(tv_color));
@@ -3410,7 +3443,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if(isChecked){
                     b_metronome.setIconTint(ColorStateList.valueOf(accent()));
                     metronomeEnabled = true;
-                    enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
+                    enableMetronome(metronomeEnabled, selSpeed, selHalfVariant, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
                     tv_metronome_volume.setTextColor(Color.parseColor("#FFFFFF"));
                     tv_metronome_panning.setTextColor(Color.parseColor("#FFFFFF"));
                     updateDB("metronome", 1);
@@ -3424,7 +3457,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 else{
                     b_metronome.setIconTint(ColorStateList.valueOf(Color.rgb(255,255,255)));
                     metronomeEnabled = false;
-                    enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
+                    enableMetronome(metronomeEnabled, selSpeed, selHalfVariant, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
                     int tv_color = ContextCompat.getColor(getApplicationContext(), R.color.AppDarkGrey);
                     tv_metronome_volume.setTextColor(ColorStateList.valueOf(tv_color));
                     tv_metronome_panning.setTextColor(ColorStateList.valueOf(tv_color));
@@ -3436,85 +3469,29 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
 
-        // Expand/collapse animation for the 0.5x card. AutoTransition on the
-        // bottom sheet root so the card grows/shrinks smoothly.
-        final ViewGroup animRoot = (ViewGroup) bottomSheetView;
-        Runnable expandHalfPanel = () -> {
-            android.transition.TransitionManager.beginDelayedTransition(
-                    animRoot,
-                    new android.transition.AutoTransition().setDuration(220));
-            if (panelHalfVariant != null) panelHalfVariant.setVisibility(View.VISIBLE);
-            if (halfVariantDivider != null) halfVariantDivider.setVisibility(View.VISIBLE);
-        };
-        Runnable collapseHalfPanel = () -> {
-            android.transition.TransitionManager.beginDelayedTransition(
-                    animRoot,
-                    new android.transition.AutoTransition().setDuration(220));
-            if (panelHalfVariant != null) panelHalfVariant.setVisibility(View.GONE);
-            if (halfVariantDivider != null) halfVariantDivider.setVisibility(View.GONE);
-        };
+        // The A/B pill unfolds below the speed pill only with 0.5x. Initial
+        // state without animation, so the sheet opens at its final size.
+        selHalfVariant.setVisibility(selectedMetronome == 0 ? View.VISIBLE : View.GONE);
+        final int halfVariantMargin =
+                ((ViewGroup.MarginLayoutParams) selHalfVariant.getLayoutParams()).topMargin;
 
-        b_metronomeNormal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                selectedMetronome = 1;
-                enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
-                cancelPendingDownbeats();
-                applyClickDuckTrack();
-                collapseHalfPanel.run();
-            }
-        });
-
-        b_metronomeHalf.setOnClickListener(view -> {
-            selectedMetronome = 0;
-            enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
+        selSpeed.setOnSelectedListener(index -> {
+            selectedMetronome = index;
+            enableMetronome(metronomeEnabled, selSpeed, selHalfVariant, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
             cancelPendingDownbeats();
             applyClickDuckTrack();
-            expandHalfPanel.run();
-            tintHalfVariantButtons(b_metronomeHalfA, b_metronomeHalfB);
+            animateMetronomeHalfVariant(selHalfVariant, index == 0, halfVariantMargin);
+        });
+        metronomeBottomSheet.setOnDismissListener(d -> {
+            if (halfVariantAnim != null) halfVariantAnim.cancel();
         });
 
-        b_metronomeDouble.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                selectedMetronome = 2;
-                enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
-                cancelPendingDownbeats();
-                applyClickDuckTrack();
-                collapseHalfPanel.run();
-            }
+        selHalfVariant.setOnSelectedListener(index -> {
+            if (metronomeHalfVariant == index) return;
+            metronomeHalfVariant = index;
+            updateDB("metronomeHalfVariant", index);
+            applyMetronomeHalfPhase();
         });
-
-        // Initial state of the A/B panel based on the selected metronome.
-        // No animation to avoid a jump when the dialog opens.
-        if (panelHalfVariant != null) {
-            panelHalfVariant.setVisibility(selectedMetronome == 0 ? View.VISIBLE : View.GONE);
-        }
-        if (halfVariantDivider != null) {
-            halfVariantDivider.setVisibility(selectedMetronome == 0 ? View.VISIBLE : View.GONE);
-        }
-        tintHalfVariantButtons(b_metronomeHalfA, b_metronomeHalfB);
-
-        if (b_metronomeHalfA != null) {
-            b_metronomeHalfA.setOnClickListener(v -> {
-                if (metronomeHalfVariant != 0) {
-                    metronomeHalfVariant = 0;
-                    updateDB("metronomeHalfVariant", 0);
-                    applyMetronomeHalfPhase();
-                }
-                tintHalfVariantButtons(b_metronomeHalfA, b_metronomeHalfB);
-            });
-        }
-        if (b_metronomeHalfB != null) {
-            b_metronomeHalfB.setOnClickListener(v -> {
-                if (metronomeHalfVariant != 1) {
-                    metronomeHalfVariant = 1;
-                    updateDB("metronomeHalfVariant", 1);
-                    applyMetronomeHalfPhase();
-                }
-                tintHalfVariantButtons(b_metronomeHalfA, b_metronomeHalfB);
-            });
-        }
 
         // Tempo control now lives inside configureTempoRuler above.
 
@@ -3553,7 +3530,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override
             public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
                 metronomeVol = value;
-                enableMetronome(metronomeEnabled,  b_metronomeNormal, card_metronomeHalf, b_metronomeDouble, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
+                enableMetronome(metronomeEnabled, selSpeed, selHalfVariant, selectedMetronome, s_metronomePan, s_metronomeVolume, ib_metronome_restorePan);
                 updateDB("metronomeVolume", (int)value);
             }
         });
@@ -4196,6 +4173,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void stopChordsBrowsing() {
         browsingChords = false;
         if (rvChords != null) rvChords.removeCallbacks(chordsMagnet);
+        if (chordDiagrams != null) chordDiagrams.stopBrowsing();
     }
 
     /** Jumps the song to the start of beat cell [beatIdx]. */
@@ -4495,6 +4473,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
                 case "chordsBasic":
                     db.DAO_db_SongParameters().updateChordsBasicMode(SongId, value == 1);
+                    break;
+
+                case "chordsOnLyrics":
+                    db.DAO_db_SongParameters().updateChordsOnLyrics(SongId, value == 1);
                     break;
 
                 case "metronomeHalfVariant":
@@ -4851,6 +4833,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private com.google.android.material.button.MaterialButton bLyricsCancelJob;
     private androidx.recyclerview.widget.RecyclerView rvLyrics;
     private android.widget.ImageButton bLyricsOptions;
+    private android.widget.ImageButton bLyricsChords;
 
     private LyricsManager mLyricsMgr;
     private LyricsLinesAdapter mLyricsLinesAdapter;
@@ -7658,6 +7641,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             reloadChords();
         }
         if (!chordsActive) ShowChords(null);
+        // Chord names off the lyrics.
+        if (chordsOnLyrics) setChordsOnLyrics(false);
 
         // 3D audio off.
         if (is3DEnabled) apply3DEnabled(false);
@@ -7754,6 +7739,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
         rvLyrics.setAdapter(mLyricsLinesAdapter);
+        bLyricsChords = findViewById(R.id.b_lyricsChords);
+        bLyricsChords.setOnClickListener(v -> setChordsOnLyrics(!chordsOnLyrics));
+        syncLyricsChords();
 
         cardLyricsLanguage.setOnClickListener(v -> openLanguagePickerDialog());
         bLyricsConfirm.setOnClickListener(v -> onLyricsConfirmClicked());
@@ -8014,13 +8002,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (chordDiagrams == null) {
             chordDiagrams = new com.jotapeveloper.fision.chords.ChordDiagramController(
                     this, chordDiagramRoot);
-            // Swipe on the stage jumps to the next / previous chord change.
+            // Swipe on the stage / tap on the grid jumps the song there.
             chordDiagrams.setSeekListener(this::seekToBeat);
+            chordDiagrams.setViewModeListener(this::onChordGridModeChanged);
         }
         chordDiagrams.setNotation(latinNotation, preferFlat, chordTypeface());
         chordDiagrams.setShift(currentDisplayShift());
         chordDiagrams.setCells(beatCells);
         chordDiagrams.onBeat(Math.max(0, currentBeatIdx));
+        chordDiagrams.prepareShow();
         isChordDiagramShown = true;
         morphChordButtonIcon(newDiagramsIcon(), accent());
 
@@ -8028,7 +8018,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         final long IN_DUR  = 300L;
         float slidePx = 18f * getResources().getDisplayMetrics().density;
         final View chordsContainer = findViewById(R.id.chords_container);
-        final boolean revealChords = chordsContainer != null
+        // The grid replaces the carousel: hidden, and the view takes its place.
+        final boolean grid = chordDiagrams.isGridMode();
+        setChordDiagramTop(grid, false);
+        if (grid && chordsContainer != null && chordsContainer.getVisibility() == View.VISIBLE) {
+            fadeCarousel(chordsContainer, false, 0L);
+        }
+        final boolean revealChords = !grid && chordsContainer != null
                 && chordsContainer.getVisibility() != View.VISIBLE;
         View stemsBox = rvStems != null ? (View) rvStems.getParent() : null;
         if (stemsBox != null) {
@@ -8097,6 +8093,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     .start();
         }
         final View chordsContainer = findViewById(R.id.chords_container);
+        // Leaving the grid: the carousel comes back if the song shows it.
+        if (chordsActive && chordsContainer != null
+                && chordsContainer.getVisibility() != View.VISIBLE) {
+            fadeCarousel(chordsContainer, true, 0L);
+        }
         final boolean hideChords = !chordsActive && chordsContainer != null
                 && chordsContainer.getVisibility() == View.VISIBLE;
         if (hideChords) {
@@ -8136,6 +8137,65 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Diagrams handed off to 3D / lyrics and waiting to come back. */
     private boolean chordDiagramsParked = false;
+
+    /** Diagrams / grid switch inside the open view: the grid hides the
+     *  carousel and moves up into its place; the diagrams bring it back. */
+    private void onChordGridModeChanged(boolean grid) {
+        if (!isChordDiagramShown) return;
+        View chordsContainer = findViewById(R.id.chords_container);
+        setChordDiagramTop(grid, true);
+        if (chordsContainer == null) return;
+        if (grid && chordsContainer.getVisibility() == View.VISIBLE) {
+            fadeCarousel(chordsContainer, false, 0L);
+        } else if (!grid && chordsContainer.getVisibility() != View.VISIBLE) {
+            fadeCarousel(chordsContainer, true, 150L);
+        }
+    }
+
+    /** Top of the diagrams view: below the carousel, or at the top with the grid. */
+    private void setChordDiagramTop(boolean grid, boolean animate) {
+        if (chordDiagramRoot == null) return;
+        final ViewGroup.MarginLayoutParams lp =
+                (ViewGroup.MarginLayoutParams) chordDiagramRoot.getLayoutParams();
+        int to = grid ? 0 : Math.round(71f * getResources().getDisplayMetrics().density);
+        if (chordDiagramTopAnim != null) chordDiagramTopAnim.cancel();
+        if (!animate || lp.topMargin == to) {
+            lp.topMargin = to;
+            chordDiagramRoot.setLayoutParams(lp);
+            return;
+        }
+        chordDiagramTopAnim = android.animation.ValueAnimator.ofInt(lp.topMargin, to);
+        chordDiagramTopAnim.setDuration(300L);
+        chordDiagramTopAnim.setInterpolator(
+                new androidx.interpolator.view.animation.FastOutSlowInInterpolator());
+        chordDiagramTopAnim.addUpdateListener(a -> {
+            lp.topMargin = (int) a.getAnimatedValue();
+            chordDiagramRoot.setLayoutParams(lp);
+        });
+        chordDiagramTopAnim.start();
+    }
+
+    private android.animation.ValueAnimator chordDiagramTopAnim;
+
+    /** Fades the chord carousel in (scrolled to the current beat) or out. */
+    private void fadeCarousel(View chordsContainer, boolean show, long delayMs) {
+        chordsContainer.animate().cancel();
+        if (show) {
+            chordsContainer.setAlpha(0f);
+            chordsContainer.setVisibility(View.VISIBLE);
+            scrollChordsTo(Math.max(0, currentBeatIdx));
+            chordsContainer.animate().alpha(1f).setStartDelay(delayMs).setDuration(260L)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        } else {
+            chordsContainer.animate().alpha(0f).setStartDelay(delayMs).setDuration(200L)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        chordsContainer.setVisibility(View.GONE);
+                        chordsContainer.setAlpha(1f);
+                    }).start();
+        }
+    }
 
     /** Leaving 3D / lyrics with parked diagrams: they reopen once that view
      *  is out. The stems stay hidden meanwhile (the handoff left them out). */
@@ -8586,6 +8646,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         // Content widgets.
         rvLyrics.setVisibility(content ? View.VISIBLE : View.GONE);
         bLyricsOptions.setVisibility(content ? View.VISIBLE : View.GONE);
+        bLyricsChords.setVisibility(content && songHasChords() ? View.VISIBLE : View.GONE);
 
         // Chord overlay depends on the state (only shown when CONTENT and
         // chords are active). Animate the chord fade in/out only when the
@@ -8857,8 +8918,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             return;
         }
         // Publish position every tick so karaoke mode can advance word by
-        // word inside the active row without waiting for a row change.
-        if (mLyricsKaraokeMode) {
+        // word (and chords on lyrics light up) inside the active row without
+        // waiting for a row change.
+        if (mLyricsKaraokeMode || chordsOnLyrics) {
             mLyricsLinesAdapter.setKaraokePosSec(mLyricsHoldIdx >= 0
                     ? Math.max(posSec, mLyricsHoldKaraokeSec) : posSec);
         }
@@ -8944,7 +9006,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         mLyricsHoldUntilSec = untilSec;
         mLyricsHoldKaraokeSec = karaokeSec;
         if (idx != mLyricsActiveIdx) showLyricsRow(idx);
-        if (mLyricsKaraokeMode) mLyricsLinesAdapter.setKaraokePosSec(karaokeSec);
+        if (mLyricsKaraokeMode || chordsOnLyrics) mLyricsLinesAdapter.setKaraokePosSec(karaokeSec);
     }
 
     /** Index of the text row that holds the word starting at [sec]. */
@@ -8980,6 +9042,123 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 .edit().putBoolean(PREF_LYRICS_KARAOKE_MODE, enabled).apply();
         if (mLyricsLinesAdapter != null) mLyricsLinesAdapter.setKaraokeMode(enabled);
     }
+
+    /** Whether the song has any chord change to show. */
+    private boolean songHasChords() {
+        for (BeatCell c : beatCells) if (c.chord != null) return true;
+        return false;
+    }
+
+    /** Pushes the chord changes, their format and the per-song toggle to the lyrics. */
+    private void syncLyricsChords() {
+        if (mLyricsLinesAdapter == null) return;
+        java.util.List<LyricsLinesAdapter.ChordMark> marks = new java.util.ArrayList<>();
+        for (BeatCell c : beatCells) {
+            if (c.chord != null) marks.add(new LyricsLinesAdapter.ChordMark(c.time, c.chord));
+        }
+        mLyricsLinesAdapter.setChordFormat(latinNotation, preferFlat, currentDisplayShift(), chordTypeface());
+        // Lyrics clock = UiPos + offset - word delay; the carousel lights
+        // chords at UiPos (the perceived position).
+        mLyricsLinesAdapter.setChordLagSec((BEAT_SYNC_OFFSET_MS - LYRICS_WORD_DELAY_MS) / 1000.0);
+        mLyricsLinesAdapter.setChordMarks(marks);
+        mLyricsLinesAdapter.setChordsOnLyrics(chordsOnLyrics);
+        refreshLyricsChordsButton(false);
+        if (bLyricsChords != null && mLyricsUiState == LyricsUiState.CONTENT) {
+            bLyricsChords.setVisibility(songHasChords() ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /** Per-song toggle of the chord names above the lyrics (persisted in Room). */
+    private void setChordsOnLyrics(boolean on) {
+        if (chordsOnLyrics == on) return;
+        chordsOnLyrics = on;
+        updateDB("chordsOnLyrics", on ? 1 : 0);
+        if (mLyricsLinesAdapter == null) return;
+        refreshLyricsChordsButton(true);
+        // The band above every line grows (or shrinks) with the names fading
+        // in (out), the active line held at the centre on every frame.
+        if (chordsRevealAnim != null) chordsRevealAnim.cancel();
+        boolean visible = isLyricsViewShown && rvLyrics != null && rvLyrics.isShown();
+        if (!visible) {
+            mLyricsLinesAdapter.setChordsOnLyrics(on);
+            return;
+        }
+        float from = on ? 0f : 1f;
+        if (on) mLyricsLinesAdapter.beginChordsReveal();
+        chordsRevealAnim = android.animation.ValueAnimator.ofFloat(from, on ? 1f : 0f);
+        chordsRevealAnim.setDuration(LyricsLinesAdapter.LINE_ANIM_MS);
+        chordsRevealAnim.setInterpolator(LyricsLinesAdapter.LINE_INTERPOLATOR);
+        chordsRevealAnim.addUpdateListener(a -> {
+            mLyricsLinesAdapter.setChordReveal((float) a.getAnimatedValue());
+            rvLyrics.post(this::holdActiveLyricsRowCentred);
+        });
+        chordsRevealAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            private boolean cancelled;
+            @Override public void onAnimationCancel(android.animation.Animator a) { cancelled = true; }
+            @Override public void onAnimationEnd(android.animation.Animator a) {
+                if (cancelled) return;
+                mLyricsLinesAdapter.setChordsOnLyrics(on);
+                rvLyrics.post(() -> holdActiveLyricsRowCentred());
+            }
+        });
+        chordsRevealAnim.start();
+    }
+
+    private android.animation.ValueAnimator chordsRevealAnim;
+
+    /** Keeps the active lyrics line at the vertical centre, without animation. */
+    private void holdActiveLyricsRowCentred() {
+        if (rvLyrics == null || mLyricsActiveIdx < 0) return;
+        androidx.recyclerview.widget.LinearLayoutManager lm =
+                (androidx.recyclerview.widget.LinearLayoutManager) rvLyrics.getLayoutManager();
+        View target = lm != null ? lm.findViewByPosition(mLyricsActiveIdx) : null;
+        if (target == null) return;
+        int viewCenter = (lm.getDecoratedTop(target) + lm.getDecoratedBottom(target)) / 2;
+        int boxCenter = (rvLyrics.getPaddingTop()
+                + (rvLyrics.getHeight() - rvLyrics.getPaddingBottom())) / 2;
+        if (viewCenter != boxCenter) rvLyrics.scrollBy(0, viewCenter - boxCenter);
+    }
+
+    /** Toggle look: accent disc with a dark icon when on, the overflow's tint when off. */
+    private void refreshLyricsChordsButton(boolean animate) {
+        if (bLyricsChords == null) return;
+        int onBg = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this);
+        int toBg = chordsOnLyrics ? onBg : 0x40FFFFFF;
+        int toIcon = chordsOnLyrics ? 0xFF000000 : 0xFFFFFFFF;
+        // Own drawable: the XML one is shared with the overflow button, and
+        // tinting it would tint both.
+        if (lyricsChordsBgDrawable == null) {
+            lyricsChordsBgDrawable = new android.graphics.drawable.GradientDrawable();
+            lyricsChordsBgDrawable.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            lyricsChordsBgDrawable.setColor(toBg);
+            bLyricsChords.setBackground(lyricsChordsBgDrawable);
+        }
+        android.graphics.drawable.GradientDrawable bg = lyricsChordsBgDrawable;
+        bLyricsChords.setContentDescription(getString(chordsOnLyrics
+                ? R.string.lyrics_chords_on : R.string.lyrics_chords_off));
+        final int fromBg = lyricsChordsBg;
+        lyricsChordsBg = toBg;
+        if (!animate) {
+            bg.setColor(toBg);
+            bLyricsChords.setImageTintList(ColorStateList.valueOf(toIcon));
+            return;
+        }
+        final int fromIcon = chordsOnLyrics ? 0xFFFFFFFF : 0xFF000000;
+        final android.graphics.drawable.GradientDrawable fbg = bg;
+        android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        a.setDuration(200);
+        a.addUpdateListener(v -> {
+            float f = (float) v.getAnimatedValue();
+            fbg.setColor(androidx.core.graphics.ColorUtils.blendARGB(fromBg, toBg, f));
+            bLyricsChords.setImageTintList(ColorStateList.valueOf(
+                    androidx.core.graphics.ColorUtils.blendARGB(fromIcon, toIcon, f)));
+        });
+        a.start();
+    }
+
+    // Current background of the chords-on-lyrics toggle (start of its fade).
+    private int lyricsChordsBg = 0x40FFFFFF;
+    private android.graphics.drawable.GradientDrawable lyricsChordsBgDrawable;
 
     private void releaseLyrics() {
         if (mLyricsMgr != null) mLyricsMgr.release();

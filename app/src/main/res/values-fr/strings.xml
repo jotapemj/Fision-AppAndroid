@@ -356,6 +356,10 @@
     <string name="lyrics_reprocess">Retraiter</string>
     <string name="lyrics_options_title">Options</string>
     <string name="lyrics_karaoke_mode">Mode karaoké</string>
+    <string name="lyrics_chords_on">Accords sur les paroles : activés</string>
+    <string name="lyrics_chords_off">Accords sur les paroles : désactivés</string>
+    <string name="chord_view_diagrams">Diagrammes</string>
+    <string name="chord_view_grid">Grille</string>
     <string name="lyrics_karaoke_unavailable">Retraiter pour l\'activer</string>
     <string name="car_karaoke_enable">Mode karaoké</string>
     <string name="car_karaoke_disable">Désactiver le karaoké</string>

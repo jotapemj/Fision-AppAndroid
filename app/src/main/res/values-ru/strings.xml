@@ -357,6 +357,10 @@
     <string name="lyrics_reprocess">Распознать заново</string>
     <string name="lyrics_options_title">Параметры</string>
     <string name="lyrics_karaoke_mode">Режим караоке</string>
+    <string name="lyrics_chords_on">Аккорды над текстом: вкл.</string>
+    <string name="lyrics_chords_off">Аккорды над текстом: выкл.</string>
+    <string name="chord_view_diagrams">Диаграммы</string>
+    <string name="chord_view_grid">Сетка</string>
     <string name="lyrics_karaoke_unavailable">Распознайте заново, чтобы включить</string>
     <string name="car_karaoke_enable">Режим караоке</string>
     <string name="car_karaoke_disable">Выключить караоке</string>

@@ -49,6 +49,7 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 * **Export** the mix or each stem to WAV, AAC or M4A.
 * **Playlists** stored on your server, playable offline.
 * **Chord notation** in American or Latin, with sharps or flats, transposed with the pitch.
+* **Chords over the lyrics** and a **chord grid** of the whole song.
 * **Background animation** with optional haptics on tempo.
 * **Share song to Fision** compatible.
 * **Local mode** to play song folders without a server.

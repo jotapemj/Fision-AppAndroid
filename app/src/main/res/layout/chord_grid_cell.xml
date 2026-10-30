@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One beat of the chord grid: same tile and chord label as the carousel,
+     stretched to its column. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="58dp">
+
+    <View
+        android:id="@+id/v_grid_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/beat_cell_bg" />
+
+    <TextView
+        android:id="@+id/tv_grid_chord"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fontFamily="@font/mus_glyhps"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp" />
+</FrameLayout>

@@ -169,6 +169,57 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     private double karaokePosSec = 0.0;
     private LineClickListener lineClickListener;
 
+    // ---- Chords on lyrics ----
+
+    /** A chord change of the song: [time] in song seconds, [raw] as in chords.txt. */
+    public static final class ChordMark {
+        public final double time;
+        public final String raw;
+        public ChordMark(double time, String raw) { this.time = time; this.raw = raw; }
+    }
+
+    /**
+     * Chord of a row; [word] is the index of the word it belongs to (-1
+     * instrumental). [after]: it changes in the silence after that word, so
+     * it is drawn in the gap behind it, not over it.
+     */
+    private static final class RowChord {
+        final double time;
+        final String raw;
+        final int word;
+        final boolean after;
+        RowChord(double time, String raw, int word, boolean after) {
+            this.time = time; this.raw = raw; this.word = word; this.after = after;
+        }
+    }
+
+    /** Text of a row as displayed with chords: where each word starts and
+     *  ends in the text, and when it is sung. */
+    private static final class WordLayout {
+        final String text;
+        final int[] offsets;
+        final int[] ends;
+        final double[] times;
+        final double[] endTimes;
+        WordLayout(String text, int[] offsets, int[] ends, double[] times, double[] endTimes) {
+            this.text = text; this.offsets = offsets; this.ends = ends;
+            this.times = times; this.endTimes = endTimes;
+        }
+    }
+
+    // A chord played just before a word belongs to it.
+    private static final double CHORD_WORD_LEAD_SEC = 0.15;
+    // A chord this long after a word ends falls in a silence, not on the word.
+    private static final double CHORD_WORD_TAIL_SEC = 0.12;
+
+    private boolean chordsOn = false;
+    private List<ChordMark> chordMarks = Collections.emptyList();
+    private boolean chordLatin, chordFlat;
+    private int chordShift;
+    private android.graphics.Typeface chordTypeface;
+    private List<List<RowChord>> rowChords = Collections.emptyList();
+    private WordLayout[] wordLayouts = new WordLayout[0];
+
     public interface LineClickListener {
         void onLyricsRowClicked(Row row);
         default void onLyricsWordClicked(double startSec) { }
@@ -264,6 +315,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         if (lyrics == null || lyrics.segments == null || lyrics.segments.isEmpty()) {
             this.rows = Collections.emptyList();
             this.activeIndex = -1;
+            rebuildRowChords();
             notifyDataSetChanged();
             return;
         }
@@ -296,10 +348,191 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         this.rows = out;
         this.activeIndex = -1;
+        rebuildRowChords();
         notifyDataSetChanged();
     }
 
     public List<Row> getRows() { return rows; }
+
+    /** Shows or hides the chord names above the lyrics, at once. */
+    public void setChordsOnLyrics(boolean on) {
+        if (chordsOn == on && chordReveal == (on ? 1f : 0f)) return;
+        chordsOn = on;
+        chordReveal = on ? 1f : 0f;
+        notifyDataSetChanged();
+    }
+
+    /** Start of the "on" transition: chords bound but with no room yet. */
+    public void beginChordsReveal() {
+        chordsOn = true;
+        chordReveal = 0f;
+        notifyDataSetChanged();
+    }
+
+    /** Transition step (0 hidden, 1 shown) applied to the rows on screen. */
+    public void setChordReveal(float f) {
+        chordReveal = f;
+        if (recycler == null) return;
+        for (int i = 0; i < recycler.getChildCount(); i++) {
+            RecyclerView.ViewHolder vh = recycler.getChildViewHolder(recycler.getChildAt(i));
+            if (vh instanceof TextVH) ((TextVH) vh).text.setChordReveal(f);
+            else if (vh instanceof InstrumentalVH) ((InstrumentalVH) vh).chords.setReveal(f);
+        }
+    }
+
+    private float chordReveal = 0f;
+
+    public boolean isChordsOnLyrics() { return chordsOn; }
+
+    /** Chord changes of the song, in time order. */
+    public void setChordMarks(List<ChordMark> marks) {
+        chordMarks = marks != null ? marks : Collections.emptyList();
+        rebuildRowChords();
+        if (chordsOn) notifyDataSetChanged();
+    }
+
+    /** Notation, accidentals, transposition and font of the chord names. */
+    public void setChordFormat(boolean latin, boolean flat, int shift, android.graphics.Typeface tf) {
+        if (latin == chordLatin && flat == chordFlat && shift == chordShift && tf == chordTypeface) return;
+        chordLatin = latin;
+        chordFlat = flat;
+        chordShift = shift;
+        chordTypeface = tf;
+        if (chordsOn) notifyDataSetChanged();
+    }
+
+    /**
+     * Places every chord change in the row that is lit when it sounds, so it
+     * lights up on time: in the instrumental part it falls in, or in the
+     * line being sung (a line stays lit through the silence until the next
+     * one takes over). Within the line it sits on a word only when it changes
+     * while that word is sung (or just before it starts); a change in a
+     * silence goes to the gap behind the last word sung, never onto a word
+     * it does not fall with.
+     */
+    private void rebuildRowChords() {
+        int n = rows.size();
+        wordLayouts = new WordLayout[n];
+        List<List<RowChord>> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) out.add(new ArrayList<>(2));
+        if (n > 0) {
+            for (ChordMark m : chordMarks) {
+                int ri = 0;
+                for (int i = 0; i < n; i++) {
+                    if (chordRowStart(rows.get(i)) <= m.time + CHORD_WORD_LEAD_SEC) ri = i;
+                    else break;
+                }
+                Row r = rows.get(ri);
+                if (r.type != VT_TEXT) {
+                    out.get(ri).add(new RowChord(m.time, m.raw, -1, false));
+                    continue;
+                }
+                WordLayout wl = wordLayout(ri);
+                int w = 0;
+                for (int i = 0; i < wl.times.length; i++) {
+                    if (wl.times[i] <= m.time + CHORD_WORD_LEAD_SEC) w = i;
+                }
+                boolean after = m.time > wl.endTimes[w] + CHORD_WORD_TAIL_SEC
+                        && m.time + CHORD_WORD_LEAD_SEC >= wl.times[w];
+                out.get(ri).add(new RowChord(m.time, m.raw, w, after));
+            }
+        }
+        rowChords = out;
+    }
+
+    private static double chordRowStart(Row r) { return r.type == VT_TEXT ? r.onset : r.start; }
+
+    /** Display text of a text row with its word starts (cached per row). */
+    private WordLayout wordLayout(int rowIdx) {
+        WordLayout wl = wordLayouts[rowIdx];
+        if (wl != null) return wl;
+        Row r = rows.get(rowIdx);
+        if (hasWords(r)) {
+            List<Lyrics.Word> words = r.segment.words;
+            int[] starts = new int[words.size()];
+            int[] ends = new int[words.size()];
+            String text = joinWords(words, starts, ends);
+            int n = words.size();
+            double[] times = new double[n];
+            for (int i = 0; i < n; i++) {
+                times[i] = r.wordOnsets != null && i < r.wordOnsets.length
+                        ? r.wordOnsets[i] : words.get(i).start;
+            }
+            // A word ends at its timestamp, but never after the next one is
+            // sung; the last one ends with the measured voice of the line.
+            double[] endTimes = new double[n];
+            for (int i = 0; i < n; i++) {
+                double e = i == n - 1 ? Math.max(words.get(i).end, r.voicedEnd) : words.get(i).end;
+                if (i + 1 < n) e = Math.min(e, times[i + 1]);
+                endTimes[i] = Math.max(times[i], e);
+            }
+            wl = new WordLayout(text, starts, ends, times, endTimes);
+        } else {
+            // No word timestamps: words spread evenly over the line.
+            String text = r.segment != null && r.segment.text != null ? r.segment.text.trim() : "";
+            List<Integer> starts = new ArrayList<>();
+            for (int i = 0; i < text.length(); i++) {
+                if (!Character.isWhitespace(text.charAt(i))
+                        && (i == 0 || Character.isWhitespace(text.charAt(i - 1)))) starts.add(i);
+            }
+            if (starts.isEmpty()) starts.add(0);
+            int n = starts.size();
+            int[] offs = new int[n];
+            int[] ends = new int[n];
+            double[] times = new double[n];
+            double[] endTimes = new double[n];
+            for (int i = 0; i < n; i++) {
+                offs[i] = starts.get(i);
+                int e = offs[i];
+                while (e < text.length() && !Character.isWhitespace(text.charAt(e))) e++;
+                ends[i] = e;
+                times[i] = r.start + (r.end - r.start) * i / n;
+                endTimes[i] = r.start + (r.end - r.start) * (i + 1) / n;
+            }
+            wl = new WordLayout(text, offs, ends, times, endTimes);
+        }
+        wordLayouts[rowIdx] = wl;
+        return wl;
+    }
+
+    private static boolean hasWords(Row r) {
+        return r.type == VT_TEXT && r.segment != null
+                && r.segment.words != null && !r.segment.words.isEmpty();
+    }
+
+    /** Words joined as the karaoke shows them; fills where each word starts and ends. */
+    private static String joinWords(List<Lyrics.Word> words, int[] starts, int[] ends) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < words.size(); i++) {
+            String piece = words.get(i).text == null ? "" : words.get(i).text;
+            if (i > 0 && !piece.startsWith(" ") && !piece.isEmpty()
+                    && sb.length() > 0 && sb.charAt(sb.length() - 1) != ' ') {
+                sb.append(' ');
+            }
+            int start = sb.length();
+            sb.append(piece);
+            int lead = 0;
+            while (lead < piece.length() && Character.isWhitespace(piece.charAt(lead))) lead++;
+            starts[i] = start + Math.min(lead, Math.max(0, piece.length() - 1));
+            int end = sb.length();
+            while (end > starts[i] + 1 && Character.isWhitespace(sb.charAt(end - 1))) end--;
+            ends[i] = end;
+        }
+        return sb.toString();
+    }
+
+    private String chordLabel(String raw) {
+        return ChordFormatter.format(raw, chordShift, chordLatin, chordFlat);
+    }
+
+    /** Whether a chord of row [idx] changes state between two positions. */
+    private boolean chordCrossed(int idx, double from, double to) {
+        if (idx < 0 || idx >= rowChords.size()) return false;
+        for (RowChord c : rowChords.get(idx)) {
+            if ((c.time <= from) != (c.time <= to)) return true;
+        }
+        return false;
+    }
 
     public int getActiveIndex() { return activeIndex; }
 
@@ -332,14 +565,23 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
      *  triggers a lightweight rebind of the active row when karaoke is on
      *  and the row is a text row with per-word timestamps. */
     public void setKaraokePosSec(double posSec) {
+        double old = this.karaokePosSec;
         this.karaokePosSec = posSec;
-        if (!karaokeMode) return;
         if (activeIndex < 0 || activeIndex >= rows.size()) return;
-        Row r = rows.get(activeIndex);
-        if (r.type != VT_TEXT || r.segment == null
-                || r.segment.words == null || r.segment.words.isEmpty()) return;
-        notifyItemChanged(activeIndex, PAYLOAD_KARAOKE);
+        boolean words = karaokeMode && hasWords(rows.get(activeIndex));
+        // Chords on lyrics: repaint only when a chord of the line is reached.
+        boolean chords = chordsOn && chordCrossed(activeIndex, old - chordLagSec, posSec - chordLagSec);
+        if (words || chords) notifyItemChanged(activeIndex, PAYLOAD_KARAOKE);
     }
+
+    // The lyrics clock runs ahead of the beat clock the carousel lights its
+    // chords with; chords on lyrics follow the beat clock.
+    private double chordLagSec = 0.0;
+
+    /** How far the beat clock trails the lyrics clock, in seconds. */
+    public void setChordLagSec(double lag) { chordLagSec = lag; }
+
+    private double chordPos() { return karaokePosSec - chordLagSec; }
 
     @Override public int getItemViewType(int position) { return rows.get(position).type; }
 
@@ -368,16 +610,23 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             bind(holder, position, true);
             return;
         }
-        if (!payloads.isEmpty() && payloads.contains(PAYLOAD_KARAOKE)
-                && holder instanceof TextVH && position == activeIndex) {
+        if (!payloads.isEmpty() && payloads.contains(PAYLOAD_KARAOKE) && position == activeIndex) {
             Row r = rows.get(position);
-            if (r.type == VT_TEXT && r.segment != null) {
-                // Force SPANNABLE buffer so the per-word ClickableSpan stays
-                // active; the default NORMAL buffer would flatten to a plain
-                // String and swallow the touch handling.
-                ((TextVH) holder).text.setText(buildKaraokeText(
-                        holder.itemView.getContext(), r.segment, r.wordOnsets, karaokePosSec,
-                        lineClickListener), TextView.BufferType.SPANNABLE);
+            if (holder instanceof TextVH && r.type == VT_TEXT && r.segment != null) {
+                ChordLyricsTextView tv = ((TextVH) holder).text;
+                if (karaokeMode && hasWords(r)) {
+                    // Force SPANNABLE buffer so the per-word ClickableSpan stays
+                    // active; the default NORMAL buffer would flatten to a plain
+                    // String and swallow the touch handling.
+                    tv.setText(buildKaraokeText(
+                            holder.itemView.getContext(), r.segment, r.wordOnsets, karaokePosSec,
+                            lineClickListener), TextView.BufferType.SPANNABLE);
+                }
+                tv.setChordPos(chordPos());
+                return;
+            }
+            if (holder instanceof InstrumentalVH) {
+                ((InstrumentalVH) holder).chords.setPos(chordPos(), true);
                 return;
             }
         }
@@ -418,8 +667,11 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
 
         if (holder instanceof TextVH) {
-            TextView tv = ((TextVH) holder).text;
-            String raw = row.segment != null && row.segment.text != null
+            ChordLyricsTextView tv = ((TextVH) holder).text;
+            // With chords the words are joined as the karaoke does, so the
+            // chord anchors fall on the right characters.
+            String raw = chordsOn ? wordLayout(position).text
+                    : row.segment != null && row.segment.text != null
                     ? row.segment.text.trim() : "";
             final float fromScale = tv.getScaleX();
             final int fromColor = tv.getCurrentTextColor();
@@ -470,8 +722,11 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     tv.setMovementMethod(null);
                 }
             }
+            bindLineChords(tv, position, active, accent, dim);
             if (animate) animateTextStyle(tv, fromScale, fromColor, fromAlpha);
         } else if (holder instanceof InstrumentalVH) {
+            bindStripChords(((InstrumentalVH) holder).chords, position, active, accent, dim,
+                    ContextCompat.getColor(ctx, R.color.lyrics_line_current));
             ImageView iv = ((InstrumentalVH) holder).icon;
             int toColor = active ? accent : dim;
             float toAlpha = rowAlpha(position);
@@ -501,6 +756,49 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 a.start();
             }
         }
+    }
+
+    /** Chord names above a text line: lit once reached on the active line, dim elsewhere. */
+    private void bindLineChords(ChordLyricsTextView tv, int position, boolean active, int accent, int dim) {
+        // Every line keeps the band (even without a chord) so the spacing is even.
+        tv.setChordReveal(chordsOn ? chordReveal : 0f);
+        if (!chordsOn || position >= rowChords.size() || rowChords.get(position).isEmpty()) {
+            tv.setChords(null, null, 0, 0, 0);
+            return;
+        }
+        WordLayout wl = wordLayout(position);
+        List<ChordLyricsTextView.Anchor> anchors = new ArrayList<>();
+        for (RowChord c : rowChords.get(position)) {
+            int w = Math.max(0, Math.min(c.word, wl.offsets.length - 1));
+            anchors.add(new ChordLyricsTextView.Anchor(c.after ? wl.ends[w] : wl.offsets[w],
+                    chordLabel(c.raw), c.time, c.after));
+        }
+        int pending = active
+                ? ContextCompat.getColor(tv.getContext(), R.color.lyrics_line_current) : dim;
+        tv.setChords(anchors, chordTypeface, active ? accent : dim, pending,
+                active ? chordPos() : Double.NEGATIVE_INFINITY);
+    }
+
+    /** Chords of an instrumental part, one row above the note. */
+    private void bindStripChords(ChordStripView strip, int position, boolean active,
+                                 int accent, int dim, int current) {
+        List<RowChord> list = chordsOn && position < rowChords.size()
+                ? rowChords.get(position) : Collections.emptyList();
+        if (list.isEmpty()) {
+            strip.setVisibility(View.GONE);
+            return;
+        }
+        String[] labels = new String[list.size()];
+        double[] times = new double[list.size()];
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = chordLabel(list.get(i).raw);
+            times[i] = list.get(i).time;
+        }
+        strip.setVisibility(View.VISIBLE);
+        strip.setReveal(chordReveal);
+        strip.setChords(labels, times, chordTypeface);
+        strip.setColors(active ? accent : dim, dim, active ? current : dim);
+        strip.setPos(active ? chordPos() : -1.0, false);
     }
 
     /** Eases size, colour and alpha from the previous style to the one just
@@ -579,15 +877,17 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     @Override public int getItemCount() { return rows.size(); }
 
     static class TextVH extends RecyclerView.ViewHolder {
-        final TextView text;
+        final ChordLyricsTextView text;
         TextVH(@NonNull View v) { super(v); text = v.findViewById(R.id.tv_lyricsLine); }
     }
 
     static class InstrumentalVH extends RecyclerView.ViewHolder {
         final ImageView icon;
+        final ChordStripView chords;
         InstrumentalVH(@NonNull View v) {
             super(v);
             icon = v.findViewById(R.id.iv_lyricsInstrumental);
+            chords = v.findViewById(R.id.cs_lyricsInstrumentalChords);
         }
     }
 }

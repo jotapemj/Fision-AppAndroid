@@ -4,11 +4,18 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearSmoothScroller;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.jotapeveloper.fision.BeatCell;
 import com.jotapeveloper.fision.ChordFormatter;
+import com.jotapeveloper.fision.FadingEdgeRecyclerView;
 import com.jotapeveloper.fision.R;
 
 import java.util.ArrayList;
@@ -25,6 +32,18 @@ public final class ChordDiagramController {
     private static final String PREFS = "prefs_songs";
     private static final String KEY_INSTRUMENT = "chord_diagram_instrument";
     private static final String KEY_ZONE = "chord_diagram_zone";
+    private static final String KEY_VIEW = "chord_diagram_view";   // 0 diagrams, 1 grid
+
+    // Grid: the current row sits this far down the view; a drag browses it
+    // freely and a magnet brings it back (near: at once; far: after a wait,
+    // like the carousel).
+    private static final float GRID_FOCUS = 0.30f;
+    private static final long MAGNET_BASE_MS = 1500L, MAGNET_PER_CELL_MS = 100L,
+            MAGNET_MAX_MS = 4000L;
+    private static final long PANE_OUT_MS = 160L, PANE_IN_MS = 240L;
+    private static final int GRID_GLIDE_MS = 650;
+    private static final android.view.animation.Interpolator GRID_INTERPOLATOR =
+            new androidx.interpolator.view.animation.FastOutSlowInInterpolator();
 
     /** Selector order: Piano, Guitar, Ukulele. */
     private static final int PIANO = 0, GUITAR = 1, UKULELE = 2;
@@ -53,13 +72,35 @@ public final class ChordDiagramController {
     private int lastBeat = -1;
     @Nullable private ChordShapes shapes;
 
-    /** Seek request from a swipe on the stage: start of the chord change at
+    private final SlidingChipSelector viewSel;
+    private final View diagramPane;
+    private final RecyclerView grid;
+    private final ChordGridAdapter gridAdapter;
+    private final GridLayoutManager gridLm;
+    private boolean gridMode;
+    private boolean gridBrowsing;
+    private int gridRow = -1;
+    private final Runnable gridMagnet = () -> {
+        gridBrowsing = false;
+        gridRow = -1;
+        followGrid(true);
+    };
+
+    /** Seek request from a swipe on the stage or a tap on the grid: start of
      *  beat cell [beatIdx]. */
     public interface SeekListener { void seekToBeat(int beatIdx); }
 
+    /** Diagrams / grid switch (the grid replaces the chord carousel). */
+    public interface ViewModeListener { void onGridModeChanged(boolean grid); }
+
     @Nullable private SeekListener seekListener;
+    @Nullable private ViewModeListener viewModeListener;
 
     public void setSeekListener(@Nullable SeekListener l) { seekListener = l; }
+
+    public void setViewModeListener(@Nullable ViewModeListener l) { viewModeListener = l; }
+
+    public boolean isGridMode() { return gridMode; }
 
     /** Swipe: jumps to the start of the next (+1) or previous (-1) chord. */
     private void onSwipe(int direction) {
@@ -99,22 +140,161 @@ public final class ChordDiagramController {
             refresh();
         });
         applyInstrument();
+
+        viewSel = root.findViewById(R.id.sel_chordView);
+        diagramPane = root.findViewById(R.id.ll_chordDiagramPane);
+        grid = root.findViewById(R.id.rv_chordGrid);
+        gridAdapter = new ChordGridAdapter(ctx);
+        gridAdapter.setOnCellClickListener(cell -> {
+            if (seekListener != null) seekListener.seekToBeat(cell);
+        });
+        gridLm = new GridLayoutManager(ctx, gridAdapter.getColumns());
+        grid.setLayoutManager(gridLm);
+        grid.setAdapter(gridAdapter);
+        grid.setItemAnimator(null);
+        float density = ctx.getResources().getDisplayMetrics().density;
+        grid.addItemDecoration(new ChordGridAdapter.BarDecoration(gridAdapter, density));
+        if (grid instanceof FadingEdgeRecyclerView) {
+            // Short at the top, so the rows right under the selector stay readable.
+            ((FadingEdgeRecyclerView) grid).setFadeLengthsPx(Math.round(24f * density),
+                    Math.round(48f * density));
+        }
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView rv, int state) {
+                if (state == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    gridBrowsing = true;
+                    grid.removeCallbacks(gridMagnet);
+                } else if (state == RecyclerView.SCROLL_STATE_IDLE && gridBrowsing) {
+                    scheduleGridMagnet();
+                }
+            }
+        });
+        viewSel.setOptions(ctx.getString(R.string.chord_view_diagrams), ctx.getString(R.string.chord_view_grid));
+        gridMode = prefs.getInt(KEY_VIEW, 0) == 1;
+        viewSel.setSelected(gridMode ? 1 : 0, false);
+        diagramPane.setVisibility(gridMode ? View.INVISIBLE : View.VISIBLE);
+        grid.setVisibility(gridMode ? View.VISIBLE : View.GONE);
+        viewSel.setOnSelectedListener(i -> setGridMode(i == 1));
     }
 
     private static int clamp(int v, int lo, int hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    /** Switches between the diagrams and the grid with a crossfade. */
+    private void setGridMode(boolean on) {
+        if (gridMode == on) return;
+        gridMode = on;
+        prefs.edit().putInt(KEY_VIEW, on ? 1 : 0).apply();
+        View out = on ? diagramPane : grid;
+        View in = on ? grid : diagramPane;
+        float slide = 14f * ctx.getResources().getDisplayMetrics().density;
+        out.animate().cancel();
+        out.animate().alpha(0f).translationY(slide).setDuration(PANE_OUT_MS)
+                .setInterpolator(new AccelerateInterpolator())
+                .withEndAction(() -> {
+                    out.setVisibility(out == grid ? View.GONE : View.INVISIBLE);
+                    out.setAlpha(1f);
+                    out.setTranslationY(0f);
+                }).start();
+        if (on) {
+            stopBrowsing();
+            gridRow = -1;
+            in.setVisibility(View.VISIBLE);
+            // Laid out at the current row before it shows.
+            grid.post(() -> followGrid(false));
+        } else {
+            refresh();
+            in.setVisibility(View.VISIBLE);
+        }
+        in.animate().cancel();
+        in.setAlpha(0f);
+        in.setTranslationY(slide);
+        in.animate().alpha(1f).translationY(0f).setStartDelay(PANE_OUT_MS - 40L)
+                .setDuration(PANE_IN_MS).setInterpolator(new DecelerateInterpolator()).start();
+        if (viewModeListener != null) viewModeListener.onGridModeChanged(on);
+    }
+
+    /** Before the view shows: the grid lands on the current row, not browsing. */
+    public void prepareShow() {
+        stopBrowsing();
+        gridRow = -1;
+        if (gridMode) grid.post(() -> followGrid(false));
+    }
+
+    /** Ends a grid browse at once (seek, song change). */
+    public void stopBrowsing() {
+        gridBrowsing = false;
+        grid.removeCallbacks(gridMagnet);
+    }
+
+    /** Keeps the row of the current beat at the focus line of the grid. */
+    private void followGrid(boolean animate) {
+        if (!gridMode || gridBrowsing || gridAdapter.getItemCount() == 0) return;
+        int cols = gridAdapter.getColumns();
+        int row = gridAdapter.slotOf(Math.max(0, lastBeat)) / cols;
+        if (animate && row == gridRow) return;
+        gridRow = row;
+        int focus = Math.round(grid.getHeight() * GRID_FOCUS);
+        if (!animate || grid.getHeight() == 0) {
+            gridLm.scrollToPositionWithOffset(row * cols, focus);
+            return;
+        }
+        View target = gridLm.findViewByPosition(row * cols);
+        if (target != null) {
+            // Fixed length and curve, like the lyrics glide.
+            int dy = gridLm.getDecoratedTop(target) - (grid.getPaddingTop() + focus);
+            if (dy != 0) grid.smoothScrollBy(0, dy, GRID_INTERPOLATOR, GRID_GLIDE_MS);
+            return;
+        }
+        LinearSmoothScroller s = new LinearSmoothScroller(ctx) {
+            @Override public int calculateDyToMakeVisible(View view, int snapPreference) {
+                RecyclerView.LayoutManager lm = getLayoutManager();
+                if (lm == null) return 0;
+                return grid.getPaddingTop() + focus - lm.getDecoratedTop(view);
+            }
+            @Override protected float calculateSpeedPerPixel(android.util.DisplayMetrics dm) {
+                return 60f / dm.densityDpi;
+            }
+        };
+        s.setTargetPosition(row * cols);
+        gridLm.startSmoothScroll(s);
+    }
+
+    /** Released after a drag: back to the current row, at once when it is
+     *  near, after a wait when far (time to read or tap a tile). */
+    private void scheduleGridMagnet() {
+        grid.removeCallbacks(gridMagnet);
+        int cols = gridAdapter.getColumns();
+        int first = gridLm.findFirstVisibleItemPosition();
+        int last = gridLm.findLastVisibleItemPosition();
+        int cur = gridAdapter.slotOf(Math.max(0, lastBeat));
+        int rows = 0;
+        if (first != RecyclerView.NO_POSITION && (cur < first || cur > last)) {
+            int center = (first + last) / 2;
+            rows = Math.abs(center / cols - cur / cols);
+        }
+        long delay = rows <= 1 ? 0L
+                : Math.min(MAGNET_MAX_MS, MAGNET_BASE_MS + MAGNET_PER_CELL_MS * rows * cols);
+        grid.postDelayed(gridMagnet, delay);
+    }
 
     /** Notation of chord and note names, and the typeface of the carousel. */
     public void setNotation(boolean latin, boolean preferFlat, Typeface typeface) {
         this.latin = latin;
         this.preferFlat = preferFlat;
+        this.typeface = typeface;
         stage.setTypeface(typeface);
+        gridAdapter.setFormat(latin, preferFlat, shift, typeface);
         refresh();
     }
+
+    @Nullable private Typeface typeface;
 
     /** Display transposition in semitones (Transpose with pitch). */
     public void setShift(int semitones) {
         if (shift == semitones) return;
         shift = semitones;
+        gridAdapter.setFormat(latin, preferFlat, shift, typeface);
         recomputeVoicings();
         refresh();
     }
@@ -131,12 +311,17 @@ public final class ChordDiagramController {
         }
         recomputeVoicings();
         shownIdx = Integer.MIN_VALUE;
+        if (gridAdapter.setCells(cells)) gridLm.setSpanCount(gridAdapter.getColumns());
+        gridRow = -1;
         if (lastBeat >= 0) onBeat(lastBeat);
     }
 
-    /** Beat highlighted by the carousel; advances the stage on a chord change. */
+    /** Beat highlighted by the carousel; advances the stage on a chord change
+     *  and moves the grid highlight. */
     public void onBeat(int beatIdx) {
         lastBeat = beatIdx;
+        gridAdapter.setHighlight(beatIdx);
+        followGrid(true);
         int idx = changeAt(beatIdx);
         if (idx == shownIdx) return;
         boolean known = shownIdx != Integer.MIN_VALUE;

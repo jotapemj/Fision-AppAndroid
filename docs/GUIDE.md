@@ -181,7 +181,9 @@ one shows or hides the **chord strip**, the other opens the **chord diagrams** ,
 chord for piano, guitar or ukulele. Guitar and ukulele have a fret zone
 selector (open, 3-7, 7-12 or automatic, which keeps the hand close to the
 previous chord). Swiping the diagrams jumps to the next or previous chord.
-Opening lyrics or 3D from the diagrams brings them back when that view is
+A pill at the top switches between **Diagrams** and **Grid**: the grid shows
+the whole song, one cell per beat and two bars per row, follows the playback
+and jumps to a chord when tapped. Opening lyrics or 3D from the diagrams brings them back when that view is
 closed.
 
 From the drawer: basic or advanced chart (when the song has both),
@@ -235,7 +237,8 @@ returns to it.
 </div>
 
 The click is generated on the server from the song's own beats, so it
-follows tempo changes and swing. Subdivisions:
+follows tempo changes and swing. A pill picks the subdivision; the A / B
+pill appears below it only with 0.5x:
 
 - **1x**: one click per beat.
 - **0.5x**: every two beats, with variants A and B when the default lands
@@ -288,6 +291,10 @@ the separated vocal stems, so each line and word lights when it is sung,
 held notes stay lit and the instrumental marker appears only in real vocal
 silence. An optional **karaoke** mode lights every word as it is sung.
 Tapping a line or word jumps there, also while paused.
+
+When the song has chords, a button next to the options shows the **chords
+above the words**, placed where each chord starts and following the chord
+options (chart, notation and pitch). It is saved per song.
 
 ## Audio 3D
 

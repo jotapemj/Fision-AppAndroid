@@ -354,6 +354,10 @@
     <string name="lyrics_reprocess">重新识别</string>
     <string name="lyrics_options_title">选项</string>
     <string name="lyrics_karaoke_mode">卡拉 OK 模式</string>
+    <string name="lyrics_chords_on">歌词上的和弦：开</string>
+    <string name="lyrics_chords_off">歌词上的和弦：关</string>
+    <string name="chord_view_diagrams">和弦图</string>
+    <string name="chord_view_grid">网格</string>
     <string name="lyrics_karaoke_unavailable">重新识别后可启用</string>
     <string name="car_karaoke_enable">卡拉 OK 模式</string>
     <string name="car_karaoke_disable">关闭卡拉 OK</string>

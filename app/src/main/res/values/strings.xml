@@ -386,6 +386,10 @@
     <string name="lyrics_reprocess">Reprocess</string>
     <string name="lyrics_options_title">Options</string>
     <string name="lyrics_karaoke_mode">Karaoke mode</string>
+    <string name="lyrics_chords_on">Chords on lyrics: on</string>
+    <string name="lyrics_chords_off">Chords on lyrics: off</string>
+    <string name="chord_view_diagrams">Diagrams</string>
+    <string name="chord_view_grid">Grid</string>
     <string name="lyrics_karaoke_unavailable">Reprocess to enable</string>
     <string name="car_karaoke_enable">Karaoke mode</string>
     <string name="car_karaoke_disable">Turn off karaoke</string>

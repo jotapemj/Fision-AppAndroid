@@ -61,134 +61,24 @@
 
 
 
-        <LinearLayout
+        <!-- Speed: 0.5x / 1x / 2x. -->
+        <com.jotapeveloper.fision.chords.SlidingChipSelector
+            android:id="@+id/sel_metronomeSpeed"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            >
+            android:layout_marginStart="56dp"
+            android:layout_marginEnd="56dp" />
 
-                <!-- 0.5x card: single container that expands on tap to reveal A/B.
-                     Mimics the look of the sibling MaterialButtons (1x, 2x). -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_metronomeHalf"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="25dp"
-                    android:layout_marginEnd="20dp"
-                    app:cardBackgroundColor="@color/button_background_color"
-                    app:cardCornerRadius="4dp"
-                    app:strokeColor="#FFFFFF"
-                    app:strokeWidth="4dp"
-                    app:cardElevation="0dp"
-                    android:foreground="?attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/b_metronomeHalf"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:minHeight="48dp"
-                            android:gravity="center"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:text="@string/b_metronomeHalf"
-                            android:fontFamily="@font/noto_sans_regular"
-                            android:textColor="@color/button_text_color"
-                            android:textSize="14sp"
-                            android:textAllCaps="true"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <!-- Horizontal divider between the 0.5x header and the A/B panel -->
-                        <View
-                            android:id="@+id/half_variant_divider_top"
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="@color/AppDarkGrey"
-                            android:visibility="gone" />
-
-                        <!-- A/B panel: appears when tapping the 0.5x. B shifts the phase by one beat
-                             (half a period) to align with bars 1+3 vs 2+4. -->
-                        <LinearLayout
-                            android:id="@+id/panel_half_variant"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:visibility="gone">
-
-                            <TextView
-                                android:id="@+id/b_metronomeHalfA"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:gravity="center"
-                                android:padding="10dp"
-                                android:text="@string/metronome_half_variant_a"
-                                android:fontFamily="@font/noto_sans_regular"
-                                android:textColor="@color/AppWhite"
-                                android:textSize="14sp"
-                                android:background="?attr/selectableItemBackground"
-                                android:clickable="true"
-                                android:focusable="true" />
-
-                            <View
-                                android:layout_width="1dp"
-                                android:layout_height="match_parent"
-                                android:background="@color/AppDarkGrey" />
-
-                            <TextView
-                                android:id="@+id/b_metronomeHalfB"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:gravity="center"
-                                android:padding="10dp"
-                                android:text="@string/metronome_half_variant_b"
-                                android:fontFamily="@font/noto_sans_regular"
-                                android:textColor="@color/AppWhite"
-                                android:textSize="14sp"
-                                android:background="?attr/selectableItemBackground"
-                                android:clickable="true"
-                                android:focusable="true" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/b_metronome"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/b_metronome"
-                    android:layout_marginEnd="20dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:fontFamily="@font/noto_sans_regular"
-                    style="@style/ModalButton"
-                    />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/b_metronomeDouble"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="25dp"
-                    android:text="@string/b_metronomeDouble"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:fontFamily="@font/noto_sans_regular"
-                    style="@style/ModalButton"
-                    />
-        </LinearLayout>
+        <!-- Phase of the 0.5x click, shown only with 0.5x: B shifts it by one
+             beat to fall on bars 2+4 instead of 1+3. -->
+        <com.jotapeveloper.fision.chords.SlidingChipSelector
+            android:id="@+id/sel_metronomeHalfVariant"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="120dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="120dp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/tv_metronome_volume"

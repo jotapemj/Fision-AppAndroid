@@ -80,6 +80,9 @@ public interface DAO_db_SongParameters {
     @Query("UPDATE songParameters SET `Chords basic mode` = :basic WHERE `Song ID` = :songId")
     void updateChordsBasicMode(int songId, boolean basic);
 
+    @Query("UPDATE songParameters SET `Chords on lyrics` = :on WHERE `Song ID` = :songId")
+    void updateChordsOnLyrics(int songId, boolean on);
+
     // === v5 ===
     @Query("UPDATE songParameters SET `Metronome half variant` = :variant WHERE `Song ID` = :songId")
     void updateMetronomeHalfVariant(int songId, int variant);

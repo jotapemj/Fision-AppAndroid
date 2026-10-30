@@ -93,7 +93,7 @@ public class SlidingChipSelector extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
-        if (options.length == 0) return false;
+        if (options.length == 0 || !isEnabled()) return false;
         if (e.getActionMasked() == MotionEvent.ACTION_DOWN) return true;
         if (e.getActionMasked() == MotionEvent.ACTION_UP) {
             float seg = (getWidth() - getPaddingLeft() - getPaddingRight()) / (float) options.length;

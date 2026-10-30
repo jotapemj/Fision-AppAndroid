@@ -367,6 +367,10 @@
     <string name="lyrics_reprocess">Обробити знову</string>
     <string name="lyrics_options_title">Опції</string>
     <string name="lyrics_karaoke_mode">Режим караоке</string>
+    <string name="lyrics_chords_on">Акорди над текстом: увімкнено</string>
+    <string name="lyrics_chords_off">Акорди над текстом: вимкнено</string>
+    <string name="chord_view_diagrams">Діаграми</string>
+    <string name="chord_view_grid">Сітка</string>
     <string name="lyrics_karaoke_unavailable">Обробити знову для активації</string>
     <string name="car_karaoke_enable">Режим караоке</string>
     <string name="car_karaoke_disable">Вимкнути караоке</string>

@@ -105,4 +105,8 @@ public class db_SongParameters {
     // and writes `tempoMultMilli`.
     @ColumnInfo(name = "Tempo mult milli", defaultValue = "1000")
     public int tempoMultMilli;
+
+    // === v9: chord names drawn above the lyrics (lyrics view toggle). ===
+    @ColumnInfo(name = "Chords on lyrics", defaultValue = "0")
+    public boolean chordsOnLyrics;
 }

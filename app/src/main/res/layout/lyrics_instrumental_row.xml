@@ -3,15 +3,29 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <ImageView
-        android:id="@+id/iv_lyricsInstrumental"
-        android:layout_width="34dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:paddingTop="12dp"
-        android:paddingBottom="12dp"
-        android:src="@drawable/ic_music_note"
-        android:tint="@color/lyrics_line_dim"
-        android:contentDescription="@null"
-        android:scaleType="fitCenter" />
+        android:orientation="vertical">
+
+        <!-- Chords of the instrumental part (chords on lyrics), one row. -->
+        <com.jotapeveloper.fision.ChordStripView
+            android:id="@+id/cs_lyricsInstrumentalChords"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="12dp"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/iv_lyricsInstrumental"
+            android:layout_width="34dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:src="@drawable/ic_music_note"
+            android:tint="@color/lyrics_line_dim"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter" />
+    </LinearLayout>
 </FrameLayout>

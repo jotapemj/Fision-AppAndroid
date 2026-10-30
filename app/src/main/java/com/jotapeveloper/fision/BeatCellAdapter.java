@@ -113,49 +113,69 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         BeatCell cell = cells.get(position);
-        // A chord held over several bars is recalled at each bar start as a
-        // faint, smaller ghost until the next chord.
-        String chord = cell.chord;
-        boolean ghost = false;
-        if (chord == null && cell.isDownbeat) {
-            chord = sustainedChord(position);
-            ghost = chord != null;
-        }
-        holder.tv_chord.setText(ChordFormatter.format(chord, semitonesShift, latinNotation, preferFlat));
-        holder.tv_chord.setTypeface(typefaceForCurrent());
-        holder.tv_chord.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, ghost ? GHOST_SP : CHORD_SP);
-        holder.tv_chord.setAlpha(!ghost ? 1f : position == currentBeatIndex ? GHOST_ALPHA_ACTIVE : GHOST_ALPHA);
-
         int active = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(context);
+        bindChord(holder.tv_chord, cells, position, currentBeatIndex,
+                ChordFormatter.format(chordShown(cells, position), semitonesShift, latinNotation, preferFlat),
+                typefaceForCurrent());
 
         // Bar start -> visible vertical marker, in the player accent (the XML
         // ?attr/colorPrimary would stay on the theme accent).
         holder.v_marker.setVisibility(cell.isDownbeat ? View.VISIBLE : View.GONE);
         holder.v_marker.setBackgroundColor(active);
 
-        // Background color depending on state:
-        // - current beat: full accent;
-        // - the last bar's worth of elapsed beats: trail (stronger);
-        // - every earlier elapsed beat: played (subtle accent tint), so the
-        //   carousel shows how far the song has gone with no hard cut;
-        // - beats still to come: base / downbeat.
-        int trail = androidx.core.graphics.ColorUtils.blendARGB(active, 0xFF000000, 0.55f);
-        int color;
-        if (position == currentBeatIndex) {
-            color = active;
-        } else if (currentBeatIndex >= 0
-                && position < currentBeatIndex
-                && currentBeatIndex - position < beatsPerBar) {
-            color = trail;
-        } else if (currentBeatIndex >= 0 && position < currentBeatIndex) {
-            color = androidx.core.graphics.ColorUtils.blendARGB(
-                    cell.isDownbeat ? COLOR_DOWNBEAT : COLOR_BASE, active, PLAYED_TINT);
-        } else if (cell.isDownbeat) {
-            color = COLOR_DOWNBEAT;
-        } else {
-            color = COLOR_BASE;
+        holder.v_bg.getBackground().mutate().setTint(
+                stateColor(position, currentBeatIndex, beatsPerBar, cell.isDownbeat, active));
+    }
+
+    /**
+     * Tile colour of beat [position] with [current] playing:
+     * - current beat: full accent;
+     * - the last bar's worth of elapsed beats: trail (stronger);
+     * - every earlier elapsed beat: played (subtle accent tint), so the
+     *   view shows how far the song has gone with no hard cut;
+     * - beats still to come: base / downbeat.
+     */
+    public static int stateColor(int position, int current, int beatsPerBar,
+                                 boolean downbeat, int accent) {
+        return stateColor(position, current, beatsPerBar, downbeat, accent, true);
+    }
+
+    /** As above; without [trail] the elapsed beats of the bar get the played tint. */
+    public static int stateColor(int position, int current, int beatsPerBar,
+                                 boolean downbeat, int accent, boolean trail) {
+        if (position == current) return accent;
+        if (trail && current >= 0 && position < current && current - position < beatsPerBar) {
+            return androidx.core.graphics.ColorUtils.blendARGB(accent, 0xFF000000, 0.55f);
         }
-        holder.v_bg.getBackground().mutate().setTint(color);
+        if (current >= 0 && position < current) {
+            return androidx.core.graphics.ColorUtils.blendARGB(
+                    downbeat ? COLOR_DOWNBEAT : COLOR_BASE, accent, PLAYED_TINT);
+        }
+        return downbeat ? COLOR_DOWNBEAT : COLOR_BASE;
+    }
+
+    /**
+     * Chord written on beat [position]: its own, or at a bar start without
+     * one the chord still held (drawn as a ghost by {@link #bindChord}).
+     */
+    @androidx.annotation.Nullable
+    public static String chordShown(List<BeatCell> cells, int position) {
+        BeatCell cell = cells.get(position);
+        if (cell.chord != null || !cell.isDownbeat) return cell.chord;
+        return sustainedChord(cells, position);
+    }
+
+    /**
+     * Chord label of a tile: a chord held over several bars is recalled at
+     * each bar start as a faint, smaller ghost until the next chord.
+     */
+    public static void bindChord(TextView tv, List<BeatCell> cells, int position, int current,
+                                 String label, android.graphics.Typeface tf) {
+        boolean ghost = cells.get(position).chord == null && label != null && !label.isEmpty();
+        tv.setText(label);
+        tv.setTypeface(tf);
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, ghost ? GHOST_SP : CHORD_SP);
+        tv.setAlpha(!ghost ? 1f : position == current ? GHOST_ALPHA_ACTIVE : GHOST_ALPHA);
     }
 
     @Override
@@ -163,7 +183,7 @@ public class BeatCellAdapter extends RecyclerView.Adapter<BeatCellAdapter.ViewHo
 
     /** Chord still sounding at [position]: the last one that started before. */
     @androidx.annotation.Nullable
-    private String sustainedChord(int position) {
+    private static String sustainedChord(List<BeatCell> cells, int position) {
         for (int i = position - 1; i >= 0; i--) {
             String c = cells.get(i).chord;
             if (c != null) return c;

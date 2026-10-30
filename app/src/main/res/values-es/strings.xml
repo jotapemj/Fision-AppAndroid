@@ -386,6 +386,10 @@
     <string name="lyrics_reprocess">Reprocesar</string>
     <string name="lyrics_options_title">Opciones</string>
     <string name="lyrics_karaoke_mode">Modo karaoke</string>
+    <string name="lyrics_chords_on">Acordes en la letra: activados</string>
+    <string name="lyrics_chords_off">Acordes en la letra: desactivados</string>
+    <string name="chord_view_diagrams">Diagramas</string>
+    <string name="chord_view_grid">Cuadrícula</string>
     <string name="lyrics_karaoke_unavailable">Reprocesa para habilitar</string>
     <string name="car_karaoke_enable">Modo karaoke</string>
     <string name="car_karaoke_disable">Quitar modo karaoke</string>

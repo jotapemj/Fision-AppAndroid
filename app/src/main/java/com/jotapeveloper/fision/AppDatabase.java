@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {db_settings.class, db_SongParameters.class, db_Playlist.class}, version = 8)
+@Database(entities = {db_settings.class, db_SongParameters.class, db_Playlist.class}, version = 9)
 public abstract class AppDatabase extends RoomDatabase {
 
     // Static field for the singleton database instance
@@ -72,6 +72,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** v8 → v9: per-song "chords on lyrics" toggle. */
+    static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE songParameters ADD COLUMN `Chords on lyrics` INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     // Static method to obtain the database instance
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -79,7 +87,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "app_database")  // database name
-                            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                             .fallbackToDestructiveMigration()  // fallback if explicit migration fails
                             .build();
                 }

@@ -246,6 +246,22 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Chords on lyrics toggle, left of the overflow; look set in code
+         (accent disc when on). -->
+    <ImageButton
+        android:id="@+id/b_lyricsChords"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="12dp"
+        android:padding="9dp"
+        android:background="@drawable/lyrics_overflow_bg"
+        android:src="@drawable/ic_chords_on_lyrics"
+        android:contentDescription="@string/lyrics_chords_off"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/b_lyricsOptions"
+        app:layout_constraintTop_toTopOf="@id/b_lyricsOptions"
+        app:layout_constraintEnd_toStartOf="@id/b_lyricsOptions" />
+
     <!-- Overflow options: bottom-right, subtle circular tint for visibility. -->
     <ImageButton
         android:id="@+id/b_lyricsOptions"

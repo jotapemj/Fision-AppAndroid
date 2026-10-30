@@ -356,6 +356,10 @@
     <string name="lyrics_reprocess">Rielabora</string>
     <string name="lyrics_options_title">Opzioni</string>
     <string name="lyrics_karaoke_mode">Modalità karaoke</string>
+    <string name="lyrics_chords_on">Accordi sul testo: attivi</string>
+    <string name="lyrics_chords_off">Accordi sul testo: disattivi</string>
+    <string name="chord_view_diagrams">Diagrammi</string>
+    <string name="chord_view_grid">Griglia</string>
     <string name="lyrics_karaoke_unavailable">Rielabora per attivarla</string>
     <string name="car_karaoke_enable">Modalità karaoke</string>
     <string name="car_karaoke_disable">Disattiva karaoke</string>

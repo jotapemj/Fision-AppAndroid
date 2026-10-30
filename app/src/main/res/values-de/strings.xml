@@ -353,6 +353,10 @@
     <string name="lyrics_reprocess">Neu verarbeiten</string>
     <string name="lyrics_options_title">Optionen</string>
     <string name="lyrics_karaoke_mode">Karaoke-Modus</string>
+    <string name="lyrics_chords_on">Akkorde über dem Text: an</string>
+    <string name="lyrics_chords_off">Akkorde über dem Text: aus</string>
+    <string name="chord_view_diagrams">Diagramme</string>
+    <string name="chord_view_grid">Raster</string>
     <string name="lyrics_karaoke_unavailable">Zum Aktivieren neu verarbeiten</string>
     <string name="car_karaoke_enable">Karaoke-Modus</string>
     <string name="car_karaoke_disable">Karaoke ausschalten</string>
