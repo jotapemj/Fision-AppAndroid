@@ -579,6 +579,9 @@
     <string name="coach_lib_import_body">Choisissez un dossier avec un morceau déjà séparé. Chaque fichier est vérifié avant l\'ajout.</string>
     <string name="songs_empty_hint_local">%1$s pour importer ton premier dossier de morceau</string>
     <string name="import_folder_confirm">Importer un dossier de morceau ?</string>
+    <string name="local_demo_title">Essaie le morceau de démo</string>
+    <string name="local_demo_body"><![CDATA[Pas encore de morceaux ? <a href="%1$s">Télécharge</a> le morceau de démo prêt à écouter. Importe-le une fois téléchargé.]]></string>
+    <string name="local_demo_download">Télécharger</string>
     <string name="import_folder_pick">Choisir le dossier</string>
     <string name="import_folder_checking">Vérification du morceau…</string>
     <string name="import_folder_done">Morceau ajouté : %1$s</string>

@@ -21,7 +21,7 @@ Fision separates songs on a self-hosted
 [FisionServer](https://github.com/jotapemj/Fision-Server). On the first launch a
 login dialog asks for the server address, username and password.
 
-**Local mode** skips it: the player then works fully offline with song folders copied to the device by hand, for when there is no server or no connection to it.
+**Local mode** skips it: the player then works fully offline with song folders copied to the device by hand, for when there is no server or no connection to it. On entering it, a dialog offers the demo song; the steps to download and import it are in [Try it without a server](../README.md#try-it-without-a-server).
 
 Once signed in, the session token is stored encrypted, sent only to the
 configured server and left out of Android backups. If the address is plain

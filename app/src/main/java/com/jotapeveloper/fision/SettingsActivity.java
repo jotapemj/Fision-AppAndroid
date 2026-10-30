@@ -334,7 +334,10 @@ public class SettingsActivity extends AppCompatActivity
         } else {
             LoginDialog.show(this, true, new LoginDialog.Callback() {
                 @Override public void onLoggedIn(String u) { rebuildItems(); }
-                @Override public void onLocalMode()        { rebuildItems(); }
+                @Override public void onLocalMode() {
+                    rebuildItems();
+                    LocalDemoDialog.show(SettingsActivity.this, null);
+                }
             });
         }
     }

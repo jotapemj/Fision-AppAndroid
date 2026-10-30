@@ -76,6 +76,28 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 3. Sign in with the server address and your account, add a song and pick how
    to separate it.
 
+### Try it without a server
+
+A demo song ready to play, already split into stems with chords, beats,
+metronomes and synced lyrics: "Airplane Mode" by Josh Woodward, licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+1. Download
+   [`fision-demo.zip`](https://github.com/jotapemj/Fision-Server/releases/download/v2.1.0/fision-demo.zip)
+   (about 170 MB) on the phone.
+2. Extract it, for example with the Files app. It holds one folder named
+   with a long hash, and inside it a `stems` folder: that one is the song.
+3. Start Fision in **Local mode** (on the first launch, or from the account
+   row in Settings).
+4. Tap **Import folder**, confirm, and pick the `stems` folder in the system
+   folder picker.
+
+The app copies only the files the player reads and checks every one of
+them before the song is added: all the audio is decoded, the stems must have
+the same length, and the chord, beat and lyrics files must parse. Other files
+in the folder are ignored. Once imported, the zip and the extracted folder
+can be deleted.
+
 The [user guide](docs/GUIDE.md) walks through every screen, and the
 [technical notes](docs/TECHNICAL.md) cover the engine and the song format.
 

@@ -370,7 +370,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             // session; the choice is then ignored.
             if (com.jotapeveloper.fision.onboarding.Onboarding.debugAlwaysShow(this) && !welcomePreviewShown) {
                 welcomePreviewShown = true;
-                startActivity(new Intent(this, WelcomeActivity.class));
+                welcomePreview.launch(new Intent(this, WelcomeActivity.class));
             }
             return;
         }
@@ -378,6 +378,19 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private static boolean welcomePreviewShown = false;
+
+    /** Debug preview of the welcome: the session is kept, but picking local
+     *  mode still previews the demo song dialog. */
+    private final androidx.activity.result.ActivityResultLauncher<Intent> welcomePreview =
+            registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+                    r -> {
+                        String choice = r.getData() != null
+                                ? r.getData().getStringExtra(WelcomeActivity.EXTRA_CHOICE) : null;
+                        if (r.getResultCode() == RESULT_OK && WelcomeActivity.CHOICE_LOCAL.equals(choice)) {
+                            showLocalDemoDialog(null);
+                        }
+                    });
 
     private boolean isDebuggable() {
         return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
@@ -395,7 +408,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                             AuthManager.get(this).enterLocalMode();
                             refreshToolbarAvatar();
                             refreshCloudStatusIcon();
-                            rvSongList.postDelayed(this::maybeStartLibraryTour, 700);
+                            showLocalDemoDialog(() -> rvSongList.postDelayed(this::maybeStartLibraryTour, 700));
                         } else {
                             showFirstRunLogin();
                         }
@@ -417,7 +430,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 @Override public void onLocalMode() {
                     refreshToolbarAvatar();
                     refreshCloudStatusIcon();
-                    rvSongList.postDelayed(MainActivity.this::maybeStartLibraryTour, 700);
+                    showLocalDemoDialog(() -> rvSongList.postDelayed(MainActivity.this::maybeStartLibraryTour, 700));
                 }
                 @Override public void onCancelled() {
                     // No decision yet; keep first_run true so it prompts again next open.
@@ -1573,6 +1586,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override public void onLocalMode() {
                 refreshToolbarAvatar();
                 refreshCloudStatusIcon();
+                showLocalDemoDialog(null);
             }
         });
     }
@@ -1638,9 +1652,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 @Override public void onLocalMode() {
                     refreshToolbarAvatar();
                     refreshCloudStatusIcon();
+                    showLocalDemoDialog(null);
                 }
             });
         }
+    }
+
+    /** Local mode just entered: demo song dialog; [after] runs once it is gone
+     *  (the library tour waits for it). */
+    private void showLocalDemoDialog(@androidx.annotation.Nullable Runnable after) {
+        LocalDemoDialog.show(this, after);
     }
 
     private void syncSongsWithDatabase() {
@@ -2345,6 +2366,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override public void onLocalMode() {
                 refreshToolbarAvatar();
                 refreshCloudStatusIcon();
+                showLocalDemoDialog(null);
             }
         });
     }

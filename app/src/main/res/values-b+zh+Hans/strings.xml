@@ -569,6 +569,9 @@
     <string name="coach_lib_import_body">选择一个已分离好的歌曲文件夹。添加前会检查每个文件。</string>
     <string name="songs_empty_hint_local">%1$s导入你的第一个歌曲文件夹</string>
     <string name="import_folder_confirm">导入歌曲文件夹？</string>
+    <string name="local_demo_title">试试演示歌曲</string>
+    <string name="local_demo_body"><![CDATA[还没有歌曲？<a href="%1$s">下载</a>可直接播放的演示歌曲，下载后导入即可。]]></string>
+    <string name="local_demo_download">下载</string>
     <string name="import_folder_pick">选择文件夹</string>
     <string name="import_folder_checking">正在检查歌曲…</string>
     <string name="import_folder_done">已添加歌曲：%1$s</string>

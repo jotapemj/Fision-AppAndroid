@@ -609,6 +609,9 @@
     <string name="coach_lib_import_body">Elige una carpeta con una canción ya separada. Cada fichero se comprueba antes de añadirla.</string>
     <string name="songs_empty_hint_local">%1$s para importar tu primera carpeta de canción</string>
     <string name="import_folder_confirm">¿Importar carpeta de canción?</string>
+    <string name="local_demo_title">Prueba la canción demo</string>
+    <string name="local_demo_body"><![CDATA[¿Aún sin canciones? <a href="%1$s">Descarga</a> la canción demo lista para reproducir. Impórtala una vez descargada.]]></string>
+    <string name="local_demo_download">Descargar</string>
     <string name="import_folder_pick">Elegir carpeta</string>
     <string name="import_folder_checking">Comprobando la canción…</string>
     <string name="import_folder_done">Canción añadida: %1$s</string>

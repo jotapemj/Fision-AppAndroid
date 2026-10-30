@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Local mode: where to get the demo song and how to import it. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="300dp"
+    android:padding="24dp"
+    android:background="@drawable/delete_dialogbg">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginBottom="10dp"
+        android:src="@drawable/ic_music_note"
+        app:tint="?attr/colorPrimary"
+        android:contentDescription="@string/local_demo_title" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginBottom="14dp"
+        android:fontFamily="@font/noto_sans_regular"
+        android:text="@string/local_demo_title"
+        android:textColor="@color/AppWhite"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_localDemoBody"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:fontFamily="@font/noto_sans_regular"
+        android:textColor="@color/AppWhite"
+        android:textColorLink="?attr/colorPrimary"
+        android:textSize="14sp"
+        android:gravity="center" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_localDemoClose"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:padding="10dp"
+            android:maxLines="2"
+            android:text="@string/dialog_close"
+            android:textColor="@color/AppWhite"
+            app:strokeColor="?attr/colorPrimary"
+            app:rippleColor="?attr/colorPrimary"
+            app:cornerRadius="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/b_localDemoDownload"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:padding="10dp"
+            android:maxLines="2"
+            android:text="@string/local_demo_download"
+            android:textColor="@color/AppWhite"
+            app:backgroundTint="?attr/colorPrimary"
+            app:cornerRadius="20dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

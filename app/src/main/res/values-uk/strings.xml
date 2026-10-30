@@ -594,6 +594,9 @@
     <string name="coach_lib_import_body">Виберіть папку з уже розділеною піснею. Кожен файл перевіряється перед додаванням.</string>
     <string name="songs_empty_hint_local">%1$s, щоб імпортувати першу папку з піснею</string>
     <string name="import_folder_confirm">Імпортувати папку з піснею?</string>
+    <string name="local_demo_title">Спробуйте демо-пісню</string>
+    <string name="local_demo_body"><![CDATA[Пісень ще немає? <a href="%1$s">Завантажте</a> демо-пісню, готову до відтворення. Після завантаження імпортуйте її.]]></string>
+    <string name="local_demo_download">Завантажити</string>
     <string name="import_folder_pick">Вибрати папку</string>
     <string name="import_folder_checking">Перевірка пісні…</string>
     <string name="import_folder_done">Пісню додано: %1$s</string>
