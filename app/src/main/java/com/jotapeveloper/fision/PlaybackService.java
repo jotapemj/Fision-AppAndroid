@@ -182,9 +182,15 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     }
 
     // === Lifecycle ===
+    /** True from onCreate to onDestroy. A bind with flags 0 to a dead service
+     *  never calls back, so hosts check this to drop stale state. */
+    private static volatile boolean running;
+    public static boolean isRunning() { return running; }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        running = true;
         createNotificationChannel();
         notificationManager = NotificationManagerCompat.from(this);
         setupMediaSession();
@@ -384,6 +390,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
 
     @Override
     public void onDestroy() {
+        running = false;
         FisionApplication.setForegroundListener(null);
         com.jotapeveloper.fision.cloud.AuthManager.get(this).removeLibraryChangedListener(libraryChanged);
         mainHandler.removeCallbacks(idleStop);
@@ -804,6 +811,12 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         cachedCoverBitmap = null;
 
         updateMediaMetadata(getDisplayTitle(), songDurationMs);
+        // The foreground notification may still be the neutral one posted
+        // before the song existed: rebuild it with the song's title and cover.
+        if (startedByCommand) {
+            startForegroundWithNotif(isPlaying ? PlaybackStateCompat.STATE_PLAYING
+                                               : PlaybackStateCompat.STATE_PAUSED);
+        }
         notifyListeners();
         reevaluateIdleStop();
     }
@@ -878,8 +891,13 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         reevaluateIdleStop();
     }
 
+    /** Seeks and republishes the session state: the notification and other
+     *  controllers extrapolate from the last published position, so a seek
+     *  that is not published leaves them at the old one while playing. */
     public void seekTo(long ms) {
-        if (engine != null) engine.seekTo(ms);
+        if (engine == null) return;
+        engine.seekTo(ms);
+        refreshPlaybackState();
     }
 
     /** Loads the next song (in the same folder as the current one) and starts
@@ -891,9 +909,6 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     public void skipToPrevious() {
         if (engine != null && engine.getCurrentPositionMs() > REWIND_THRESHOLD_MS) {
             seekTo(0);
-            updatePlaybackState(isPlaying
-                    ? PlaybackStateCompat.STATE_PLAYING
-                    : PlaybackStateCompat.STATE_PAUSED);
             return;
         }
         dispatchSkip(-1);
@@ -1185,11 +1200,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
                 if (isPhoneCallActive()) return;
                 playFromMediaId(mediaId);
             }
-            @Override public void onSeekTo(long pos) {
-                seekTo(pos);
-                updatePlaybackState(isPlaying ? PlaybackStateCompat.STATE_PLAYING
-                                              : PlaybackStateCompat.STATE_PAUSED);
-            }
+            @Override public void onSeekTo(long pos) { seekTo(pos); }
             @Override public void onPause() { pause(); }
             @Override public void onStop()  { pause(); }
             @Override public void onSkipToNext()     { skipToNext(); }
@@ -1517,7 +1528,9 @@ public class PlaybackService extends MediaBrowserServiceCompat {
 
         // Cover: cached native bitmap (artcover or fallback to the HD app logo).
         // The system picks it up from the MediaMetadata for the modern (HD) notification.
-        android.graphics.Bitmap largeIcon = getOrLoadCover();
+        // No song yet: no icon. The system shrinks the largeIcon (~76 px) and,
+        // without session art, stretches it as the card background.
+        android.graphics.Bitmap largeIcon = currentSongName != null ? getOrLoadCover() : null;
 
         String notifArtist = getResolvedArtist();
         builder = new NotificationCompat.Builder(this, CHANNEL_ID)

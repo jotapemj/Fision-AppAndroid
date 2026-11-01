@@ -85,6 +85,24 @@
         app:rippleColor="?attr/colorPrimary"
         app:cornerRadius="20dp" />
 
+    <!-- Local mode, demo song not in the library: download and import it. -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/b_about_demo"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:padding="10dp"
+        android:text="@string/settings_demo_download"
+        android:textColor="@color/AppWhite"
+        android:visibility="gone"
+        app:icon="@drawable/ic_github"
+        app:iconGravity="textStart"
+        app:iconTint="?attr/colorPrimary"
+        app:strokeColor="?attr/colorPrimary"
+        app:rippleColor="?attr/colorPrimary"
+        app:cornerRadius="20dp" />
+
     <!-- Legacy TextView kept for compatibility with existing find-by-id code
          but no longer rendered. Height 0 keeps it invisible without touching
          the About activity setup. -->

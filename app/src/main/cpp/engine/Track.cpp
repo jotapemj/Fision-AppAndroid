@@ -153,6 +153,10 @@ void Track::applyPendingSeek(){
 }
 
 int64_t Track::getCurrentPositionMs() const{
+    // A queued seek is the position: while paused the render does not run and
+    // would otherwise report the old one until playback resumes.
+    int64_t pending = mPendingSeekMs.load(std::memory_order_acquire);
+    if (pending != INT64_MIN) return pending;
     return mPositionMs.load(std::memory_order_acquire);
 }
 

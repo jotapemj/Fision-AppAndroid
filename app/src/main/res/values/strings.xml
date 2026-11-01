@@ -608,8 +608,10 @@
     <string name="coach_lib_import_body">Pick a folder with a song that is already split. Every file is checked before it is added.</string>
     <string name="songs_empty_hint_local">%1$s to import your first song folder</string>
     <string name="import_folder_confirm">Import song folder?</string>
-    <string name="local_demo_title">Try the demo song</string>
-    <string name="local_demo_body"><![CDATA[No songs yet? <a href="%1$s">Download</a> the demo song, ready to play. Import it once downloaded.]]></string>
+    <string name="demo_dialog_title">Download demo song?</string>
+    <string name="demo_dialog_body">The sample song will be downloaded from GitHub and imported into the library. About %1$d MB will be downloaded.</string>
+    <string name="settings_demo_download">Download demo song</string>
+    <string name="demo_download_failed">The demo song could not be downloaded. Check the connection and try again.</string>
     <string name="local_demo_download">Download</string>
     <string name="import_folder_pick">Choose folder</string>
     <string name="import_folder_checking">Checking the song…</string>

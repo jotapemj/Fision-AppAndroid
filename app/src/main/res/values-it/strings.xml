@@ -579,8 +579,10 @@
     <string name="coach_lib_import_body">Scegli una cartella con un brano già separato. Ogni file viene controllato prima di aggiungerlo.</string>
     <string name="songs_empty_hint_local">%1$s per importare la tua prima cartella di brano</string>
     <string name="import_folder_confirm">Importare una cartella di brano?</string>
-    <string name="local_demo_title">Prova il brano demo</string>
-    <string name="local_demo_body"><![CDATA[Ancora nessun brano? <a href="%1$s">Scarica</a> il brano demo pronto da ascoltare. Importalo una volta scaricato.]]></string>
+    <string name="demo_dialog_title">Scaricare il brano demo?</string>
+    <string name="demo_dialog_body">Il brano di esempio verrà scaricato da GitHub e importato nella libreria. Verranno scaricati circa %1$d MB.</string>
+    <string name="settings_demo_download">Scarica il brano demo</string>
+    <string name="demo_download_failed">Impossibile scaricare il brano demo. Controlla la connessione e riprova.</string>
     <string name="local_demo_download">Scarica</string>
     <string name="import_folder_pick">Scegli cartella</string>
     <string name="import_folder_checking">Controllo del brano…</string>

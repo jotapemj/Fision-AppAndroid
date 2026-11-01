@@ -171,6 +171,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Foreground service: demo song download and import (local mode) -->
+        <service
+            android:name=".DemoSongService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Per-app UI language below Android 13: AppCompat stores and restores it. -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

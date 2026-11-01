@@ -21,8 +21,8 @@ public:
     void stop();
 
     // === Global progress helpers ===
-    int64_t getCurrentPositionAllMs() const; // reference position (first stem)
-    int64_t getDurationMs() const;        // total duration (first stem)
+    int64_t getCurrentPositionAllMs() const; // reference position (first non-looping track)
+    int64_t getDurationMs() const;        // total duration (first non-looping track)
     void    seekToAll(int64_t ms);           // synchronized seek on every stem
 
     // Real output latency in ms (measured via Oboe getTimestamp). 0 when unavailable.
@@ -84,6 +84,11 @@ private:
     // addTrack in parallel to decode stems concurrently. Only used during
     // song load — never touched from the audio thread.
     std::mutex mAddTrackMutex;
+    // Track that gives the song position and duration: the first non-looping
+    // one. Parallel decode adds tracks in completion order, and a looping
+    // metronome wraps to 0 at its end, so the song end would be missed.
+    int mRefTrack = -1;
+    int refTrack() const { return mRefTrack >= 0 ? mRefTrack : 0; }
     HrtfBank mHrtf;  // shared by all tracks
     // SoundTouch ALWAYS on (init true). All tracks are forced through the same
     // path so latency and mSrcPos consumption stay uniform; disabling it when

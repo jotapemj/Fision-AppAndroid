@@ -93,14 +93,8 @@ public final class SongFolderImporter {
         }
 
         // 2) The set the player needs.
-        boolean vocals = hasAudio(picked, "vocals");
-        boolean backing = hasAudio(picked, "other") || hasAudio(picked, "instrumental");
-        if (!vocals || !backing) return Result.fail(R.string.import_folder_err_stems, null);
-        for (String m : METRONOMES) {
-            if (!hasAudio(picked, m)) return Result.fail(R.string.import_folder_err_missing, m + ".flac");
-        }
-        if (!picked.containsKey("beats.txt"))  return Result.fail(R.string.import_folder_err_missing, "beats.txt");
-        if (!picked.containsKey("chords.txt")) return Result.fail(R.string.import_folder_err_missing, "chords.txt");
+        Result missing = checkRequired(picked.keySet());
+        if (missing != null) return missing;
 
         // 3) Declared sizes and free space (the copy enforces the limits again).
         long total = 0;
@@ -141,6 +135,118 @@ public final class SongFolderImporter {
         }
     }
 
+    /** Download progress of {@link #importZip}. */
+    public interface ZipProgress {
+        /** Bytes of the zip read so far. */
+        void onBytes(long read);
+        boolean isCancelled();
+    }
+
+    /**
+     * Imports a song from a zip read as a stream (nothing but the picked files
+     * is written): the entries directly under [innerDir] go through the same
+     * name filter, limits and checks as a picked folder. The whole stream must
+     * hash to [sha256] (hex) before the song is added as [folderName].
+     * Cancelled: a failure with error 0. Blocking: call off the main thread.
+     */
+    @WorkerThread
+    @NonNull
+    public static Result importZip(@NonNull Context ctx, @NonNull InputStream raw,
+                                   @NonNull String innerDir, @NonNull String folderName,
+                                   @NonNull String sha256, long expectedBytes,
+                                   @NonNull ZipProgress progress) {
+        File songsRoot = SongCatalog.songsRoot(ctx);
+        if (!songsRoot.isDirectory() && !songsRoot.mkdirs()) return Result.fail(R.string.import_folder_err_io, null);
+        if (songsRoot.getUsableSpace() < expectedBytes + 64 * MB) {
+            return Result.fail(R.string.import_folder_err_space, null);
+        }
+        File dest = new File(songsRoot, folderName);
+        if (dest.exists()) return Result.fail(R.string.import_folder_err_exists, folderName);
+
+        File staging = new File(stagingRoot(ctx), UUID.randomUUID().toString());
+        java.security.MessageDigest md;
+        try {
+            md = java.security.MessageDigest.getInstance("SHA-256");
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return Result.fail(R.string.import_folder_err_io, null);
+        }
+        long[] read = {0};
+        InputStream counting = new java.io.FilterInputStream(raw) {
+            @Override public int read() throws IOException {
+                int b = super.read();
+                if (b >= 0) progress.onBytes(++read[0]);
+                return b;
+            }
+            @Override public int read(byte[] b, int off, int len) throws IOException {
+                if (progress.isCancelled()) throw new java.io.InterruptedIOException("cancelled");
+                int n = super.read(b, off, len);
+                if (n > 0) { read[0] += n; progress.onBytes(read[0]); }
+                return n;
+            }
+        };
+        java.security.DigestInputStream digest = new java.security.DigestInputStream(counting, md);
+        try {
+            if (!staging.mkdirs()) return Result.fail(R.string.import_folder_err_io, null);
+            java.util.Set<String> taken = new java.util.HashSet<>();
+            java.util.zip.ZipInputStream zin = new java.util.zip.ZipInputStream(digest);
+            java.util.zip.ZipEntry e;
+            while ((e = zin.getNextEntry()) != null) {
+                String path = e.getName();
+                if (e.isDirectory() || !path.startsWith(innerDir)) continue;
+                String rest = path.substring(innerDir.length());
+                if (rest.isEmpty() || rest.contains("/") || rest.contains("\\")) continue;
+                String canonical = canonicalName(rest);
+                if (canonical == null) continue;
+                for (String k : taken) {
+                    if (bareName(k).equals(bareName(canonical))) return Result.fail(R.string.import_folder_err_duplicate, rest);
+                }
+                taken.add(canonical);
+                if (!copyLimited(zin, new File(staging, canonical), limitFor(canonical))) {
+                    return Result.fail(R.string.import_folder_err_size, canonical);
+                }
+            }
+            // The digest covers the whole file, central directory included.
+            byte[] buf = new byte[64 * 1024];
+            while (digest.read(buf) != -1) { /* drain */ }
+            if (!toHex(md.digest()).equalsIgnoreCase(sha256)) {
+                return Result.fail(R.string.import_folder_err_invalid, "zip");
+            }
+            Result missing = checkRequired(taken);
+            if (missing != null) return missing;
+            Result bad = validate(staging);
+            if (bad != null) return bad;
+            if (dest.exists()) return Result.fail(R.string.import_folder_err_exists, folderName);
+            if (!staging.renameTo(dest)) return Result.fail(R.string.import_folder_err_io, null);
+            return Result.ok(folderName);
+        } catch (java.io.InterruptedIOException e) {
+            return Result.fail(0, null);
+        } catch (IOException e) {
+            return Result.fail(R.string.import_folder_err_read, null);
+        } finally {
+            deleteTree(staging);
+        }
+    }
+
+    private static String toHex(byte[] b) {
+        StringBuilder sb = new StringBuilder(b.length * 2);
+        for (byte x : b) sb.append(String.format(Locale.ROOT, "%02x", x));
+        return sb.toString();
+    }
+
+    /** Failure for the first file the player needs that is missing, or null. */
+    @Nullable
+    private static Result checkRequired(java.util.Set<String> names) {
+        boolean vocals = hasAudio(names, "vocals");
+        boolean backing = hasAudio(names, "other") || hasAudio(names, "instrumental");
+        if (!vocals || !backing) return Result.fail(R.string.import_folder_err_stems, null);
+        for (String m : METRONOMES) {
+            if (!hasAudio(names, m)) return Result.fail(R.string.import_folder_err_missing, m + ".flac");
+        }
+        if (!names.contains("beats.txt"))  return Result.fail(R.string.import_folder_err_missing, "beats.txt");
+        if (!names.contains("chords.txt")) return Result.fail(R.string.import_folder_err_missing, "chords.txt");
+        return null;
+    }
+
     /** Removes staging leftovers of an interrupted import. */
     public static void cleanStaging(@NonNull Context ctx) {
         File root = stagingRoot(ctx);
@@ -175,8 +281,8 @@ public final class SongFolderImporter {
         return canonical.endsWith(".wav") || canonical.endsWith(".flac");
     }
 
-    private static boolean hasAudio(Map<String, DocumentFile> picked, String bare) {
-        return picked.containsKey(bare + ".flac") || picked.containsKey(bare + ".wav");
+    private static boolean hasAudio(java.util.Set<String> names, String bare) {
+        return names.contains(bare + ".flac") || names.contains(bare + ".wav");
     }
 
     private static long limitFor(String canonical) {
@@ -201,9 +307,15 @@ public final class SongFolderImporter {
 
     /** Copies at most [limit] bytes; false when the source is larger. */
     private static boolean copyLimited(Context ctx, Uri src, File dst, long limit) throws IOException {
-        try (InputStream in = ctx.getContentResolver().openInputStream(src);
-             OutputStream out = new FileOutputStream(dst)) {
+        try (InputStream in = ctx.getContentResolver().openInputStream(src)) {
             if (in == null) throw new IOException("no stream");
+            return copyLimited(in, dst, limit);
+        }
+    }
+
+    /** Same from an open stream, which is left open (a zip entry). */
+    private static boolean copyLimited(InputStream in, File dst, long limit) throws IOException {
+        try (OutputStream out = new FileOutputStream(dst)) {
             byte[] buf = new byte[256 * 1024];
             long copied = 0;
             int n;
@@ -246,7 +358,7 @@ public final class SongFolderImporter {
                 case "chords.txt":
                 case "chords_basic.txt": ok = validChords(f, maxLen); break;
                 case "metadata.txt":     ok = validText(f); break;
-                case "artcover.png":     ok = validPng(f); break;
+                case "artcover.png":     ok = validCover(f); break;
                 case "lyrics.json":      ok = validLyrics(f); break;
                 default:                 ok = true;   // audio, checked above
             }
@@ -349,7 +461,9 @@ public final class SongFolderImporter {
         }
     }
 
-    private static boolean validPng(File f) {
+    /** PNG or JPEG content (covers taken from audio tags keep the .png name
+     *  with JPEG data; the player decodes either). */
+    private static boolean validCover(File f) {
         byte[] sig = new byte[8];
         try (InputStream in = new FileInputStream(f)) {
             if (in.read(sig) != 8) return false;
@@ -357,7 +471,10 @@ public final class SongFolderImporter {
             return false;
         }
         byte[] png = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
-        for (int i = 0; i < 8; i++) if (sig[i] != png[i]) return false;
+        boolean isPng = true;
+        for (int i = 0; i < 8; i++) if (sig[i] != png[i]) { isPng = false; break; }
+        boolean isJpeg = sig[0] == (byte) 0xFF && sig[1] == (byte) 0xD8 && sig[2] == (byte) 0xFF;
+        if (!isPng && !isJpeg) return false;
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(f.getAbsolutePath(), o);

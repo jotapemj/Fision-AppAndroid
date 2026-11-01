@@ -44,7 +44,7 @@
     <color name="lyrics_skeleton_base">#2E2E2E</color>
     <color name="lyrics_skeleton_shimmer">#5A5A5A</color>
     <color name="lyrics_line_dim">#8AFFFFFF</color>
-    <!-- Words of the active karaoke line not reached yet -->
-    <color name="lyrics_line_current">#C2FFFFFF</color>
+    <!-- Words of the active karaoke line not reached yet: clearly below the white of the sung ones -->
+    <color name="lyrics_line_current">#8CFFFFFF</color>
     <color name="lyrics_flag_stroke">#33FFFFFF</color>
 </resources>

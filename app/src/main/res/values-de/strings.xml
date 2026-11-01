@@ -572,8 +572,10 @@
     <string name="coach_lib_import_body">Wähle einen Ordner mit einem bereits getrennten Song. Jede Datei wird vor dem Hinzufügen geprüft.</string>
     <string name="songs_empty_hint_local">%1$s, um deinen ersten Songordner zu importieren</string>
     <string name="import_folder_confirm">Songordner importieren?</string>
-    <string name="local_demo_title">Probiere den Demo-Song</string>
-    <string name="local_demo_body"><![CDATA[Noch keine Songs? Den abspielbereiten Demo-Song <a href="%1$s">herunterladen</a>. Importiere ihn nach dem Download.]]></string>
+    <string name="demo_dialog_title">Demo-Song herunterladen?</string>
+    <string name="demo_dialog_body">Der Beispielsong wird von GitHub heruntergeladen und in die Bibliothek importiert. Es werden etwa %1$d MB heruntergeladen.</string>
+    <string name="settings_demo_download">Demo-Song herunterladen</string>
+    <string name="demo_download_failed">Der Demo-Song konnte nicht heruntergeladen werden. Prüfe die Verbindung und versuche es erneut.</string>
     <string name="local_demo_download">Herunterladen</string>
     <string name="import_folder_pick">Ordner wählen</string>
     <string name="import_folder_checking">Song wird geprüft…</string>

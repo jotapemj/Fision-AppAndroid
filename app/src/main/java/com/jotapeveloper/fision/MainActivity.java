@@ -353,6 +353,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         // Load Main Activity RecyclerView with songs
         refreshSongList();
         AuthManager.get(this).addLibraryChangedListener(libraryChangedListener);
+        DemoSong.addListener(demoListener);
 
 
         // First-run flow: prompt the sign-in dialog on the very first launch. The
@@ -370,7 +371,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             // session; the choice is then ignored.
             if (com.jotapeveloper.fision.onboarding.Onboarding.debugAlwaysShow(this) && !welcomePreviewShown) {
                 welcomePreviewShown = true;
-                welcomePreview.launch(new Intent(this, WelcomeActivity.class));
+                startActivity(new Intent(this, WelcomeActivity.class));
             }
             return;
         }
@@ -378,19 +379,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private static boolean welcomePreviewShown = false;
-
-    /** Debug preview of the welcome: the session is kept, but picking local
-     *  mode still previews the demo song dialog. */
-    private final androidx.activity.result.ActivityResultLauncher<Intent> welcomePreview =
-            registerForActivityResult(
-                    new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
-                    r -> {
-                        String choice = r.getData() != null
-                                ? r.getData().getStringExtra(WelcomeActivity.EXTRA_CHOICE) : null;
-                        if (r.getResultCode() == RESULT_OK && WelcomeActivity.CHOICE_LOCAL.equals(choice)) {
-                            showLocalDemoDialog(null);
-                        }
-                    });
 
     private boolean isDebuggable() {
         return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
@@ -408,7 +396,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                             AuthManager.get(this).enterLocalMode();
                             refreshToolbarAvatar();
                             refreshCloudStatusIcon();
-                            showLocalDemoDialog(() -> rvSongList.postDelayed(this::maybeStartLibraryTour, 700));
+                            rvSongList.postDelayed(this::maybeStartLibraryTour, 700);
                         } else {
                             showFirstRunLogin();
                         }
@@ -430,7 +418,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 @Override public void onLocalMode() {
                     refreshToolbarAvatar();
                     refreshCloudStatusIcon();
-                    showLocalDemoDialog(() -> rvSongList.postDelayed(MainActivity.this::maybeStartLibraryTour, 700));
+                    rvSongList.postDelayed(MainActivity.this::maybeStartLibraryTour, 700);
                 }
                 @Override public void onCancelled() {
                     // No decision yet; keep first_run true so it prompts again next open.
@@ -1398,7 +1386,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         java.util.Collections.sort(inFlight, byDate);
         java.util.Collections.sort(regular, byDate);
 
-        List<SongListData> all = new ArrayList<>(inFlight.size() + regular.size());
+        List<SongListData> all = new ArrayList<>(inFlight.size() + regular.size() + 1);
+        // Local mode: the demo song not downloaded yet, pinned on top.
+        if (DemoSong.placeholderShown(this)) all.add(DemoSong.placeholder());
         all.addAll(inFlight);
         all.addAll(regular);
         return all;
@@ -1586,7 +1576,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override public void onLocalMode() {
                 refreshToolbarAvatar();
                 refreshCloudStatusIcon();
-                showLocalDemoDialog(null);
             }
         });
     }
@@ -1652,17 +1641,43 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 @Override public void onLocalMode() {
                     refreshToolbarAvatar();
                     refreshCloudStatusIcon();
-                    showLocalDemoDialog(null);
                 }
             });
         }
     }
 
-    /** Local mode just entered: demo song dialog; [after] runs once it is gone
-     *  (the library tour waits for it). */
-    private void showLocalDemoDialog(@androidx.annotation.Nullable Runnable after) {
-        LocalDemoDialog.show(this, after);
+    // === Local mode: demo song ===
+
+    /** Tap on the demo placeholder: asks before downloading it. */
+    void showDemoDownloadDialog() {
+        LocalDemoDialog.show(this);
     }
+
+    private final DemoSong.Listener demoListener = new DemoSong.Listener() {
+        @Override public void onDemoProgress(int pct) {
+            if (isFinishing() || isDestroyed() || rvSongList == null) return;
+            RecyclerView.Adapter<?> a = rvSongList.getAdapter();
+            if (a instanceof SongListAdapter) {
+                SongListData[] data = ((SongListAdapter) a).listData;
+                for (int i = 0; i < data.length; i++) {
+                    if (data[i].demo) { a.notifyItemChanged(i, SongListAdapter.PAYLOAD_CLOUD); return; }
+                }
+            }
+            // Started from Settings: the placeholder is not listed yet.
+            refreshSongList();
+        }
+
+        @Override public void onDemoFinished(boolean ok, int error, String file) {
+            if (isFinishing() || isDestroyed()) return;
+            refreshSongList();
+            if (ok) {
+                Toast.makeText(MainActivity.this, getString(R.string.import_folder_done, DemoSong.TITLE),
+                        Toast.LENGTH_LONG).show();
+            } else if (error != 0) {
+                showImportError(file != null ? getString(error, file) : getString(error));
+            }
+        }
+    };
 
     private void syncSongsWithDatabase() {
         // Get the database instance
@@ -1753,7 +1768,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         final boolean inFlight   = song.cloud != null && song.cloud.isInFlight();
         final boolean isQueued   = song.cloud != null && song.cloud.state == CloudItem.State.QUEUED;
         // Locked: running on the server or downloading — cannot be touched
-        final boolean deleteBlocked = inFlight && !isQueued;
+        final boolean deleteBlocked = (inFlight && !isQueued) || (song.demo && DemoSong.isDownloading());
 
         BottomSheetDialog optionsBottomSheet = new BottomSheetDialog(this, R.style.TransparentBottomSheetDialog);
         View bottomSheetView = getLayoutInflater().inflate(R.layout.modal_sheet_dialog, null);
@@ -1769,6 +1784,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         if (ivCover != null && coverPath != null) {
             android.graphics.Bitmap bm = ImageDecode.file(coverPath, COVER_HD_MAX_PX);
             if (bm != null) ivCover.setImageBitmap(bm);
+        } else if (ivCover != null && song.demo) {
+            ivCover.setImageResource(R.drawable.demo_artcover);
         }
 
         SongTitle.setText(displayName);
@@ -1778,8 +1795,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             SongArtist.setVisibility(artistName.isEmpty() ? View.GONE : View.VISIBLE);
         }
 
-        // Cloud-only or in-flight items: no local folder to rename
-        if (cloudOnly || inFlight) {
+        // Cloud-only, in-flight items and the demo placeholder: no local folder to rename
+        if (cloudOnly || inFlight || song.demo) {
             renameButton.setEnabled(false);
             renameButton.setAlpha(0.4f);
         }
@@ -1814,7 +1831,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         renameButton.setOnClickListener(v -> {
             optionsBottomSheet.dismiss();
-            if (!cloudOnly && !inFlight) {
+            if (!cloudOnly && !inFlight && !song.demo) {
                 showRenameDialog(folderName, displayName, artistName, coverPath);
             }
         });
@@ -1979,7 +1996,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
      *  button onClick to defer it after the dialog dismiss (which clears the blur). */
     private void runDelete(@NonNull SongListData song, @NonNull String folderName,
                            boolean isQueued, boolean cloudOnly) {
-        if (isQueued && song.cloud != null) {
+        if (song.demo) {
+            // Placeholder gone for good; Settings can still download the song.
+            DemoSong.dismissPlaceholder(this);
+        } else if (isQueued && song.cloud != null) {
                 CloudRepository.get(this).cancelQueuedJob(song.cloud.hash);
             } else if (cloudOnly && song.cloud != null) {
                 CloudRepository.get(this).deleteFromCloud(song.cloud.hash, () ->
@@ -2299,6 +2319,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onDestroy() {
         AuthManager.get(this).removeLibraryChangedListener(libraryChangedListener);
+        DemoSong.removeListener(demoListener);
         super.onDestroy();
     }
 
@@ -2366,7 +2387,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             @Override public void onLocalMode() {
                 refreshToolbarAvatar();
                 refreshCloudStatusIcon();
-                showLocalDemoDialog(null);
             }
         });
     }

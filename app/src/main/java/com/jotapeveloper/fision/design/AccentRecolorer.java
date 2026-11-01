@@ -160,7 +160,10 @@ public final class AccentRecolorer {
             int checked = btn != null ? btn.getColorForState(new int[] {
                     android.R.attr.state_enabled, android.R.attr.state_checked }, btn.getDefaultColor()) : 0;
             if (checked == fromP) {
-                instant.add((p, s) -> cb.setButtonTintList(retintChecked(btn, p)));
+                instant.add((p, s) -> {
+                    cb.setButtonTintList(retintChecked(btn, p));
+                    retintCheckedRipple(cb, p);
+                });
             }
         } else if (v instanceof SeekBar) {
             SeekBar sb = (SeekBar) v;
@@ -223,6 +226,25 @@ public final class AccentRecolorer {
         return new ColorStateList(
                 new int[][] { new int[] { android.R.attr.state_checked }, STATE_NONE },
                 new int[] { color, unchecked });
+    }
+
+    // Press halo of a checked box: the theme's checked highlight (accent at low
+    // alpha) is resolved at inflation and does not follow the button tint.
+    private static void retintCheckedRipple(android.widget.CompoundButton cb, int color) {
+        if (!(cb.getBackground() instanceof android.graphics.drawable.RippleDrawable)) return;
+        android.content.res.TypedArray ta = cb.getContext().obtainStyledAttributes(
+                new int[] { android.R.attr.colorControlHighlight });
+        ColorStateList hl = ta.getColorStateList(0);
+        ta.recycle();
+        int unchecked = hl != null ? hl.getDefaultColor() : 0x33FFFFFF;
+        int checked = hl != null && hl.isStateful()
+                ? hl.getColorForState(new int[] {
+                        android.R.attr.state_enabled, android.R.attr.state_checked }, unchecked)
+                : unchecked;
+        int alpha = checked != unchecked ? checked & 0xFF000000 : 0x42000000;
+        ((android.graphics.drawable.RippleDrawable) cb.getBackground()).setColor(new ColorStateList(
+                new int[][] { new int[] { android.R.attr.state_checked }, STATE_NONE },
+                new int[] { alpha | (color & 0x00FFFFFF), unchecked }));
     }
 
     private static int colorFor(@Nullable ColorStateList csl, int[] state, int fallback) {

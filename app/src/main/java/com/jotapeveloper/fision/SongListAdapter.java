@@ -88,6 +88,10 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         // Lightweight bind: overlays + subtitle only, no cover touching nor bitmap decoding
         if (!payloads.isEmpty() && payloads.contains(PAYLOAD_CLOUD)) {
             SongListData it = listData[position];
+            if (it.demo) {
+                bindDemoState(holder, it, true);
+                return;
+            }
             String newSub = computeSubtitle(it);
             String newKind = computeSubtitleKind(it);
             String oldKind = holder.lastSubtitleKind;
@@ -149,6 +153,24 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
 
         String title = item.getDisplayTitle() != null ? item.getDisplayTitle() : item.getTitle();
         holder.tvTitle.setText(title);
+
+        if (item.demo) {
+            if (demoCover == null) {
+                demoCover = BitmapFactory.decodeResource(context.getResources(), R.drawable.demo_artcover);
+            }
+            holder.iv_cover.setImageBitmap(demoCover);
+            if (holder.vCoverWave != null) holder.vCoverWave.setCover(demoCover);
+            boolean sameSong = item.getTitle().equals(holder.boundKey);
+            holder.boundKey = item.getTitle();
+            holder.lastSubtitleKind = "";
+            bindDemoState(holder, item, sameSong);
+            holder.options.setOnClickListener(view -> ParentActivity.showBottomDialog(item));
+            holder.itemView.setOnLongClickListener(view -> {
+                ParentActivity.showBottomDialog(item);
+                return true;
+            });
+            return;
+        }
 
         // Subtitle: cloud state wins; otherwise artist; otherwise legacy subtitle
         String subtitle = computeSubtitle(item);
@@ -273,6 +295,37 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
         }
     }
 
+    private static android.graphics.Bitmap demoCover;
+
+    /** Demo placeholder: dark cover with the download mark, or the filling
+     *  wave and percentage while it downloads. */
+    private void bindDemoState(ViewHolder h, SongListData item, boolean animate) {
+        int pct = DemoSong.progress();
+        boolean downloading = pct >= 0;
+        String kind = downloading ? "downloading" : "meta";
+        String sub = downloading ? context.getString(R.string.cloud_state_downloading, pct) : item.getArtist();
+        if (kind.equals(h.lastSubtitleKind) || !animate) {
+            h.tvSubtitle.animate().cancel();
+            h.tvSubtitle.setAlpha(1f);
+            h.tvSubtitle.setText(sub);
+        } else {
+            h.tvSubtitle.animate().cancel();
+            h.tvSubtitle.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+                h.tvSubtitle.setText(sub);
+                h.tvSubtitle.animate().alpha(1f).setDuration(180).start();
+            }).start();
+        }
+        h.lastSubtitleKind = kind;
+        if (h.ivLock != null) h.ivLock.setVisibility(View.GONE);
+        h.pbSpinner.setVisibility(View.GONE);
+        fadeView(h.ivCloud, !downloading, animate);
+        fadeDim(h, !downloading, animate);
+        if (h.vCoverWave != null) {
+            h.vCoverWave.setVisibility(downloading ? View.VISIBLE : View.GONE);
+            if (downloading) h.vCoverWave.setProgress(pct / 100f);
+        }
+    }
+
     /** Shows/hides the grey veil: smooth fade, or instant when not animating. */
     private static void fadeDim(ViewHolder h, boolean visible, boolean animate) {
         fadeView(h.vCoverDim, visible, animate);
@@ -345,6 +398,10 @@ public class SongListAdapter extends RecyclerView.Adapter<SongListAdapter.ViewHo
             SongListData item = listData[pos];
             CloudItem c = item.cloud;
 
+            if (item.demo) {
+                if (!DemoSong.isDownloading()) ParentActivity.showDemoDownloadDialog();
+                return;
+            }
             if (isLocked(c)) {
                 ParentActivity.promptLogin();
                 return;

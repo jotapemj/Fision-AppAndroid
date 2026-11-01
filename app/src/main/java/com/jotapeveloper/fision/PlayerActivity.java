@@ -2418,8 +2418,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (playbackService != null) pos = playbackService.getCurrentPositionMs();
         else if (engine != null)      pos = engine.getCurrentPositionMs();
         if (pos > PlaybackService.REWIND_THRESHOLD_MS) {
-            if (playbackService != null) playbackService.seekTo(0);
-            else if (engine != null)     engine.seekTo(0);
+            seekEngine(0);
             sb_progressBar.setProgress(0);
             tv_currentPos.setText("00:00");
             currentBeatIdx = -1;
@@ -2790,6 +2789,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             applyPlayIcon(false, true);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         } else {
+            // A seek made while paused: its target holds the bar, clock and
+            // carousel until the output latency has played out.
+            if (seekTargetMs >= 0) seekAtMs = android.os.SystemClock.uptimeMillis();
             playbackService.play();
             applyPlayIcon(true, true);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -2811,7 +2813,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void PlayersSeekTo(int progressMs) {
-        if (engine != null) engine.seekTo(progressMs);
+        seekEngine(progressMs);
+    }
+
+    /** Song seek through the service, which also publishes the new position
+     *  to the media session (notification, lock screen, car). */
+    private void seekEngine(long ms) {
+        if (playbackService != null) playbackService.seekTo(ms);
+        else if (engine != null)     engine.seekTo(ms);
     }
 
     /** Used to store per-stem positions; with the C++ engine that is no longer needed
@@ -2864,7 +2873,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 // Same post-seek floor as the clock and the beat iterator.
                 int barPos = PerceivedPos;
                 int target = seekTargetMs;
-                if (target >= 0 && android.os.SystemClock.uptimeMillis() - seekAtMs < SEEK_SETTLE_MS) {
+                if (target >= 0 && seekFloorActive()) {
                     barPos = Math.max(barPos, target);
                 }
                 int posPermille = songDuration > 0
@@ -2928,7 +2937,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     // (clock and beat), so neither steps back after the jump.
                     int shownPos = UiPos;
                     if (seekTargetMs >= 0) {
-                        if (android.os.SystemClock.uptimeMillis() - seekAtMs < SEEK_SETTLE_MS) {
+                        if (seekFloorActive()) {
                             shownPos = Math.max(shownPos, seekTargetMs);
                         } else {
                             seekTargetMs = -1;
@@ -2937,8 +2946,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
                     // The clock changes once per second: setText rebuilds the
                     // text layout, so skip the ticks that would not change it.
+                    // While the bar is dragged the clock shows the thumb time.
                     String tvNewCurrentPos = getTime(shownPos);
-                    if (!tvNewCurrentPos.contentEquals(tv_currentPos.getText())) {
+                    if (!mUserSeekingProgress
+                            && !tvNewCurrentPos.contentEquals(tv_currentPos.getText())) {
                         tv_currentPos.setText(tvNewCurrentPos);
                     }
 
@@ -4104,7 +4115,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     public void manualMoveProgressBar(int newPosMillis){
         if (engine == null) return;
-        engine.seekTo(newPosMillis);
+        seekEngine(newPosMillis);
         // Only refresh UI if paused; if playing, the Timer already does it
         if (paused) DefineNewProgress(newPosMillis);
     }
@@ -4119,6 +4130,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private volatile int seekTargetMs = -1;
     private volatile long seekAtMs = 0L;
 
+    /** The seek target stays the floor while paused (nothing is heard yet)
+     *  and for SEEK_SETTLE_MS after the seek or the resume that follows it. */
+    private boolean seekFloorActive() {
+        return paused || android.os.SystemClock.uptimeMillis() - seekAtMs < SEEK_SETTLE_MS;
+    }
+
     /** Single seek path (progress bar, chord carousel, chord diagrams): moves
      *  the engine and re-syncs chords, highlight, half metronome phase,
      *  downbeat clicks, progress bar and clock at once. */
@@ -4130,7 +4147,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         seekGeneration++;
         seekTargetMs = newPosMillis;
         seekAtMs = android.os.SystemClock.uptimeMillis();
-        engine.seekTo(newPosMillis);
+        seekEngine(newPosMillis);
         if (paused) DefineNewProgress(newPosMillis);
         if (songDuration > 0) {
             sb_progressBar.setProgress((int) ((long) newPosMillis * 10000L / songDuration));
@@ -7739,6 +7756,30 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
         rvLyrics.setAdapter(mLyricsLinesAdapter);
+        // Reading down the lyrics by hand folds the controls to the transport
+        // row; reading back up (or reaching the top) unfolds them. The
+        // auto-follow scroll never starts a drag, so it does not count.
+        rvLyrics.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrollStateChanged(@NonNull RecyclerView rv, int state) {
+                if (state == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    lyricsUserScroll = true;
+                    lyricsScrollAccum = 0;
+                } else if (state == RecyclerView.SCROLL_STATE_IDLE) {
+                    lyricsUserScroll = false;
+                }
+            }
+            @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                if (!lyricsUserScroll || dy == 0) return;
+                if ((dy > 0) != (lyricsScrollAccum > 0)) lyricsScrollAccum = 0;
+                lyricsScrollAccum += dy;
+                int threshold = Math.round(LYRICS_FOLD_THRESHOLD_DP * getResources().getDisplayMetrics().density);
+                if (lyricsScrollAccum > threshold) setLyricsControlsFolded(true);
+                else if (lyricsScrollAccum < -threshold || !rv.canScrollVertically(-1)) {
+                    setLyricsControlsFolded(false);
+                }
+            }
+        });
+        findViewById(R.id.b_lyricsClose).setOnClickListener(v -> toggleLyricsView());
         bLyricsChords = findViewById(R.id.b_lyricsChords);
         bLyricsChords.setOnClickListener(v -> setChordsOnLyrics(!chordsOnLyrics));
         syncLyricsChords();
@@ -7773,6 +7814,155 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
         refreshLyricsCardFlag();
+    }
+
+    // Folded lyrics controls: only the transport row (±5 s, previous, play, next)
+    // stays, as a pill at the top of a shorter bottom panel; the lyrics take the rest.
+    private static final float LYRICS_FOLD_THRESHOLD_DP = 24f;
+    private static final long LYRICS_FOLD_MS = 260L;
+    private boolean lyricsUserScroll = false;
+    private int lyricsScrollAccum = 0;
+    private boolean lyricsControlsFolded = false;
+    private float lyricsFoldFrac = 0f;
+    private android.animation.ValueAnimator lyricsFoldAnim;
+    // Unfolded geometry, taken once laid out: panel height, the views above
+    // the transport row (layout height, measured height, margins) and the
+    // row's top margin and height.
+    private int foldFullH = -1, foldControlsTop, foldControlsH;
+    private View[] foldAbove;
+    private int[] foldAboveLpH, foldAboveH, foldAboveTop, foldAboveBottom;
+    private float[] foldRowOffsets;
+    // Play shrinks inside the pill so it does not touch its edges.
+    private static final float FOLD_PLAY_SCALE = 0.8f;
+    private android.graphics.drawable.GradientDrawable foldPill;
+
+    /** Folds the playback controls down to the transport row, or unfolds them. */
+    private void setLyricsControlsFolded(boolean folded) {
+        if (folded == lyricsControlsFolded) return;
+        if (folded && !(isLyricsViewShown && mLyricsUiState == LyricsUiState.CONTENT)) return;
+        View panel = findViewById(R.id.bottomLayout);
+        if (panel == null) return;
+        if (foldFullH < 0) {
+            if (panel.getHeight() == 0) return;
+            foldFullH = panel.getLayoutParams().height;
+            foldAbove = new View[] { tv_bpm, sb_progressBar, findViewById(R.id.durationLayout) };
+            int n = foldAbove.length;
+            foldAboveLpH = new int[n];
+            foldAboveH = new int[n];
+            foldAboveTop = new int[n];
+            foldAboveBottom = new int[n];
+            for (int i = 0; i < n; i++) {
+                ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) foldAbove[i].getLayoutParams();
+                foldAboveLpH[i] = p.height;
+                foldAboveH[i] = foldAbove[i].getHeight();
+                foldAboveTop[i] = p.topMargin;
+                foldAboveBottom[i] = p.bottomMargin;
+            }
+            ViewGroup controls = findViewById(R.id.controlsLayout);
+            foldControlsTop = ((ViewGroup.MarginLayoutParams) controls.getLayoutParams()).topMargin;
+            foldControlsH = controls.getHeight();
+            // The row aligns its buttons by baseline (the ±5 s frames sit
+            // higher): inside the pill they move to the row's centre line.
+            foldRowOffsets = new float[controls.getChildCount()];
+            for (int i = 0; i < foldRowOffsets.length; i++) {
+                View c = controls.getChildAt(i);
+                foldRowOffsets[i] = foldControlsH / 2f - (c.getTop() + c.getHeight() / 2f);
+            }
+            // Pill around the five buttons only (the row spans the width).
+            float d = getResources().getDisplayMetrics().density;
+            int pad = Math.round(10 * d);
+            View first = controls.getChildAt(0), last = controls.getChildAt(controls.getChildCount() - 1);
+            android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
+            pill.setColor(Color.BLACK);
+            pill.setCornerRadius(controls.getHeight() / 2f);
+            pill.setStroke(Math.max(1, Math.round(d)), 0x33FFFFFF);
+            pill.setAlpha(0);
+            foldPill = pill;
+            // An InsetDrawable reports its insets as padding, which setBackground
+            // would apply to the row and squeeze the buttons: keep the row's own.
+            int pl = controls.getPaddingLeft(), pt = controls.getPaddingTop(),
+                    pr = controls.getPaddingRight(), pb = controls.getPaddingBottom();
+            controls.setBackground(new android.graphics.drawable.InsetDrawable(pill,
+                    Math.max(0, first.getLeft() - pad), 0,
+                    Math.max(0, controls.getWidth() - last.getRight() - pad), 0));
+            controls.setPadding(pl, pt, pr, pb);
+        }
+        lyricsControlsFolded = folded;
+        if (folded) {
+            // Lit like the lyrics toggle it stands in for: accent disc, dark icon.
+            android.widget.ImageButton close = findViewById(R.id.b_lyricsClose);
+            android.graphics.drawable.GradientDrawable disc = new android.graphics.drawable.GradientDrawable();
+            disc.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            disc.setColor(com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(this));
+            close.setBackground(disc);
+            close.setImageTintList(ColorStateList.valueOf(Color.BLACK));
+        }
+        if (lyricsFoldAnim != null) lyricsFoldAnim.cancel();
+        lyricsFoldAnim = android.animation.ValueAnimator.ofFloat(lyricsFoldFrac, folded ? 1f : 0f);
+        lyricsFoldAnim.setDuration(LYRICS_FOLD_MS);
+        lyricsFoldAnim.setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator());
+        lyricsFoldAnim.addUpdateListener(a -> applyLyricsFold((float) a.getAnimatedValue()));
+        lyricsFoldAnim.start();
+    }
+
+    /** [f] 0 = unfolded, 1 = folded: the views above the transport row
+     *  (bpm, bar, times) shrink to nothing with their margins and fade, the
+     *  row rises to the top of the panel, the panel shrinks around it and the
+     *  row of options below is cut by its bottom edge. Only real sizes are
+     *  animated (no negative margins: LinearLayout measures them as zero and
+     *  would leave the row no room). */
+    private void applyLyricsFold(float f) {
+        lyricsFoldFrac = f;
+        View panel = findViewById(R.id.bottomLayout);
+        View controls = findViewById(R.id.controlsLayout);
+        if (panel == null || controls == null || foldFullH < 0) return;
+        float d = getResources().getDisplayMetrics().density;
+        int topGap = Math.round(6 * d), bottomGap = Math.round(8 * d);
+        int compactH = foldControlsH + topGap + bottomGap;
+        float k = 1f - f;
+
+        for (int i = 0; i < foldAbove.length; i++) {
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) foldAbove[i].getLayoutParams();
+            p.height = f == 0f ? foldAboveLpH[i] : Math.round(foldAboveH[i] * k);
+            p.topMargin = Math.round(foldAboveTop[i] * k);
+            p.bottomMargin = Math.round(foldAboveBottom[i] * k);
+            foldAbove[i].setLayoutParams(p);
+        }
+        ViewGroup.MarginLayoutParams cp = (ViewGroup.MarginLayoutParams) controls.getLayoutParams();
+        cp.topMargin = Math.round(foldControlsTop + (topGap - foldControlsTop) * f);
+        controls.setLayoutParams(cp);
+        ViewGroup.LayoutParams lp = panel.getLayoutParams();
+        lp.height = Math.round(foldFullH - (foldFullH - compactH) * f);
+        panel.setLayoutParams(lp);
+
+        // Faded out in the first part of the move, so nothing half-cut lingers.
+        float alpha = Math.max(0f, 1f - f * 1.6f);
+        int vis = f >= 1f ? View.INVISIBLE : View.VISIBLE;
+        View options = findViewById(R.id.optionsLayout);
+        for (View v : foldAbove) {
+            v.setAlpha(alpha);
+            v.setVisibility(vis);
+        }
+        if (options != null) {
+            options.setAlpha(alpha);
+            options.setVisibility(vis);
+        }
+        // The transport row becomes a pill floating over the lyrics.
+        if (foldPill != null) foldPill.setAlpha(Math.round(255 * f));
+        ViewGroup row = (ViewGroup) controls;
+        for (int i = 0; foldRowOffsets != null && i < foldRowOffsets.length && i < row.getChildCount(); i++) {
+            row.getChildAt(i).setTranslationY(foldRowOffsets[i] * f);
+        }
+        // The lyrics button of the hidden options row comes back over the lyrics.
+        View close = findViewById(R.id.b_lyricsClose);
+        if (close != null) {
+            close.setAlpha(f);
+            close.setVisibility(f > 0f ? View.VISIBLE : View.GONE);
+        }
+        View play = findViewById(R.id.b_play);
+        float s = 1f - (1f - FOLD_PLAY_SCALE) * f;
+        play.setScaleX(s);
+        play.setScaleY(s);
     }
 
     /** Toggles the lyrics overlay on / off. Wired to b_lyrics. */
@@ -8288,6 +8478,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         float slidePx = 18f * density;
 
         applyToolbarBgForLyrics(false);
+        setLyricsControlsFolded(false);
 
         if (handoff != null) {
             final View chordsRow = findViewById(R.id.chords_container);
@@ -8610,6 +8801,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         boolean loading = s == LyricsUiState.SKELETON;
         boolean err     = s == LyricsUiState.ERROR;
         boolean content = s == LyricsUiState.CONTENT;
+        if (!content) setLyricsControlsFolded(false);
 
         // Cross-fade all the visibility changes triggered below whenever the
         // state actually changes and the overlay is already visible. First

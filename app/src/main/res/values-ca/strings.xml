@@ -587,8 +587,10 @@
     <string name="coach_lib_import_body">Tria una carpeta amb una cançó ja separada. Cada fitxer es comprova abans d\'afegir-la.</string>
     <string name="songs_empty_hint_local">%1$s per importar la teva primera carpeta de cançó</string>
     <string name="import_folder_confirm">Vols importar una carpeta de cançó?</string>
-    <string name="local_demo_title">Prova la cançó de demostració</string>
-    <string name="local_demo_body"><![CDATA[Encara no tens cançons? <a href="%1$s">Baixa</a> la cançó de demostració llesta per reproduir. Importa-la un cop baixada.]]></string>
+    <string name="demo_dialog_title">Vols baixar la cançó de demostració?</string>
+    <string name="demo_dialog_body">Es baixarà la cançó d\'exemple de GitHub i s\'importarà a la biblioteca. Es baixaran aproximadament %1$d MB.</string>
+    <string name="settings_demo_download">Baixa la cançó de demostració</string>
+    <string name="demo_download_failed">No s\'ha pogut baixar la cançó de demostració. Revisa la connexió i torna-ho a provar.</string>
     <string name="local_demo_download">Baixa</string>
     <string name="import_folder_pick">Tria la carpeta</string>
     <string name="import_folder_checking">S\'està comprovant la cançó…</string>

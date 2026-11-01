@@ -334,10 +334,7 @@ public class SettingsActivity extends AppCompatActivity
         } else {
             LoginDialog.show(this, true, new LoginDialog.Callback() {
                 @Override public void onLoggedIn(String u) { rebuildItems(); }
-                @Override public void onLocalMode() {
-                    rebuildItems();
-                    LocalDemoDialog.show(SettingsActivity.this, null);
-                }
+                @Override public void onLocalMode()        { rebuildItems(); }
             });
         }
     }
@@ -836,6 +833,8 @@ public class SettingsActivity extends AppCompatActivity
         TextView tvVersion = dlgView.findViewById(R.id.tv_about_version);
         MaterialButton bLicenses = dlgView.findViewById(R.id.b_about_licenses);
         MaterialButton bTour = dlgView.findViewById(R.id.b_about_tour);
+        MaterialButton bDemo = dlgView.findViewById(R.id.b_about_demo);
+        bDemo.setVisibility(DemoSong.downloadOffered(this) ? View.VISIBLE : View.GONE);
         MaterialButton bClose = dlgView.findViewById(R.id.b_about_close);
         String vName = "?";
         try {
@@ -858,6 +857,10 @@ public class SettingsActivity extends AppCompatActivity
         bTour.setOnClickListener(x -> {
             dlg.dismiss();
             replayTours();
+        });
+        bDemo.setOnClickListener(x -> {
+            dlg.dismiss();
+            LocalDemoDialog.show(this);
         });
         bClose.setOnClickListener(x -> dlg.dismiss());
         dlg.show();

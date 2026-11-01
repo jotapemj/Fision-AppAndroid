@@ -579,8 +579,10 @@
     <string name="coach_lib_import_body">Escolha uma pasta com uma música já separada. Cada arquivo é verificado antes de adicioná-la.</string>
     <string name="songs_empty_hint_local">%1$s para importar sua primeira pasta de música</string>
     <string name="import_folder_confirm">Importar pasta de música?</string>
-    <string name="local_demo_title">Experimente a música demo</string>
-    <string name="local_demo_body"><![CDATA[Ainda sem músicas? <a href="%1$s">Baixe</a> a música demo pronta para tocar. Importe-a depois de baixar.]]></string>
+    <string name="demo_dialog_title">Baixar a música demo?</string>
+    <string name="demo_dialog_body">A música de exemplo será baixada do GitHub e importada para a biblioteca. Serão baixados cerca de %1$d MB.</string>
+    <string name="settings_demo_download">Baixar música demo</string>
+    <string name="demo_download_failed">Não foi possível baixar a música demo. Verifique a conexão e tente de novo.</string>
     <string name="local_demo_download">Baixar</string>
     <string name="import_folder_pick">Escolher pasta</string>
     <string name="import_folder_checking">Verificando a música…</string>

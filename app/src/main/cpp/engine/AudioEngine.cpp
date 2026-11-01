@@ -88,6 +88,7 @@ int AudioEngine::addTrack(const char* path, bool loop){
     std::lock_guard<std::mutex> lock(mAddTrackMutex);
     int id = (int)mTracks.size();
     mTracks.push_back(std::move(t));
+    if (!loop && mRefTrack < 0) mRefTrack = id;
     return id;
 }
 
@@ -224,7 +225,7 @@ int64_t AudioEngine::getCurrentPositionMs(int id) const { return (id>=0 && id<(i
 
 int64_t AudioEngine::getDurationMs() const {
     if (mTracks.empty()) return 0;
-    return mTracks[0]->getDurationMs(); // reference: first stem
+    return mTracks[refTrack()]->getDurationMs();
 }
 
 void AudioEngine::seekToAll(int64_t ms){
@@ -233,7 +234,7 @@ void AudioEngine::seekToAll(int64_t ms){
 
 int64_t AudioEngine::getCurrentPositionAllMs() const {
     if (mTracks.empty()) return 0;
-    return mTracks[0]->getCurrentPositionMs(); // reference: first stem
+    return mTracks[refTrack()]->getCurrentPositionMs();
 }
 
 bool AudioEngine::start(){
@@ -282,7 +283,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(oboe::AudioStream* stream, vo
     constexpr int64_t CLICK_LEAD_MS = 100;
     bool clickDuckTriggeredThisCallback = false;
     if (mClickEnabled.load(std::memory_order_acquire) && !mTracks.empty()) {
-        int64_t startMs = mTracks[0]->getCurrentPositionMs();
+        int64_t startMs = mTracks[refTrack()]->getCurrentPositionMs();
         int64_t deltaMs = (int64_t)numFrames * 1000 / mDeviceSampleRate;
         int64_t endMs   = startMs + deltaMs;
         std::lock_guard<std::mutex> lock(mClickMutex);

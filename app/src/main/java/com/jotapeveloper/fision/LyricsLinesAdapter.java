@@ -22,7 +22,7 @@ import java.util.List;
  *  instrumental placeholder (music-note icon) inserted between segments when
  *  the silent gap between them exceeds INSTRUMENTAL_GAP_SEC. The active row
  *  (whose [start, next.start] contains the current playback position) is
- *  drawn in the primary accent colour; the rest fade to the dim colour
+ *  drawn in white whatever the accent; the rest fade to the dim colour
  *  defined in colors.xml. When karaoke mode is enabled and the active TEXT
  *  row carries per-word timestamps, each word inside the line is coloured
  *  independently based on the current playback second. */
@@ -181,15 +181,18 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     /**
      * Chord of a row; [word] is the index of the word it belongs to (-1
      * instrumental). [after]: it changes in the silence after that word, so
-     * it is drawn in the gap behind it, not over it.
+     * it is drawn in the gap behind it, not over it. [offset]: character of
+     * the display text it is drawn over (behind, when [after]).
      */
     private static final class RowChord {
         final double time;
         final String raw;
         final int word;
         final boolean after;
-        RowChord(double time, String raw, int word, boolean after) {
+        final int offset;
+        RowChord(double time, String raw, int word, boolean after, int offset) {
             this.time = time; this.raw = raw; this.word = word; this.after = after;
+            this.offset = offset;
         }
     }
 
@@ -424,7 +427,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 }
                 Row r = rows.get(ri);
                 if (r.type != VT_TEXT) {
-                    out.get(ri).add(new RowChord(m.time, m.raw, -1, false));
+                    out.get(ri).add(new RowChord(m.time, m.raw, -1, false, 0));
                     continue;
                 }
                 WordLayout wl = wordLayout(ri);
@@ -434,13 +437,25 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 }
                 boolean after = m.time > wl.endTimes[w] + CHORD_WORD_TAIL_SEC
                         && m.time + CHORD_WORD_LEAD_SEC >= wl.times[w];
-                out.get(ri).add(new RowChord(m.time, m.raw, w, after));
+                int offset = after ? wl.ends[w] : offsetInWord(wl, w, m.time);
+                out.get(ri).add(new RowChord(m.time, m.raw, w, after, offset));
             }
         }
         rowChords = out;
     }
 
     private static double chordRowStart(Row r) { return r.type == VT_TEXT ? r.onset : r.start; }
+
+    /** Character of word [w] sung at [t]: the word's letters spread evenly
+     *  over its sung time, so a change late in a long word sits over its
+     *  later letters instead of its first one. */
+    private static int offsetInWord(WordLayout wl, int w, double t) {
+        int start = wl.offsets[w], end = wl.ends[w];
+        double dur = wl.endTimes[w] - wl.times[w];
+        if (end - start <= 1 || dur <= 0.0 || t <= wl.times[w]) return start;
+        double frac = Math.min(1.0, (t - wl.times[w]) / dur);
+        return Math.min(end - 1, start + (int) Math.floor(frac * (end - start)));
+    }
 
     /** Display text of a text row with its word starts (cached per row). */
     private WordLayout wordLayout(int rowIdx) {
@@ -698,7 +713,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     tv.setText(buildKaraokeText(ctx, row.segment, row.wordOnsets, karaokePosSec,
                             lineClickListener), TextView.BufferType.SPANNABLE);
                 } else {
-                    tv.setTextColor(accent);
+                    tv.setTextColor(ContextCompat.getColor(ctx, R.color.AppWhite));
                     tv.setText(raw);
                     tv.setMovementMethod(null);
                 }
@@ -766,12 +781,9 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             tv.setChords(null, null, 0, 0, 0);
             return;
         }
-        WordLayout wl = wordLayout(position);
         List<ChordLyricsTextView.Anchor> anchors = new ArrayList<>();
         for (RowChord c : rowChords.get(position)) {
-            int w = Math.max(0, Math.min(c.word, wl.offsets.length - 1));
-            anchors.add(new ChordLyricsTextView.Anchor(c.after ? wl.ends[w] : wl.offsets[w],
-                    chordLabel(c.raw), c.time, c.after));
+            anchors.add(new ChordLyricsTextView.Anchor(c.offset, chordLabel(c.raw), c.time, c.after));
         }
         int pending = active
                 ? ContextCompat.getColor(tv.getContext(), R.color.lyrics_line_current) : dim;
@@ -826,14 +838,15 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     /** Builds the spannable that lights up each word depending on the current
      *  playback second. The base colour of the TextView is set to the dim
      *  colour, so future words inherit it without adding a span each. Words
-     *  crossing their onset fade from dim to primary over KARAOKE_FADE_SEC,
+     *  crossing their onset fade from dim to white over KARAOKE_FADE_SEC,
      *  and the word still in progress is bolded on top of the colour. */
     static final double KARAOKE_FADE_SEC = 0.25;
 
     private static CharSequence buildKaraokeText(Context ctx, Lyrics.Segment seg,
                                                  double[] onsets, double posSec,
                                                  LineClickListener clickListener) {
-        int accent = com.jotapeveloper.fision.design.AccentColorManager.resolveAccent(ctx);
+        // Sung words light up in white, whatever the accent.
+        int lit = ContextCompat.getColor(ctx, R.color.AppWhite);
         // posSec < 0 = line not active: dim base; active line: brighter base.
         int base   = ContextCompat.getColor(ctx, posSec >= 0
                 ? R.color.lyrics_line_current : R.color.lyrics_line_dim);
@@ -854,7 +867,7 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             float progress = t <= 0 ? 0f : (t >= 1 ? 1f : (float) t);
             if (progress > 0f) {
                 int blended = androidx.core.graphics.ColorUtils
-                        .blendARGB(base, accent, progress);
+                        .blendARGB(base, lit, progress);
                 sb.setSpan(new ForegroundColorSpan(blended), start, end,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }

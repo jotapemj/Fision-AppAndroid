@@ -24,6 +24,9 @@ public class SongListData {
     /** Cloud state: null when the song is 100% local with no server counterpart. */
     public CloudItem cloud;
 
+    /** Local mode placeholder of the demo song, not downloaded yet ({@link DemoSong}). */
+    public boolean demo;
+
     public SongListData(String title, String subtitle) {
         this.title = title;
         this.subtitle = subtitle;
@@ -44,6 +47,7 @@ public class SongListData {
 
     /** True when the song is downloaded locally (or is a legacy entry without server counterpart). */
     public boolean hasLocalFolder() {
+        if (demo) return false;
         if (cloud == null) return true;            // legacy local-only
         return cloud.isLocal();
     }

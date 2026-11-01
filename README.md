@@ -82,6 +82,10 @@ A demo song ready to play, already split into stems with chords, beats,
 metronomes and synced lyrics: "Airplane Mode" by Josh Woodward, licensed under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+In **Local mode** the library shows it pinned on top with a dark cover: tap
+it to download it from GitHub and import it in one step (also from
+**Settings → About**). To do the same by hand:
+
 1. Download
    [`fision-demo.zip`](https://github.com/jotapemj/Fision-Server/releases/download/v2.1.0/fision-demo.zip)
    (about 170 MB) on the phone.

@@ -246,6 +246,25 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Closes the lyrics while the playback controls are folded (their own
+         lyrics button is hidden then); bottom-left, mirror of the overflow.
+         Lit in code (accent disc, dark icon) like the active lyrics toggle. -->
+    <ImageButton
+        android:id="@+id/b_lyricsClose"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="20dp"
+        android:layout_marginStart="20dp"
+        android:padding="8dp"
+        android:background="@drawable/lyrics_overflow_bg"
+        android:src="@drawable/ic_lyrics"
+        android:scaleType="fitCenter"
+        app:tint="@color/AppWhite"
+        android:contentDescription="@string/lyrics_button_description"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <!-- Chords on lyrics toggle, left of the overflow; look set in code
          (accent disc when on). -->
     <ImageButton

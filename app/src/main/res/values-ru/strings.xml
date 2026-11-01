@@ -584,8 +584,10 @@
     <string name="coach_lib_import_body">Выберите папку с уже разделённой песней. Каждый файл проверяется перед добавлением.</string>
     <string name="songs_empty_hint_local">%1$s, чтобы импортировать первую папку с песней</string>
     <string name="import_folder_confirm">Импортировать папку с песней?</string>
-    <string name="local_demo_title">Попробуйте демо-песню</string>
-    <string name="local_demo_body"><![CDATA[Песен пока нет? <a href="%1$s">Скачайте</a> демо-песню, готовую к воспроизведению. После загрузки импортируйте её.]]></string>
+    <string name="demo_dialog_title">Скачать демо-песню?</string>
+    <string name="demo_dialog_body">Пример песни будет скачан с GitHub и импортирован в библиотеку. Будет скачано около %1$d МБ.</string>
+    <string name="settings_demo_download">Скачать демо-песню</string>
+    <string name="demo_download_failed">Не удалось скачать демо-песню. Проверьте подключение и повторите попытку.</string>
     <string name="local_demo_download">Скачать</string>
     <string name="import_folder_pick">Выбрать папку</string>
     <string name="import_folder_checking">Проверка песни…</string>

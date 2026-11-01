@@ -19,6 +19,15 @@ public class SplashScreenActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // A launcher tap can land on top of a live task whose base intent is
+        // not the launcher one (opened from an installer, a store or a shell):
+        // the task is already showing, so this one steps aside.
+        Intent in = getIntent();
+        if (!isTaskRoot() && in != null && Intent.ACTION_MAIN.equals(in.getAction())
+                && in.hasCategory(Intent.CATEGORY_LAUNCHER)) {
+            finish();
+            return;
+        }
         FisionSplashView splash = new FisionSplashView(this);
         splash.setOnFinished(this::openMain);
         setContentView(splash);

@@ -119,6 +119,9 @@ public final class MiniPlayerController {
 
     /** Host onStart: connects to the service only when it already runs. */
     public void onStart() {
+        // The service may have stopped while the host was away (idle stop):
+        // the bind below then never connects and the bar would stay as it was.
+        if (!PlaybackService.isRunning()) hideNow();
         Intent svc = new Intent(host, PlaybackService.class);
         host.bindService(svc, connection, 0);
     }
