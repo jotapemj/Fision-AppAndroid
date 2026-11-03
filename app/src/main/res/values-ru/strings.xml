@@ -84,7 +84,7 @@
     <string name="reprocess_busy">Эта песня уже обрабатывается</string>
     <string name="audio3d_title">3D-звук</string>
     <string name="audio3d_info_title">3D-звук</string>
-    <string name="audio3d_info_body">Экспериментальная бинауральная пространственная обработка. Каждый инструмент размещается вокруг слушателя на виде сверху. Свёртка HRTF (Head-Related Transfer Function, набор данных KEMAR из MIT) воссоздаёт естественную фильтрацию головой, ушами и плечами, имитируя направление, высоту и расстояние. Для эффекта нужны наушники.</string>
+    <string name="audio3d_info_body">Экспериментальная бинауральная пространственная обработка. Каждый инструмент размещается вокруг слушателя. Свёртка HRTF (Head-Related Transfer Function, набор данных KEMAR из MIT) воссоздаёт естественную фильтрацию головой, ушами и плечами, имитируя направление, высоту и расстояние. Для эффекта нужны наушники.</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>Перетащить</b> · позиция]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>Нажать</b> · выбрать]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>Двойное нажатие</b> · вездесущий]]></string>

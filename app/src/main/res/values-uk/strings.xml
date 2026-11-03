@@ -86,7 +86,7 @@
     <string name="reprocess_busy">Ця пісня вже обробляється</string>
     <string name="audio3d_title">3D аудіо</string>
     <string name="audio3d_info_title">3D аудіо</string>
-    <string name="audio3d_info_body">Експериментальна бінауральна просторова обробка. Кожен інструмент розміщується навколо слухача у вигляді зверху. Конволюція HRTF (Head-Related Transfer Function, набір даних KEMAR MIT) відтворює природну фільтрацію голови, вух і плечей для симуляції напрямку, висоти та відстані. Для роботи ефекту потрібні навушники.</string>
+    <string name="audio3d_info_body">Експериментальна бінауральна просторова обробка. Кожен інструмент розміщується навколо слухача. Конволюція HRTF (Head-Related Transfer Function, набір даних KEMAR MIT) відтворює природну фільтрацію голови, вух і плечей для симуляції напрямку, висоти та відстані. Для роботи ефекту потрібні навушники.</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>Перетягнути</b> · розмістити]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>Дотик</b> · вибрати]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>Подвійний дотик</b> · всюдисущий]]></string>

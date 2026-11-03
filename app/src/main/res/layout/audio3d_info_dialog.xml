@@ -12,87 +12,101 @@
     android:padding="24dp"
     android:background="@drawable/delete_dialogbg">
 
-    <ImageView
-        android:id="@+id/iv_audio3d_info_icon"
+    <!-- The text scrolls when it does not fit: the button always keeps its height. -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="42dp"
-        android:src="@drawable/ic_info"
-        app:tint="?attr/colorPrimary"
-        android:layout_marginBottom="10dp"
-        android:contentDescription="@string/audio3d_info_title" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:layout_marginBottom="14dp"
-        android:fontFamily="@font/noto_sans_regular"
-        android:text="@string/audio3d_info_title"
-        android:textColor="@color/AppWhite"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <!-- Justified body (inter_word, API 26+). Falls back to start on API<26. -->
-    <TextView
-        android:id="@+id/tv_audio3d_info_body"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="14dp"
-        android:fontFamily="@font/noto_sans_regular"
-        android:text="@string/audio3d_info_body"
-        android:textColor="@color/AppWhite"
-        android:textSize="14sp"
-        android:justificationMode="inter_word" />
+            <ImageView
+                android:id="@+id/iv_audio3d_info_icon"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:src="@drawable/ic_itd"
+                app:tint="?attr/colorPrimary"
+                android:layout_marginBottom="10dp"
+                android:contentDescription="@string/audio3d_info_title" />
 
-    <!-- Actions legend (below the body) -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginBottom="10dp"
-        android:background="#22FFFFFF" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:layout_marginBottom="14dp"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/audio3d_info_title"
+                android:textColor="@color/AppWhite"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="16dp">
+            <!-- Justified body (inter_word, API 26+). Falls back to start on API<26. -->
+            <TextView
+                android:id="@+id/tv_audio3d_info_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:fontFamily="@font/noto_sans_regular"
+                android:text="@string/audio3d_info_body"
+                android:textColor="@color/AppWhite"
+                android:textSize="14sp"
+                android:justificationMode="inter_word" />
 
-        <TextView
-            android:id="@+id/tv_audio3d_legend_drag"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/noto_sans_regular"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/tv_audio3d_legend_tap"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/noto_sans_regular"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/tv_audio3d_legend_double"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/noto_sans_regular"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/tv_audio3d_legend_long"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/noto_sans_regular"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/tv_audio3d_legend_reset"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/noto_sans_regular"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-    </LinearLayout>
+            <!-- Actions legend (below the body) -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="10dp"
+                android:background="#22FFFFFF" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/tv_audio3d_legend_drag"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/tv_audio3d_legend_tap"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/tv_audio3d_legend_double"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/tv_audio3d_legend_long"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/tv_audio3d_legend_reset"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/noto_sans_regular"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/b_audio3d_info_close"

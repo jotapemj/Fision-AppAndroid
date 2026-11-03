@@ -174,6 +174,7 @@ From top to bottom:
 
 <div align="center">
   <img src="./screenshots/d2_chord_diagrams.png" width="300" alt="Guitar chord diagrams, current and next chord">
+  <img src="./screenshots/d2b_chord_grid.png" width="300" alt="Chord grid with one cell per beat">
 </div>
 
 The chords button from the bottom bar unfolds into two entries <img src="./screenshots/chord_pill.png" height="44" alt="Chords button unfolded: chord diagrams on top, chord strip below"> :
@@ -301,6 +302,7 @@ options (chart, notation and pitch). It is saved per song.
 <div align="center">
   <img src="./screenshots/d4_scene_3d.jpg" width="300" alt="Audio 3D scene with the stems around the head">
   <img src="./screenshots/d6_dance.jpg" width="300" alt="Stems dancing, with the dance panel">
+  <img src="./screenshots/d5_flat_3d.jpg" width="300" alt="Flat view with the stems around the head, one passing behind it">
 </div>
 
 The 3D view places every stem around your head using HRTF, for a real
@@ -310,11 +312,15 @@ spatial image over **headphones**:
 - **Tap** to select it and set its height with the side slider.
 - **Double tap** to make it omnipresent (no direction).
 - **Long press** to mute it.
-- **Reset** returns every stem to the front.
+- **Reset** stops the dance and returns every stem to the front.
 
 **Dance** mode makes the chosen stems orbit the head, each at its own
 speed and optionally swinging up and down, with sliders for speed and
 distance.
+
+The **flat view** looks at the head from behind: stems in front of the
+listener are smaller and pass behind the head, stems behind it are larger
+and pass over it, and height moves a stem up and down.
 
 **Scene mode** (Settings, Performance) shows a 3D studio room instead of
 the flat view, with the listener in the middle and one sprite per stem;

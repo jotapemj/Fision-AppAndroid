@@ -4786,10 +4786,6 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private com.google.android.material.button.MaterialButton b3DDanceScene;
     /** 3D reset button: hidden until any position/elev/mute/omni is modified. */
     private com.google.android.material.button.MaterialButton b3DReset;
-    /** Container of the inline dance sliders (visible only while dancing). */
-    private View danceInlineSlidersContainer;
-    private com.google.android.material.slider.Slider danceInlineSlSpeed;
-    private com.google.android.material.slider.Slider danceInlineSlDistance;
 
     // === Dance mode (stem orbit) ===
     private boolean       danceActive = false;
@@ -4808,6 +4804,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private final java.util.Map<String, Float> danceAngle = new java.util.HashMap<>();
     private final java.util.Map<String, Float> danceRadialFactor = new java.util.HashMap<>();
     private final java.util.Map<String, Float> danceSpeedFactor  = new java.util.HashMap<>();
+    /** Flat view: wave phase (radians) of each swinging stem in the dance. */
+    private final java.util.Map<String, Float> danceSwingPhase   = new java.util.HashMap<>();
+    /** Flat view: wave amplitude at radius 1, same elevation swing as the scene's
+     *  0.6 m at its default 1.5 m. */
+    private static final float FLAT_SWING_AMP = 0.4f;
     private long          danceLastNs = 0L;
     private String        danceGrabbed = null;   // stem currently being grabbed
     private final android.os.Handler danceHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -4907,7 +4908,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void refresh3DAccent() {
         tintSynthwaveHalo(view3DRoot);
         tintSynthwaveHalo(view3DSceneRoot);
-        if (view3DSceneRoot != null) paintDanceTabs();
+        paintDanceTabs();
         if (selected3DStem != null) {
             android.widget.ImageView iv = stem3DIcons.get(selected3DStem);
             if (iv != null) iv.setBackground(selectedStemRing());
@@ -4951,6 +4952,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     s.elevationDeg = val;
                     persistStemSettings();
                     apply3DPositionForStem(selected3DStem);
+                    placeFlatIcon(selected3DStem);
                     showElevationTooltip((int) val);
                     // Elevation changed → show reset button
                     showResetButton();
@@ -4960,12 +4962,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             View bInfo = findViewById(R.id.b_3d_info);
             if (bInfo != null) bInfo.setOnClickListener(v -> show3DInfoDialog());
             // Reset button: returns every stem to the default position (frontal semicircle),
-            // clears elevation and omnipresent. Hidden by default (alpha=0, gone); fades in
+            // clears elevation and omnipresent. Hidden by default (alpha=0, invisible); fades in
             // when any position changes and fades out after the action completes.
             b3DReset = findViewById(R.id.b_3d_reset);
             if (b3DReset != null) {
                 b3DReset.setAlpha(0f);
-                b3DReset.setVisibility(View.GONE);
+                b3DReset.setVisibility(View.INVISIBLE);
                 b3DReset.setOnClickListener(v -> {
                     reset3DPositions();
                     hideResetButton();
@@ -4977,35 +4979,83 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
                     audio3DScene.stopDance();
                     if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.raw.ic_play);
-                    setSceneDanceSlidersVisible(false);
+                    setDancePanelVisible(false);
                 } else if (danceActive) {
                     stopDance();
                 } else {
                     showStemsDanceDialog();
                 }
             });
-            // Inline dance sliders (speed + distance) — visible only while the dance is active
-            View danceSlidersContainer = findViewById(R.id.ll_3d_danceSliders);
-            com.google.android.material.slider.Slider slSpeedInline = findViewById(R.id.sl_3d_danceSpeed);
-            com.google.android.material.slider.Slider slDistInline  = findViewById(R.id.sl_3d_danceDistance);
-            if (slSpeedInline != null) {
-                slSpeedInline.setValue(danceSpeed);
-                slSpeedInline.addOnChangeListener((s, val, fromUser) -> {
-                    if (fromUser) danceSpeed = val;
-                });
+            // The flat view moves stems on a radius multiplier, not in metres.
+            com.google.android.material.slider.Slider slDist = view3DRoot.findViewById(R.id.sl_3d_danceDistance);
+            if (slDist != null) {
+                slDist.setValueFrom(FLAT_DANCE_DISTANCE_MIN);
+                slDist.setValueTo(FLAT_DANCE_DISTANCE_MAX);
             }
-            if (slDistInline != null) {
-                slDistInline.setValue(danceDistance);
-                slDistInline.addOnChangeListener((s, val, fromUser) -> {
-                    if (fromUser) danceDistance = val;
-                });
-            }
+            bindDancePanel(view3DRoot);
             // Initial control state: greyed out when 3D audio starts off.
             setSceneControlsEnabled(is3DEnabled);
-            danceInlineSlidersContainer = danceSlidersContainer;
-            danceInlineSlSpeed          = slSpeedInline;
-            danceInlineSlDistance       = slDistInline;
         }
+    }
+
+    private static final float FLAT_DANCE_DISTANCE_MIN = 0.4f, FLAT_DANCE_DISTANCE_MAX = 1.2f;
+
+    /** Wires the dance panel of a 3D view: tabs + one large slider per value.
+     *  The controller is null in the flat view, whose tick reads the fields. */
+    private void bindDancePanel(View root) {
+        com.google.android.material.slider.Slider slSpeed = root.findViewById(R.id.sl_3d_danceSpeed);
+        com.google.android.material.slider.Slider slDist  = root.findViewById(R.id.sl_3d_danceDistance);
+        if (slSpeed != null) {
+            slSpeed.setValue(danceSpeed);
+            slSpeed.addOnChangeListener((s, val, fromUser) -> {
+                if (!fromUser) return;
+                danceSpeed = val;
+                if (audio3DScene != null) audio3DScene.setDanceSpeed(val);
+                updateDanceValueText();
+            });
+        }
+        if (slDist != null) {
+            slDist.setValue(danceDistance);
+            slDist.addOnChangeListener((s, val, fromUser) -> {
+                if (!fromUser) return;
+                danceDistance = val;
+                if (audio3DScene != null) audio3DScene.setDanceDistance(val);
+                updateDanceValueText();
+            });
+        }
+        // Swing slider: wave speed of one swinging stem (danceSwingStem).
+        com.google.android.material.slider.Slider slOsc = root.findViewById(R.id.sl_3d_danceOsc);
+        if (slOsc != null) {
+            slOsc.setValue(0.5f);
+            slOsc.addOnChangeListener((s, val, fromUser) -> {
+                if (!fromUser || danceSwingStem == null) return;
+                danceOscSpeeds.put(danceSwingStem, val);
+                if (audio3DScene != null) audio3DScene.setStemOscSpeed(danceSwingStem, val);
+                updateDanceValueText();
+            });
+        }
+        View tabSpeed = root.findViewById(R.id.tv_3d_danceTabSpeed);
+        View tabDist  = root.findViewById(R.id.tv_3d_danceTabDistance);
+        View tabSwing = root.findViewById(R.id.tv_3d_danceTabSwing);
+        if (tabSpeed != null) tabSpeed.setOnClickListener(v -> selectDanceTab(DANCE_TAB_SPEED, true));
+        if (tabDist  != null) tabDist.setOnClickListener(v -> selectDanceTab(DANCE_TAB_DISTANCE, true));
+        if (tabSwing != null) tabSwing.setOnClickListener(v -> selectDanceTab(DANCE_TAB_SWING, true));
+        View swingStem = root.findViewById(R.id.iv_3d_danceSwingStem);
+        if (swingStem != null) swingStem.setOnClickListener(v -> nextDanceSwingStem());
+        View chevron = root.findViewById(R.id.iv_3d_danceChevron);
+        if (chevron != null) chevron.setOnClickListener(v -> setDancePanelCollapsed(!dancePanelCollapsed, true));
+        // Tab widths change with the swing tab: the pill follows without animating.
+        View tabs = root.findViewById(R.id.fl_3d_danceTabs);
+        if (tabs != null) tabs.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (!danceIndicatorAnimating) placeDanceTabIndicator(false);
+        });
+    }
+
+    /** View of the dance panel in the 3D view in use (each view has its own copy). */
+    @androidx.annotation.Nullable
+    private <T extends View> T danceView(int id) {
+        View root = active3DRoot();
+        return root != null ? root.findViewById(id) : null;
     }
 
     // === Scene build ===
@@ -5186,7 +5236,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
                 audio3DScene.stopDance();
                 b3DDanceScene.setIconResource(R.raw.ic_play);
-                setSceneDanceSlidersVisible(false);
+                setDancePanelVisible(false);
             } else {
                 showStemsDanceDialog();
             }
@@ -5195,60 +5245,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         com.google.android.material.button.MaterialButton bResetScene =
                 findViewById(R.id.b_3d_resetScene);
         if (bResetScene != null) bResetScene.setOnClickListener(v -> reset3DPositions());
-        // Dance panel of the scene: tabs + one large slider per value.
-        View dancePanelScene = findViewById(R.id.ll_3d_dancePanelScene);
-        com.google.android.material.slider.Slider slSpeedInlineScene =
-                findViewById(R.id.sl_3d_danceSpeedScene);
-        com.google.android.material.slider.Slider slDistInlineScene =
-                findViewById(R.id.sl_3d_danceDistanceScene);
-        if (slSpeedInlineScene != null) {
-            slSpeedInlineScene.setValue(danceSpeed);
-            slSpeedInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                if (!fromUser) return;
-                danceSpeed = val;
-                if (audio3DScene != null) audio3DScene.setDanceSpeed(val);
-                updateDanceValueText();
-            });
-        }
-        if (slDistInlineScene != null) {
-            slDistInlineScene.setValue(danceDistance);
-            slDistInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                if (!fromUser) return;
-                danceDistance = val;
-                if (audio3DScene != null) audio3DScene.setDanceDistance(val);
-                updateDanceValueText();
-            });
-        }
-        // Swing slider: wave speed of one swinging stem (danceSwingStem).
-        com.google.android.material.slider.Slider slOscInlineScene =
-                findViewById(R.id.sl_3d_danceOscScene);
-        if (slOscInlineScene != null) {
-            slOscInlineScene.setValue(0.5f);
-            slOscInlineScene.addOnChangeListener((s, val, fromUser) -> {
-                if (!fromUser || danceSwingStem == null) return;
-                danceOscSpeeds.put(danceSwingStem, val);
-                if (audio3DScene != null) audio3DScene.setStemOscSpeed(danceSwingStem, val);
-                updateDanceValueText();
-            });
-        }
-        View tabSpeed = findViewById(R.id.tv_3d_danceTabSpeed);
-        View tabDist  = findViewById(R.id.tv_3d_danceTabDistance);
-        View tabSwing = findViewById(R.id.tv_3d_danceTabSwing);
-        if (tabSpeed != null) tabSpeed.setOnClickListener(v -> selectDanceTab(DANCE_TAB_SPEED, true));
-        if (tabDist  != null) tabDist.setOnClickListener(v -> selectDanceTab(DANCE_TAB_DISTANCE, true));
-        if (tabSwing != null) tabSwing.setOnClickListener(v -> selectDanceTab(DANCE_TAB_SWING, true));
-        View swingStem = findViewById(R.id.iv_3d_danceSwingStem);
-        if (swingStem != null) swingStem.setOnClickListener(v -> nextDanceSwingStem());
-        View chevron = findViewById(R.id.iv_3d_danceChevron);
-        if (chevron != null) chevron.setOnClickListener(v -> setDancePanelCollapsed(!dancePanelCollapsed, true));
-        // Tab widths change with the swing tab: the pill follows without animating.
-        View tabs = findViewById(R.id.fl_3d_danceTabs);
-        if (tabs != null) tabs.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            if (!danceIndicatorAnimating) placeDanceTabIndicator(false);
-        });
-        danceInlineSlidersContainer = dancePanelScene;
-        danceInlineSlSpeed          = slSpeedInlineScene;
-        danceInlineSlDistance       = slDistInlineScene;
+        bindDancePanel(view3DSceneRoot);
         setSceneControlsEnabled(is3DEnabled);
         refreshDanceSwingTab();
         // Fresh views carry the theme accent: bring them to the song's.
@@ -5380,7 +5377,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (b3DReset != null) {
             b3DReset.animate().cancel();
             b3DReset.setAlpha(0f);
-            b3DReset.setVisibility(View.GONE);
+            b3DReset.setVisibility(View.INVISIBLE);
         }
         selected3DStem = null;
     }
@@ -5766,7 +5763,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Animates the stem icons with a cascaded fade+scale in after the transition.
      *  Each icon lands on its real alpha (0.35 if muted, 1 if active) and on the
-     *  scale matching its distance (near=big, far=small). */
+     *  scale matching its depth (near the camera=big, far=small). */
     private void animateStemIconsIn() {
         int i = 0;
         for (java.util.Map.Entry<String, android.widget.ImageView> e : stem3DIcons.entrySet()) {
@@ -5774,11 +5771,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             android.widget.ImageView iv = e.getValue();
             float alphaTarget = iconAlphaFor(stem);
             float[] pos = stem3DPositions.get(stem);
-            float distance = pos != null
-                    ? (float) Math.sqrt(pos[0]*pos[0] + pos[1]*pos[1])
-                    : 1f;
-            float d = Math.max(0.5f, distance);
-            float scaleTarget = Math.max(0.55f, Math.min(1.35f, 1f / d));
+            float scaleTarget = flatDepthScale(pos != null ? pos[1] : -1f);
             iv.setAlpha(0f);
             iv.setScaleX(0.6f);
             iv.setScaleY(0.6f);
@@ -6286,7 +6279,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     selected3DStem = id;
                     audio3DScene.setStemSelected(id);
                     syncSceneDistanceSliderForSelected();
-                    syncSceneWaveSliderForSelected();
+                    syncSwingTabForSelected();
                     break;
                 case LONG_PRESS:
                     toggle3DStemMute(id);
@@ -6309,7 +6302,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void build3DIcons() {
         if (fl3DStemContainer == null || playbackService == null) return;
-        fl3DStemContainer.removeAllViews();
+        // The head lives in the same container and stays.
+        for (android.widget.ImageView old : stem3DIcons.values()) fl3DStemContainer.removeView(old);
         stem3DIcons.clear();
         java.util.List<String> order = playbackService.getStemOrder();
         boolean hasV2 = playbackService.hasStem("vocals2");
@@ -6321,6 +6315,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             android.widget.ImageView iv = new android.widget.ImageView(this);
             iv.setImageResource(StemSpec.iconResource(stem, hasV2));
             iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+            // Z only orders the icons against the head: no shadow.
+            iv.setOutlineProvider(null);
             android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
                     iconSizePx, iconSizePx);
             iv.setLayoutParams(lp);
@@ -6368,17 +6364,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 ny = -(float) Math.cos(ang);   // negative = up on screen = "front"
                 stem3DPositions.put(stem, new float[]{ nx, ny });
             }
-            int px = cx + (int)(nx * radius) - iv.getWidth()/2;
-            int py = cy + (int)(ny * radius) - iv.getHeight()/2;
-            // Clamp Y against the header bottom so it does not overlap the title
-            float minY = get3DHeaderBottom();
-            if (py < minY) {
-                py = (int) minY;
-                ny = (py + iv.getHeight()/2f - cy) / radius;
-                stem3DPositions.put(stem, new float[]{ nx, ny });
-            }
-            iv.setX(px);
-            iv.setY(py);
+            iv.setX(cx + nx * radius - iv.getWidth() / 2f);
+            iv.setY(cy + ny * radius * FLAT_DEPTH_SQUASH - flatLift(stem, radius) - iv.getHeight() / 2f);
+            applyFlatDepthVisual(iv, ny);
             // Apply to the engine with this first placement (also refreshes visual scale)
             apply3DPositionToEngine(stem, nx, ny);
         }
@@ -6399,9 +6387,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
         engine.setTrack3DPosition(trackId, azimuth, distance, s.elevationDeg);
         engine.setTrack3DOmnipresent(trackId, s.omnipresent);
-        // Visual feedback: scale inversely proportional to the distance.
         android.widget.ImageView iv = stem3DIcons.get(stem);
-        if (iv != null && !isIconAnimating(iv)) applyIconVisualForDistance(iv, distance);
+        if (iv != null) applyFlatDepthVisual(iv, ny);
     }
 
     /** Re-applies the current 3D position of the stem to the engine (without recomputing from pixels).
@@ -6417,12 +6404,46 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return v.getTag(R.id.view3D_root) != null;
     }
 
-    /** Icon scale based on normalized distance: near=big, far=small.
-     *  Range [0.55, 1.35] with a distance floor to keep it from exploding when it is glued
-     *  to the center. Soft alpha with distance to reinforce the "far away" feeling. */
-    private void applyIconVisualForDistance(android.widget.ImageView iv, float distance) {
-        float d = Math.max(0.5f, distance);
-        float scale = Math.max(0.55f, Math.min(1.35f, 1f / d));
+    // Flat view seen from a camera behind and above the head: the floor circle
+    // becomes an ellipse (screen Y squashed) and stems in front of the listener
+    // (ny < 0) go smaller and behind the head. Positions stay floor coordinates.
+    private static final float FLAT_DEPTH_SQUASH = 0.45f;
+    private static final float FLAT_DEPTH_PERSPECTIVE = 0.35f;
+    /** Farthest a dragged stem can go, in default-circle radii. */
+    private static final float FLAT_MAX_RADIUS = 1.7f;
+
+    private static final float FLAT_LIFT = 0.9f;
+
+    /** Pixels an icon rises over its floor point: its elevation, the only height on screen. */
+    private float flatLift(String stem, float radius) {
+        float elev = StemSettingsCodec.getOrDefault(stemSettings, stem).elevationDeg;
+        float t = (float) Math.tan(Math.toRadians(elev));
+        return Math.max(-1.2f, Math.min(1.2f, t)) * radius * FLAT_LIFT;
+    }
+
+    /** Moves a flat icon to where its floor position and elevation project. */
+    private void placeFlatIcon(String stem) {
+        android.widget.ImageView iv = stem3DIcons.get(stem);
+        float[] pos = stem3DPositions.get(stem);
+        if (iv == null || pos == null || fl3DStemContainer == null) return;
+        int cw = fl3DStemContainer.getWidth(), ch = fl3DStemContainer.getHeight();
+        if (cw <= 0 || ch <= 0) return;
+        float[] headC = get3DHeadCenter(cw, ch);
+        float radius = cw * 0.35f;
+        iv.setX(headC[0] + pos[0] * radius - iv.getWidth() / 2f);
+        iv.setY(headC[1] + pos[1] * radius * FLAT_DEPTH_SQUASH - flatLift(stem, radius) - iv.getHeight() / 2f);
+    }
+
+    private static float flatDepthScale(float ny) {
+        float scale = 1f / Math.max(0.2f, 1f - FLAT_DEPTH_PERSPECTIVE * ny);
+        return Math.max(0.55f, Math.min(1.5f, scale));
+    }
+
+    /** Depth of an icon: its Z against the head (Z 0) and, unless animating, its scale. */
+    private void applyFlatDepthVisual(android.widget.ImageView iv, float ny) {
+        iv.setTranslationZ(ny);
+        if (isIconAnimating(iv)) return;
+        float scale = flatDepthScale(ny);
         iv.setScaleX(scale);
         iv.setScaleY(scale);
     }
@@ -6497,13 +6518,15 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             sb3DDistanceScene.setEnabled(enabled);
             sb3DDistanceScene.setAlpha(alpha);
         }
-        View dancePanel = findViewById(R.id.ll_3d_dancePanelScene);
-        if (dancePanel != null) dancePanel.setAlpha(alpha);
-        for (int id : new int[] { R.id.sl_3d_danceSpeedScene, R.id.sl_3d_danceDistanceScene,
-                R.id.sl_3d_danceOscScene, R.id.tv_3d_danceTabSpeed, R.id.tv_3d_danceTabDistance,
-                R.id.tv_3d_danceTabSwing, R.id.iv_3d_danceSwingStem }) {
-            View c = findViewById(id);
-            if (c != null) c.setEnabled(enabled);
+        if (view3DSceneRoot != null) {
+            View dancePanel = view3DSceneRoot.findViewById(R.id.ll_3d_dancePanel);
+            if (dancePanel != null) dancePanel.setAlpha(alpha);
+            for (int id : new int[] { R.id.sl_3d_danceSpeed, R.id.sl_3d_danceDistance,
+                    R.id.sl_3d_danceOsc, R.id.tv_3d_danceTabSpeed, R.id.tv_3d_danceTabDistance,
+                    R.id.tv_3d_danceTabSwing, R.id.iv_3d_danceSwingStem }) {
+                View c = view3DSceneRoot.findViewById(id);
+                if (c != null) c.setEnabled(enabled);
+            }
         }
         if (b3DDanceScene != null) {
             b3DDanceScene.setEnabled(enabled);
@@ -6579,30 +6602,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                     }
                     if (newY > maxYPx) newY = maxYPx;
 
-                    // Elliptical hitbox: do not let the icon cross the head volume.
-                    // Bigger than the visible head to leave room and avoid "getting inside".
+                    // Screen to floor: undo the ellipse, then keep it in range.
                     float[] headC = get3DHeadCenter(cw, ch);
-                    float iconCX = newX + v.getWidth()/2f;
-                    float iconCY = newY + v.getHeight()/2f;
-                    float rx = iv3DHead.getWidth()  * 0.60f;
-                    float ry = iv3DHead.getHeight() * 0.55f;
-                    float dx = iconCX - headC[0];
-                    float dy = iconCY - headC[1];
-                    float inside = (dx*dx)/(rx*rx) + (dy*dy)/(ry*ry);
-                    if (inside < 1f) {
-                        float k = 1f / (float) Math.sqrt(inside + 1e-6f);
-                        dx *= k; dy *= k;
-                        iconCX = headC[0] + dx;
-                        iconCY = headC[1] + dy;
-                        newX = iconCX - v.getWidth()/2f;
-                        newY = iconCY - v.getHeight()/2f;
+                    float radius = cw * 0.35f;
+                    float nx = (newX + v.getWidth()/2f  - headC[0]) / radius;
+                    float lift = flatLift(stem, radius);
+                    float ny = (newY + v.getHeight()/2f + lift - headC[1]) / (radius * FLAT_DEPTH_SQUASH);
+                    float reach = (float) Math.hypot(nx, ny);
+                    if (reach > FLAT_MAX_RADIUS) {
+                        nx *= FLAT_MAX_RADIUS / reach;
+                        ny *= FLAT_MAX_RADIUS / reach;
+                        newX = headC[0] + nx * radius - v.getWidth()/2f;
+                        newY = headC[1] + ny * radius * FLAT_DEPTH_SQUASH - lift - v.getHeight()/2f;
                     }
                     v.setX(newX);
                     v.setY(newY);
-
-                    float radius = cw * 0.35f;
-                    float nx = (iconCX - headC[0]) / radius;
-                    float ny = (iconCY - headC[1]) / radius;
+                    applyFlatDepthVisual((android.widget.ImageView) v, ny);
                     stem3DPositions.put(stem, new float[]{ nx, ny });
                     if (is3DEnabled) apply3DPositionToEngine(stem, nx, ny);
                     return true;
@@ -6668,13 +6683,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         StemSetting s = StemSettingsCodec.getOrDefault(stemSettings, stem);
         if (sb3DElevation != null) {
             sb3DElevation.setValue(Math.max(-30f, Math.min(70f, s.elevationDeg)));
-            refreshElevationSliderEnabled(s.omnipresent);
+            refreshElevationSliderEnabled(elevationLocked(stem));
         }
         // Selection ring: only on the current icon, null on the rest.
         for (java.util.Map.Entry<String, android.widget.ImageView> e : stem3DIcons.entrySet()) {
             android.widget.ImageView iv = e.getValue();
             iv.setBackground(e.getKey().equals(stem) ? selectedStemRing() : null);
         }
+        syncSwingTabForSelected();
+    }
+
+    /** Elevation does not follow the slider: omnipresent, or driven by the swing. */
+    private boolean elevationLocked(String stem) {
+        return StemSettingsCodec.getOrDefault(stemSettings, stem).omnipresent
+                || (danceActive && danceSwingPhase.containsKey(stem));
     }
 
     /** Selection ring of a flat 3D icon, in the player accent (a drawable XML
@@ -6745,13 +6767,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     /** A tapped swinging stem becomes the one the swing tab edits. */
-    private void syncSceneWaveSliderForSelected() {
+    private void syncSwingTabForSelected() {
         if (selected3DStem == null || !danceSineStems.contains(selected3DStem)) return;
         danceSwingStem = selected3DStem;
         refreshDanceSwingTab();
     }
 
-    // ---- Dance panel (scene): tabs + one large slider ----
+    // ---- Dance panel: tabs + one large slider ----
 
     private static final int DANCE_TAB_SPEED = 0, DANCE_TAB_DISTANCE = 1, DANCE_TAB_SWING = 2;
     private int danceTab = DANCE_TAB_SPEED;
@@ -6778,13 +6800,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             danceSwingStem = selected3DStem != null && swing.contains(selected3DStem)
                     ? selected3DStem : swing.get(0);
         }
-        android.widget.ImageView iv = findViewById(R.id.iv_3d_danceSwingStem);
+        android.widget.ImageView iv = danceView(R.id.iv_3d_danceSwingStem);
         if (iv != null && danceSwingStem != null) {
             boolean hasV2 = playbackService != null && playbackService.hasStem("vocals2");
             iv.setImageResource(StemSpec.iconResource(danceSwingStem, hasV2));
             iv.setContentDescription(danceSwingStem);
         }
-        com.google.android.material.slider.Slider sl = findViewById(R.id.sl_3d_danceOscScene);
+        com.google.android.material.slider.Slider sl = danceView(R.id.sl_3d_danceOsc);
         if (sl != null && danceSwingStem != null) {
             float val = Math.max(sl.getValueFrom(), Math.min(sl.getValueTo(),
                     danceOscSpeeds.getOrDefault(danceSwingStem, 0.5f)));
@@ -6793,15 +6815,19 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         selectDanceTab(danceTab, false);
     }
 
-    /** Swing tab: next swinging stem, also selected in the scene. */
+    /** Swing tab: next swinging stem, also selected in the 3D view. */
     private void nextDanceSwingStem() {
         java.util.List<String> swing = orderedSwingStems();
         if (swing.size() < 2) return;
         int i = swing.indexOf(danceSwingStem);
         danceSwingStem = swing.get((i + 1) % swing.size());
-        selected3DStem = danceSwingStem;
-        if (audio3DScene != null) audio3DScene.setStemSelected(danceSwingStem);
-        syncSceneDistanceSliderForSelected();
+        if (isAudio3DScene()) {
+            selected3DStem = danceSwingStem;
+            if (audio3DScene != null) audio3DScene.setStemSelected(danceSwingStem);
+            syncSceneDistanceSliderForSelected();
+        } else {
+            selectStem3D(danceSwingStem);
+        }
         refreshDanceSwingTab();
     }
 
@@ -6821,7 +6847,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (tab == DANCE_TAB_SWING && danceSwingStem == null) tab = DANCE_TAB_SPEED;
         boolean changed = tab != danceTab;
         danceTab = tab;
-        android.view.ViewGroup row = findViewById(R.id.ll_3d_danceSliderRow);
+        android.view.ViewGroup row = danceView(R.id.ll_3d_danceSliderRow);
         if (animate && changed && row != null && row.isLaidOut()) {
             androidx.transition.TransitionManager.beginDelayedTransition(row,
                     new androidx.transition.TransitionSet()
@@ -6831,14 +6857,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             .setDuration(DANCE_TAB_MS)
                             .setInterpolator(new androidx.interpolator.view.animation.FastOutSlowInInterpolator()));
         }
-        int[] sliders = { R.id.sl_3d_danceSpeedScene, R.id.sl_3d_danceDistanceScene, R.id.sl_3d_danceOscScene };
+        int[] sliders = { R.id.sl_3d_danceSpeed, R.id.sl_3d_danceDistance, R.id.sl_3d_danceOsc };
         for (int i = 0; i < sliders.length; i++) {
-            View sl = findViewById(sliders[i]);
+            View sl = danceView(sliders[i]);
             if (sl != null) sl.setVisibility(i == tab ? View.VISIBLE : View.GONE);
         }
-        View swingStem = findViewById(R.id.iv_3d_danceSwingStem);
+        View swingStem = danceView(R.id.iv_3d_danceSwingStem);
         if (swingStem != null) swingStem.setVisibility(tab == DANCE_TAB_SWING ? View.VISIBLE : View.GONE);
-        View swingTab = findViewById(R.id.tv_3d_danceTabSwing);
+        View swingTab = danceView(R.id.tv_3d_danceTabSwing);
         if (swingTab != null) swingTab.setVisibility(danceSwingStem != null ? View.VISIBLE : View.GONE);
         paintDanceTabs();
         placeDanceTabIndicator(animate && changed);
@@ -6848,13 +6874,11 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     /** Moves the accent pill under the current tab and fades the tab text
      *  colors along with it. */
     private void placeDanceTabIndicator(boolean animate) {
-        View pill = findViewById(R.id.v_3d_danceTabIndicator);
-        View target = findViewById(DANCE_TAB_IDS[danceTab]);
+        View pill = danceView(R.id.v_3d_danceTabIndicator);
+        View target = danceView(DANCE_TAB_IDS[danceTab]);
         if (pill == null || target == null) return;
-        if (target.getWidth() == 0) {
-            target.post(() -> placeDanceTabIndicator(false));
-            return;
-        }
+        // Not laid out yet (panel hidden): the tabs' layout listener places it.
+        if (target.getWidth() == 0) return;
         final int toX = target.getLeft(), toW = target.getWidth();
         final float fromX = pill.getTranslationX();
         final int fromW = pill.getLayoutParams().width;
@@ -6863,7 +6887,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         final TextView[] tvs = new TextView[DANCE_TAB_IDS.length];
         final int[] fromC = new int[tvs.length], toC = new int[tvs.length];
         for (int i = 0; i < tvs.length; i++) {
-            tvs[i] = findViewById(DANCE_TAB_IDS[i]);
+            tvs[i] = danceView(DANCE_TAB_IDS[i]);
             if (tvs[i] == null) continue;
             fromC[i] = tvs[i].getCurrentTextColor();
             toC[i] = i == danceTab ? DANCE_TAB_TEXT_ON : Color.WHITE;
@@ -6903,12 +6927,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
      *  the width and fades the content. */
     private void setDancePanelCollapsed(boolean collapsed, boolean animate) {
         dancePanelCollapsed = collapsed;
-        View panel = findViewById(R.id.ll_3d_dancePanelScene);
-        View content = findViewById(R.id.ll_3d_danceContent);
-        View chevron = findViewById(R.id.iv_3d_danceChevron);
-        android.view.ViewGroup bottomRow = findViewById(R.id.ll_3d_bottomRowScene);
+        View panel = danceView(R.id.ll_3d_dancePanel);
+        View content = danceView(R.id.ll_3d_danceContent);
+        View chevron = danceView(R.id.iv_3d_danceChevron);
         if (panel == null || content == null) return;
-        if (animate && bottomRow != null && panel.isLaidOut()) {
+        android.view.ViewGroup bottomRow = (android.view.ViewGroup) panel.getParent();
+        if (animate && panel.isLaidOut()) {
             androidx.transition.TransitionManager.beginDelayedTransition(bottomRow,
                     new androidx.transition.TransitionSet()
                             .addTransition(new androidx.transition.ChangeBounds())
@@ -6934,22 +6958,28 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Pill and swing stem badge in the player accent. */
     private void paintDanceTabs() {
+        paintDanceTabs(view3DRoot);
+        paintDanceTabs(view3DSceneRoot);
+    }
+
+    private void paintDanceTabs(@androidx.annotation.Nullable View root) {
+        if (root == null) return;
         float d = getResources().getDisplayMetrics().density;
-        View pill = findViewById(R.id.v_3d_danceTabIndicator);
+        View pill = root.findViewById(R.id.v_3d_danceTabIndicator);
         if (pill != null) {
             android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
             bg.setCornerRadius(16 * d);
             bg.setColor(accent());
             pill.setBackground(bg);
         }
-        View tabs = findViewById(R.id.fl_3d_danceTabs);
+        View tabs = root.findViewById(R.id.fl_3d_danceTabs);
         if (tabs != null && tabs.getBackground() == null) {
             android.graphics.drawable.GradientDrawable track = new android.graphics.drawable.GradientDrawable();
             track.setCornerRadius(16 * d);
             track.setColor(0xFF2D2822);
             tabs.setBackground(track);
         }
-        View swingStem = findViewById(R.id.iv_3d_danceSwingStem);
+        View swingStem = root.findViewById(R.id.iv_3d_danceSwingStem);
         if (swingStem != null) {
             android.graphics.drawable.GradientDrawable badge = new android.graphics.drawable.GradientDrawable();
             badge.setCornerRadius(20 * d);
@@ -6961,12 +6991,12 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
     /** Value of the tab shown, with its unit. */
     private void updateDanceValueText() {
-        TextView tv = findViewById(R.id.tv_3d_danceValue);
+        TextView tv = danceView(R.id.tv_3d_danceValue);
         if (tv == null) return;
         java.util.Locale l = java.util.Locale.US;
         switch (danceTab) {
             case DANCE_TAB_DISTANCE:
-                tv.setText(String.format(l, "%.2f m", danceDistance));
+                tv.setText(String.format(l, isAudio3DScene() ? "%.2f m" : "%.2fx", danceDistance));
                 break;
             case DANCE_TAB_SWING:
                 float hz = danceSwingStem != null ? danceOscSpeeds.getOrDefault(danceSwingStem, 0.5f) : 0.5f;
@@ -7037,13 +7067,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (b3DReset == null) return;
         b3DReset.animate().cancel();
         b3DReset.animate().alpha(0f).setDuration(200)
-                .withEndAction(() -> b3DReset.setVisibility(View.GONE))
+                .withEndAction(() -> b3DReset.setVisibility(View.INVISIBLE))
                 .start();
     }
 
     /** Animates every icon to its default position (frontal semicircle) and clears
      *  elevation + omnipresent + selection. Total duration <= 1.5s with cascade. */
     private void reset3DPositions() {
+        // A running dance would pull the stems straight back to their orbit.
+        if (isAudio3DScene() && audio3DScene != null && audio3DScene.isDanceActive()) {
+            audio3DScene.stopDance();
+            if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.raw.ic_play);
+            setDancePanelVisible(false);
+        } else if (danceActive) {
+            stopDance();
+        }
         if (isAudio3DScene()) { reset3DPositionsScene(); return; }
         if (fl3DStemContainer == null || playbackService == null) return;
         java.util.List<String> order = playbackService.getStemOrder();
@@ -7067,7 +7105,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             final float x0 = iv.getX();
             final float y0 = iv.getY();
             final float xT = headC[0] + nxT * radius - iv.getWidth()/2f;
-            final float yT = headC[1] + nyT * radius - iv.getHeight()/2f;
+            final float yT = headC[1] + nyT * radius * FLAT_DEPTH_SQUASH - iv.getHeight()/2f;
 
             // Clear stem visual flags
             iv.setBackgroundResource(0);
@@ -7093,8 +7131,9 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                 iv.setX(x);
                 iv.setY(y);
                 float nx = (x + iv.getWidth()/2f  - headC[0]) / radius;
-                float ny = (y + iv.getHeight()/2f - headC[1]) / radius;
+                float ny = (y + iv.getHeight()/2f - headC[1]) / (radius * FLAT_DEPTH_SQUASH);
                 stem3DPositions.put(stem, new float[]{ nx, ny });
+                applyFlatDepthVisual(iv, ny);
                 if (is3DEnabled) apply3DPositionToEngine(stem, nx, ny);
             });
             va.start();
@@ -7182,14 +7221,14 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         return (float) (rh / Math.max(0.05f, Math.cos(elevRad)));
     }
 
-    /** Scene mode: dance panel in the bottom row, shown only while the
-     *  dance runs (the setup dialog carries no sliders). */
-    private void setSceneDanceSlidersVisible(boolean visible) {
-        View group = findViewById(R.id.ll_3d_dancePanelScene);
+    /** Dance panel in the bottom row, shown only while the dance runs (the
+     *  setup dialog carries no sliders). */
+    private void setDancePanelVisible(boolean visible) {
+        View group = danceView(R.id.ll_3d_dancePanel);
         if (group == null) return;
         if (visible) {
-            com.google.android.material.slider.Slider sp = findViewById(R.id.sl_3d_danceSpeedScene);
-            com.google.android.material.slider.Slider di = findViewById(R.id.sl_3d_danceDistanceScene);
+            com.google.android.material.slider.Slider sp = danceView(R.id.sl_3d_danceSpeed);
+            com.google.android.material.slider.Slider di = danceView(R.id.sl_3d_danceDistance);
             if (sp != null) sp.setValue(danceSpeed);
             if (di != null) di.setValue(danceDistance);
             refreshDanceSwingTab();
@@ -7214,22 +7253,20 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         boolean scene = isAudio3DScene();
         if (scene) {
             if (danceDistance < 0.3f || danceDistance > 3.0f) danceDistance = 1.5f;
-        } else if (danceDistance < 0.4f || danceDistance > 1.2f) {
+        } else if (danceDistance < FLAT_DANCE_DISTANCE_MIN || danceDistance > FLAT_DANCE_DISTANCE_MAX) {
             danceDistance = 1.0f;
         }
-        // Swing only exists in scene mode.
-        cbRandomSwing.setVisibility(scene ? View.VISIBLE : View.GONE);
         cbRandomSwing.setChecked(danceRandomSwing);
 
         // Tile grid. Selection starts with the previous dance set (or all
-        // stems); the swing toggle is per stem and scene-only. Four stems
-        // lay out as 2x2, anything else in rows of three.
+        // stems); the swing toggle is per stem. Four stems lay out as 2x2,
+        // anything else in rows of three.
         java.util.List<String> order = playbackService.getStemOrder();
         boolean hasV2 = playbackService.hasStem("vocals2");
         final java.util.Set<String> selection = new java.util.HashSet<>(danceStems);
         if (selection.isEmpty()) selection.addAll(order);
         final java.util.Set<String> sineSel = new java.util.HashSet<>(danceSineStems);
-        DanceStemTileAdapter adapter = new DanceStemTileAdapter(order, selection, sineSel, hasV2, scene,
+        DanceStemTileAdapter adapter = new DanceStemTileAdapter(order, selection, sineSel, hasV2,
                 () -> bStart.setEnabled(!selection.isEmpty()));
         int n = order.size();
         int span = (n == 4 || n <= 2) ? 2 : 3;
@@ -7263,7 +7300,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                         new java.util.HashSet<>(danceSineStems), danceSpeed, danceDistance,
                         danceRandomSwing);
                 if (b3DDanceScene != null) b3DDanceScene.setIconResource(R.drawable.ic_stop);
-                setSceneDanceSlidersVisible(true);
+                setDancePanelVisible(true);
             } else {
                 startDance();
             }
@@ -7278,36 +7315,35 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         int cw = fl3DStemContainer.getWidth();
         int ch = fl3DStemContainer.getHeight();
         if (cw <= 0 || ch <= 0) return;
-        float[] headC = get3DHeadCenter(cw, ch);
-        float radius = cw * 0.35f;
         danceAngle.clear();
         danceRadialFactor.clear();
         danceSpeedFactor.clear();
+        danceSwingPhase.clear();
         java.util.Random rnd = new java.util.Random();
         for (String stem : danceStems) {
             android.widget.ImageView iv = stem3DIcons.get(stem);
             if (iv == null) continue;
-            float cx = iv.getX() + iv.getWidth()/2f;
-            float cy = iv.getY() + iv.getHeight()/2f;
-            float dx = cx - headC[0];
-            float dy = cy - headC[1];
-            danceAngle.put(stem, (float) Math.atan2(dy, dx));
+            float[] pos = stem3DPositions.get(stem);
+            if (pos == null) continue;
+            danceAngle.put(stem, (float) Math.atan2(pos[1], pos[0]));
             // Base radial factor = current stem distance over the reference radius (respects
             // where it was before the dance started). It is multiplied by danceDistance.
-            float curDist = (float) Math.hypot(dx, dy) / radius;
+            float curDist = (float) Math.hypot(pos[0], pos[1]);
             if (curDist < 0.3f) curDist = 1f;   // fallback if it was too close to the center
             danceRadialFactor.put(stem, curDist);
             // Each stem gets a slightly different speed so it feels alive
             danceSpeedFactor.put(stem, 0.7f + rnd.nextFloat() * 0.6f);
+            if (danceSineStems.contains(stem)) {
+                danceSwingPhase.put(stem, danceRandomSwing
+                        ? rnd.nextFloat() * (float) (2 * Math.PI) : 0f);
+            }
         }
         danceLastNs = System.nanoTime();
         danceActive = true;
         danceGrabbed = null;
         if (b3DDance != null) b3DDance.setIconResource(R.drawable.ic_stop);
-        // Show inline sliders with current values
-        if (danceInlineSlidersContainer != null) danceInlineSlidersContainer.setVisibility(View.VISIBLE);
-        if (danceInlineSlSpeed    != null) danceInlineSlSpeed.setValue(danceSpeed);
-        if (danceInlineSlDistance != null) danceInlineSlDistance.setValue(danceDistance);
+        setDancePanelVisible(true);
+        if (selected3DStem != null) refreshElevationSliderEnabled(elevationLocked(selected3DStem));
         danceHandler.removeCallbacks(danceTick);
         danceHandler.post(danceTick);
     }
@@ -7318,17 +7354,21 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         danceGrabbed = null;
         danceHandler.removeCallbacks(danceTick);
         if (b3DDance != null) b3DDance.setIconResource(R.raw.ic_play);
-        // INVISIBLE (not GONE) so it reserves its width and the buttons stay to the right
-        if (danceInlineSlidersContainer != null) danceInlineSlidersContainer.setVisibility(View.INVISIBLE);
-        // Persist final position of each stem that was dancing
+        setDancePanelVisible(false);
+        danceSwingPhase.clear();
+        if (selected3DStem != null) refreshElevationSliderEnabled(elevationLocked(selected3DStem));
+        // Persist final pose of each stem that was dancing (a swinging stem
+        // stays at the elevation it reached, as in the scene).
         for (String stem : danceStems) {
             float[] p = stem3DPositions.get(stem);
             if (p == null) continue;
             StemSetting ss = StemSettingsCodec.getOrDefault(stemSettings, stem);
             ss.pos3DX = p[0];
             ss.pos3DY = p[1];
+            placeFlatIcon(stem);
         }
         persistStemSettings();
+        if (has3DModifications()) showResetButton();
     }
 
     /** One dance tick (~60 fps): advances angles, moves icons, applies to the engine. */
@@ -7352,7 +7392,8 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
         if (bottomRow != null && bottomRow.getHeight() > 0) {
             bottomLimit = bottomRow.getTop() - 8f * density;
         }
-        float rMaxY = Math.min(headC[1] - minY, bottomLimit - headC[1]) - 30f * density;
+        // Vertical room counts on the floor, where the ellipse takes less of it.
+        float rMaxY = (Math.min(headC[1] - minY, bottomLimit - headC[1]) - 30f * density) / FLAT_DEPTH_SQUASH;
         float rMax = Math.max(50f, Math.min(rMaxX, rMaxY));
         float twoPi = (float) (2 * Math.PI);
 
@@ -7368,15 +7409,31 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             danceAngle.put(stem, ang);
             float radius = Math.min(rMax, baseRadius * rf * danceDistance);
             float cx = headC[0] + (float) Math.cos(ang) * radius;
-            float cy = headC[1] + (float) Math.sin(ang) * radius;
-            float newX = cx - iv.getWidth()/2f;
-            float newY = cy - iv.getHeight()/2f;
-            iv.setX(newX);
-            iv.setY(newY);
+            float cy = headC[1] + (float) Math.sin(ang) * radius * FLAT_DEPTH_SQUASH;
             float nx = (cx - headC[0]) / baseRadius;
-            float ny = (cy - headC[1]) / baseRadius;
+            float ny = (float) Math.sin(ang) * radius / baseRadius;
             stem3DPositions.put(stem, new float[]{ nx, ny });
+            float dist = radius / baseRadius;
+            // Up/down wave around the head centre line, its phase independent of the orbit.
+            Float phase = danceSwingPhase.get(stem);
+            float lift = flatLift(stem, baseRadius);
+            if (phase != null) {
+                phase = (phase + twoPi * danceOscSpeeds.getOrDefault(stem, 0.5f) * dt) % twoPi;
+                danceSwingPhase.put(stem, phase);
+                float wave = (float) Math.sin(phase);
+                // On screen a full sine at any radius; only the engine's elevation has a range.
+                lift = FLAT_SWING_AMP * wave * baseRadius * FLAT_LIFT;
+                float elev = (float) Math.toDegrees(Math.atan2(FLAT_SWING_AMP * wave, Math.max(0.1f, dist)));
+                StemSettingsCodec.getOrDefault(stemSettings, stem).elevationDeg =
+                        Math.max(-30f, Math.min(70f, elev));
+                if (stem.equals(selected3DStem) && sb3DElevation != null) {
+                    sb3DElevation.setValue(Math.max(-30f, Math.min(70f, elev)));
+                }
+            }
+            iv.setX(cx - iv.getWidth()/2f);
+            iv.setY(cy - lift - iv.getHeight()/2f);
             if (is3DEnabled) apply3DPositionToEngine(stem, nx, ny);
+            applyFlatDepthVisual(iv, ny);
         }
     }
 
@@ -7388,21 +7445,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private void onDanceRelease(String stem) {
         if (!danceActive || !danceStems.contains(stem)) return;
         if (!stem.equals(danceGrabbed)) return;
-        android.widget.ImageView iv = stem3DIcons.get(stem);
-        if (iv != null && fl3DStemContainer != null) {
-            int cw = fl3DStemContainer.getWidth();
-            int ch = fl3DStemContainer.getHeight();
-            float[] headC = get3DHeadCenter(cw, ch);
-            float baseRadius = cw * 0.35f;
-            float cx = iv.getX() + iv.getWidth()/2f;
-            float cy = iv.getY() + iv.getHeight()/2f;
-            float dx = cx - headC[0];
-            float dy = cy - headC[1];
-            float ang  = (float) Math.atan2(dy, dx);
-            float dist = (float) Math.hypot(dx, dy) / baseRadius;
-            danceAngle.put(stem, ang);
+        float[] pos = stem3DPositions.get(stem);
+        if (pos != null) {
+            danceAngle.put(stem, (float) Math.atan2(pos[1], pos[0]));
             // New radial factor that respects the distance chosen by the user
-            if (danceDistance > 0.01f) danceRadialFactor.put(stem, dist / danceDistance);
+            if (danceDistance > 0.01f) {
+                danceRadialFactor.put(stem, (float) Math.hypot(pos[0], pos[1]) / danceDistance);
+            }
         }
         danceGrabbed = null;
     }
@@ -7457,7 +7506,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             applyOmnipresentTint(iv, s.omnipresent);
             iv.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
         }
-        if (stem.equals(selected3DStem)) refreshElevationSliderEnabled(s.omnipresent);
+        if (stem.equals(selected3DStem)) refreshElevationSliderEnabled(elevationLocked(stem));
         if (is3DEnabled) apply3DPositionForStem(stem);
         showResetButton();
     }

@@ -84,7 +84,7 @@
     <string name="reprocess_busy">Esta música já está sendo processada</string>
     <string name="audio3d_title">Áudio 3D</string>
     <string name="audio3d_info_title">Áudio 3D</string>
-    <string name="audio3d_info_body">Espacialização binaural experimental. Cada instrumento é posicionado ao redor do ouvinte na vista superior. A convolução HRTF (Head-Related Transfer Function, conjunto de dados KEMAR do MIT) recria a filtragem natural da cabeça, das orelhas e dos ombros para simular direção, elevação e distância. É preciso usar fones de ouvido para o efeito funcionar.</string>
+    <string name="audio3d_info_body">Espacialização binaural experimental. Cada instrumento é posicionado ao redor do ouvinte. A convolução HRTF (Head-Related Transfer Function, conjunto de dados KEMAR do MIT) recria a filtragem natural da cabeça, das orelhas e dos ombros para simular direção, elevação e distância. É preciso usar fones de ouvido para o efeito funcionar.</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>Arrastar</b> · posição]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>Tocar</b> · selecionar]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>Toque duplo</b> · onipresente]]></string>

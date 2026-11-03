@@ -84,7 +84,7 @@
     <string name="reprocess_busy">Questo brano è già in elaborazione</string>
     <string name="audio3d_title">Audio 3D</string>
     <string name="audio3d_info_title">Audio 3D</string>
-    <string name="audio3d_info_body">Spazializzazione binaurale sperimentale. Ogni strumento viene posizionato intorno all\'ascoltatore nella vista dall\'alto. La convoluzione HRTF (Head-Related Transfer Function, dataset KEMAR del MIT) ricrea il filtraggio naturale di testa, orecchie e spalle per simulare direzione, elevazione e distanza. Per sentire l\'effetto servono le cuffie.</string>
+    <string name="audio3d_info_body">Spazializzazione binaurale sperimentale. Ogni strumento viene posizionato intorno all\'ascoltatore. La convoluzione HRTF (Head-Related Transfer Function, dataset KEMAR del MIT) ricrea il filtraggio naturale di testa, orecchie e spalle per simulare direzione, elevazione e distanza. Per sentire l\'effetto servono le cuffie.</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>Trascina</b> · posizione]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>Tocca</b> · seleziona]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>Doppio tocco</b> · onnipresente]]></string>

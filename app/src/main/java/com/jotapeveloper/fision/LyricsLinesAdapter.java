@@ -743,7 +743,8 @@ public class LyricsLinesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             bindStripChords(((InstrumentalVH) holder).chords, position, active, accent, dim,
                     ContextCompat.getColor(ctx, R.color.lyrics_line_current));
             ImageView iv = ((InstrumentalVH) holder).icon;
-            int toColor = active ? accent : dim;
+            // Active note in white, like the active line; chords keep the accent.
+            int toColor = active ? ContextCompat.getColor(ctx, R.color.AppWhite) : dim;
             float toAlpha = rowAlpha(position);
             float toScale = active ? 1.15f : 1f;
             if (!animate) {

@@ -84,7 +84,7 @@
     <string name="reprocess_busy">这首歌曲正在处理中</string>
     <string name="audio3d_title">3D 音频</string>
     <string name="audio3d_info_title">3D 音频</string>
-    <string name="audio3d_info_body">实验性双耳空间化。在俯视图中，每件乐器都被放置在听者周围。HRTF 卷积（头相关传递函数，MIT 的 KEMAR 数据集）重现头部、耳朵和肩膀的自然滤波，以模拟方向、高度和距离。需要佩戴耳机才能体验效果。</string>
+    <string name="audio3d_info_body">实验性双耳空间化。每件乐器都被放置在听者周围。HRTF 卷积（头相关传递函数，MIT 的 KEMAR 数据集）重现头部、耳朵和肩膀的自然滤波，以模拟方向、高度和距离。需要佩戴耳机才能体验效果。</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>拖动</b> · 位置]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>轻触</b> · 选择]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>双击</b> · 全向]]></string>

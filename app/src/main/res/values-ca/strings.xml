@@ -86,7 +86,7 @@
     <string name="reprocess_busy">Aquesta cançó ja s\'està processant</string>
     <string name="audio3d_title">Àudio 3D</string>
     <string name="audio3d_info_title">Àudio 3D</string>
-    <string name="audio3d_info_body">Espacialització binaural experimental. Cada instrument es posiciona al voltant del oient en la vista superior. La convolució HRTF (Head-Related Transfer Function, dataset KEMAR MIT) recrea el filtratge natural de cap, orelles i espatlles per simular direccionalitat, alçada i distància. Cal usar auriculars perquè l\'efecte funcioni.</string>
+    <string name="audio3d_info_body">Espacialització binaural experimental. Cada instrument es posiciona al voltant del oient. La convolució HRTF (Head-Related Transfer Function, dataset KEMAR MIT) recrea el filtratge natural de cap, orelles i espatlles per simular direccionalitat, alçada i distància. Cal usar auriculars perquè l\'efecte funcioni.</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>Arrossegar</b> · posicionar]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>Tap</b> · seleccionar]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>Doble tap</b> · omnipresent]]></string>

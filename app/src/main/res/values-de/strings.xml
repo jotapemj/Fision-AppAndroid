@@ -84,7 +84,7 @@
     <string name="reprocess_busy">Dieser Song wird bereits verarbeitet</string>
     <string name="audio3d_title">3D-Audio</string>
     <string name="audio3d_info_title">3D-Audio</string>
-    <string name="audio3d_info_body">Experimentelle binaurale Verräumlichung. Jedes Instrument wird in der Draufsicht um den Hörer herum platziert. Die HRTF-Faltung (Head-Related Transfer Function, KEMAR-Datensatz des MIT) bildet die natürliche Filterung durch Kopf, Ohren und Schultern nach und simuliert so Richtung, Höhe und Entfernung. Für den Effekt sind Kopfhörer nötig.</string>
+    <string name="audio3d_info_body">Experimentelle binaurale Verräumlichung. Jedes Instrument wird um den Hörer herum platziert. Die HRTF-Faltung (Head-Related Transfer Function, KEMAR-Datensatz des MIT) bildet die natürliche Filterung durch Kopf, Ohren und Schultern nach und simuliert so Richtung, Höhe und Entfernung. Für den Effekt sind Kopfhörer nötig.</string>
     <string name="audio3d_legend_drag"><![CDATA[<b>Ziehen</b> · Position]]></string>
     <string name="audio3d_legend_tap"><![CDATA[<b>Tippen</b> · auswählen]]></string>
     <string name="audio3d_legend_double"><![CDATA[<b>Doppeltippen</b> · allgegenwärtig]]></string>
