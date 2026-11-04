@@ -139,6 +139,11 @@ public class LicenseCatalog {
                 "Free use with attribution","https://sound.media.mit.edu/resources/KEMAR.html",
                 LIC_KEMAR));
         ENTRIES.add(new LicenseEntry(
+                "Downbeat click sounds", "Ludwig Peter Müller",
+                "CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/",
+                "Metronome sounds recorded by Ludwig Peter Müller in December 2020.\n" +
+                "Free to use under the license Creative Commons CC0 1.0 Universal."));
+        ENTRIES.add(new LicenseEntry(
                 "Material Components", "Google",
                 "Apache 2.0", "https://github.com/material-components/material-components-android",
                 LIC_APACHE_2_0));

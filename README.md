@@ -170,6 +170,8 @@ code from this repository.
 
   > Gardner, W. G., and Martin, K. D. (1995). "HRTF measurements of a KEMAR."
   > Journal of the Acoustical Society of America, 97(6), 3907-3908.
+- Downbeat click sounds: recorded by Ludwig Peter Müller, December 2020.
+  [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
 
 **App**
 
