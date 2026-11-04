@@ -135,6 +135,17 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
     private static final String PREF_NEBULA_ENABLED   = "nebula_enabled";
     private boolean            nebulaEnabled         = false;
     private NebulaBackgroundView nebulaView;
+    // Pulse gain per section of the song; null keeps the pulse always on.
+    private BeatPulseMap       beatPulseMap;
+    private static final ExecutorService PULSE_MAP_EXECUTOR =
+            Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(() -> {
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+                    r.run();
+                }, "pulse-map");
+                t.setDaemon(true);
+                return t;
+            });
 
     // Sub-option: pulse the phone motor on each beat while nebula is on.
     private static final String PREF_NEBULA_HAPTICS_ENABLED = "nebula_haptics_enabled";
@@ -872,6 +883,7 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // Rhythm visualizer: builds cells from beats/chords/downbeats
         buildBeatCells();
+        loadBeatPulseMap();
         if (chordDiagrams != null) chordDiagrams.setCells(beatCells);
         syncLyricsChords();
 
@@ -1373,7 +1385,10 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
                     .edit().putBoolean(PREF_NEBULA_ENABLED, isChecked).apply();
             if (nebulaView != null) nebulaView.setNebulaEnabled(isChecked, true);
-            if (isChecked) refreshSongPalette();
+            if (isChecked) {
+                refreshSongPalette();
+                loadBeatPulseMap();
+            }
             if (rowHaptics != null) rowHaptics.setVisibility(isChecked ? View.VISIBLE : View.GONE);
             // Disabling the parent implicitly disables the haptics too so the
             // motor cannot keep firing without the visual layer running.
@@ -1401,6 +1416,22 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
             nebulaHapticsEnabled = isChecked;
             PreferenceManager.getDefaultSharedPreferences(PlayerActivity.this)
                     .edit().putBoolean(PREF_NEBULA_HAPTICS_ENABLED, isChecked).apply();
+        });
+    }
+
+    /** Loads or measures the pulse sections of the current song in the background.
+     *  Until they arrive, and when the nebula is off, nothing is measured or gated. */
+    private void loadBeatPulseMap() {
+        beatPulseMap = null;
+        final File folder = SongFolder;
+        if (!nebulaEnabled || folder == null || beatsList.isEmpty()) return;
+        final float[] beats = new float[beatsList.size()];
+        for (int i = 0; i < beats.length; i++) beats[i] = beatsList.get(i);
+        PULSE_MAP_EXECUTOR.execute(() -> {
+            final BeatPulseMap map = BeatPulseMap.loadOrAnalyze(folder, beats);
+            runOnUiThread(() -> {
+                if (folder.equals(SongFolder)) beatPulseMap = map;
+            });
         });
     }
 
@@ -3001,8 +3032,13 @@ public class PlayerActivity extends androidx.appcompat.app.AppCompatActivity {
                             boolean halfBeat = beatsPerBar == 3 ? beatPos == 1 : beatPos % 2 == 1;
                             if (halfTime && halfBeat) beatIntensity = 0.90f;
                             if (nebulaView != null && nebulaEnabled && (!halfTime || halfBeat)) {
-                                nebulaView.pulse(beatIntensity);
-                                triggerBeatHaptic(beatIntensity);
+                                // Quiet sections stay still; the pulse grows ahead of loud ones.
+                                float sectionGain = beatPulseMap != null
+                                        ? beatPulseMap.gainAt(beatCells.get(idx).time) : 1f;
+                                if (sectionGain > 0f) {
+                                    nebulaView.pulse(beatIntensity * sectionGain);
+                                    triggerBeatHaptic(beatIntensity * sectionGain);
+                                }
                             }
                             final int targetIdx = idx;
                             if (!browsingChords) scrollChordsTo(targetIdx);

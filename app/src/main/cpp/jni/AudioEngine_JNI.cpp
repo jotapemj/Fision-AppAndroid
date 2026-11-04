@@ -7,6 +7,10 @@
 // Only the FLAC decoder declarations here — the DR_FLAC_IMPLEMENTATION
 // instantiation lives in Track.cpp.
 #include "dr_flac.h"
+#include "WavReader.h"
+#include <cstring>
+#include <strings.h>
+#include <vector>
 
 // Guard against calls arriving after dispose() zeroed the Java handle.
 // Race window example: the service disposes the engine while a background
@@ -222,6 +226,97 @@ Java_com_jotapeveloper_fision_FlacDecoderJni_nativeDecodeFlac(
         env->SetIntArrayRegion(outMeta, 0, 2, meta);
     }
     return out;
+}
+
+// === Offline stem energy ===
+namespace {
+// Accumulates the mono power of consecutive audio blocks per beat window.
+struct BeatPowerMeter {
+    const std::vector<double>& windowStarts; // first frame of each window
+    std::vector<double> sums;
+    std::vector<long long> counts;
+    size_t window = 0;
+    long long frame = 0;
+
+    explicit BeatPowerMeter(const std::vector<double>& starts)
+            : windowStarts(starts), sums(starts.size(), 0.0), counts(starts.size(), 0) {}
+
+    void add(const float* pcm, size_t frames, int channels) {
+        for (size_t i = 0; i < frames; i++, frame++) {
+            while (window + 1 < windowStarts.size() && frame >= windowStarts[window + 1]) window++;
+            if (frame < windowStarts[window]) continue;
+            float mono = 0.0f;
+            for (int c = 0; c < channels; c++) mono += pcm[i * channels + c];
+            mono /= (float) channels;
+            sums[window] += (double) mono * mono;
+            counts[window]++;
+        }
+    }
+};
+
+std::vector<double> windowStartFrames(const std::vector<float>& beats, unsigned int sampleRate) {
+    std::vector<double> starts(beats.size());
+    for (size_t i = 0; i < beats.size(); i++) starts[i] = (double) beats[i] * sampleRate;
+    return starts;
+}
+
+bool measureFlac(const char* path, const std::vector<float>& beats,
+                 std::vector<double>& sums, std::vector<long long>& counts) {
+    drflac* flac = drflac_open_file(path, nullptr);
+    if (!flac) return false;
+    const int channels = flac->channels;
+    if (channels < 1 || flac->sampleRate == 0) { drflac_close(flac); return false; }
+    const std::vector<double> starts = windowStartFrames(beats, flac->sampleRate);
+    BeatPowerMeter meter(starts);
+    std::vector<float> block(4096 * channels);
+    drflac_uint64 read;
+    while ((read = drflac_read_pcm_frames_f32(flac, 4096, block.data())) > 0) {
+        meter.add(block.data(), (size_t) read, channels);
+    }
+    drflac_close(flac);
+    sums = std::move(meter.sums);
+    counts = std::move(meter.counts);
+    return true;
+}
+
+bool measureWav(const char* path, const std::vector<float>& beats,
+                std::vector<double>& sums, std::vector<long long>& counts) {
+    WavData wav;
+    if (!loadWavPcmToFloat(path, wav) || wav.channels < 1 || wav.sampleRate <= 0) return false;
+    const std::vector<double> starts = windowStartFrames(beats, (unsigned int) wav.sampleRate);
+    BeatPowerMeter meter(starts);
+    meter.add(wav.pcm.data(), wav.pcm.size() / wav.channels, wav.channels);
+    sums = std::move(meter.sums);
+    counts = std::move(meter.counts);
+    return true;
+}
+} // namespace
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_jotapeveloper_fision_StemEnergyJni_nativeAddBeatPower(
+        JNIEnv* env, jclass, jstring path_, jfloatArray beats_, jdoubleArray power_){
+    const jsize n = env->GetArrayLength(beats_);
+    if (n == 0 || env->GetArrayLength(power_) != n) return JNI_FALSE;
+    std::vector<float> beats(n);
+    env->GetFloatArrayRegion(beats_, 0, n, beats.data());
+
+    const char* path = env->GetStringUTFChars(path_, nullptr);
+    const size_t len = std::strlen(path);
+    const bool isFlac = len >= 5 && strcasecmp(path + len - 5, ".flac") == 0;
+    std::vector<double> sums;
+    std::vector<long long> counts;
+    const bool ok = isFlac ? measureFlac(path, beats, sums, counts)
+                           : measureWav(path, beats, sums, counts);
+    env->ReleaseStringUTFChars(path_, path);
+    if (!ok) return JNI_FALSE;
+
+    std::vector<double> power(n);
+    env->GetDoubleArrayRegion(power_, 0, n, power.data());
+    for (jsize i = 0; i < n; i++) {
+        if (counts[i] > 0) power[i] += sums[i] / (double) counts[i];
+    }
+    env->SetDoubleArrayRegion(power_, 0, n, power.data());
+    return JNI_TRUE;
 }
 
 // === Per-track FX (realtime) ===

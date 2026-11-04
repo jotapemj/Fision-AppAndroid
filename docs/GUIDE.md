@@ -272,9 +272,13 @@ Besides the chord options above, the drawer has:
 ### Animated background
 
 An optional ambient background: soft shapes in the colours of the current
-cover that pulse on the beat, at half time above 130 BPM. A sub-option adds
-**haptic beat**, vibrating with the same pulses while the player is on
-screen (up to about 140 pulses per minute).
+cover that pulse on the beat, at half time above 130 BPM. The pulse follows
+the energy of the drums: it rests in quiet sections and fades in over the
+beats that lead to a loud one. Songs without clear contrast between sections
+pulse throughout. The first time a song opens with the background on, the
+drums are measured in the background and the result is saved with the song.
+A sub-option adds **haptic beat**, vibrating with the same pulses while the
+player is on screen (up to about 140 pulses per minute).
 
 ## Lyrics
 
