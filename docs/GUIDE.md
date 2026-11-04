@@ -297,6 +297,10 @@ held notes stay lit and the instrumental marker appears only in real vocal
 silence. An optional **karaoke** mode lights every word as it is sung.
 Tapping a line or word jumps there, also while paused.
 
+Dragging down through the lyrics folds the controls into a pill with the
+transport row and a lit button to close the view. Dragging back up, or
+reaching the top, unfolds them.
+
 When the song has chords, a button next to the options shows the **chords
 above the words**, placed where each chord starts and following the chord
 options (chart, notation and pitch). It is saved per song.
