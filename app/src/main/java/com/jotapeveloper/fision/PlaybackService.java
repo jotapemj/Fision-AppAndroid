@@ -99,7 +99,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
     private boolean wasPlayingBeforeFocusLoss = false;
     // Timestamp of the LOSS_TRANSIENT that set wasPlayingBeforeFocusLoss. A GAIN
     // that arrives later than FOCUS_RESUME_WINDOW_MS is treated as another player
-    // yielding focus back to us for an unrelated reason (e.g. Spotify switching
+    // yielding focus back to us for an unrelated reason (e.g. a music app switching
     // songs) and MUST NOT auto-resume us.
     private long focusLossAtMs = 0L;
     private static final long FOCUS_RESUME_WINDOW_MS = 60_000L;
@@ -1260,7 +1260,7 @@ public class PlaybackService extends MediaBrowserServiceCompat {
                             if (engine != null) engine.setDuckFactor(1f);
                             // Coming from LOSS_TRANSIENT (no active call) AND within
                             // FOCUS_RESUME_WINDOW_MS: resume. Anything older is very
-                            // likely another player yielding focus (Spotify switching
+                            // likely another player yielding focus (a music app switching
                             // songs, notification sound finishing) and must not
                             // auto-start us.
                             long since = focusLossAtMs == 0L
