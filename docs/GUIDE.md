@@ -52,7 +52,7 @@ picture is uploaded as a 512×512 JPEG.
 
 <div align="center">
   <img src="./screenshots/b1_library.png" width="300" alt="Song library with downloaded and cloud songs">
-  <img src="./screenshots/a1_library_empty.png" width="300" alt="Empty library">
+  <img src="./screenshots/a1_library_empty.png" width="300" alt="Library of a new account with the demo song">
 </div>
 
 The main screen has two tabs, **Songs** and **Playlists**. The song list

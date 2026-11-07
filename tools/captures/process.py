@@ -22,6 +22,7 @@ FONT = sys.argv[1]
 STATUS_BAR = 75          # px, from the statusBars inset of the capture phone
 BLOCK = 14               # pixelation block (px)
 SERVER = "your-server:8000"
+SERVER_VERSION = "v2.1.0"    # version shown in the account dialog capture
 
 # Cover boxes (x1, y1, x2, y2) of the list rows: 52 dp covers, 189 px pitch.
 COVER_X = (42, 179)
@@ -109,7 +110,7 @@ def fix_e2(im):
     d = ImageDraw.Draw(im)
     d.rectangle((pill[0] - 4, pill[1] - 4, pill[2] + 4, pill[3] + 4), fill=bg)
     f = ImageFont.truetype(FONT, 25)
-    text = SERVER + " · v2.0.0"
+    text = SERVER + " · " + SERVER_VERSION
     tw = f.getbbox(text)[2]
     pad_l, gap, pad_r = 300 - pill[0], 369 - 352, pill[2] - 761
     w = pad_l + icon.width + gap + tw + pad_r
