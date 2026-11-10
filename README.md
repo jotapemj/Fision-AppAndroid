@@ -35,7 +35,14 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 <br>
 
 
+<div align="center">
+<details>
+  <summary><b>Watch the demo</b></summary>
+
 https://github.com/user-attachments/assets/fb8d2289-e46d-4a26-9af3-b5bbab4d9315
+
+</details>
+</div>
 
 
 ## Features
