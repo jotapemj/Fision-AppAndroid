@@ -34,6 +34,10 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 
 <br>
 
+
+https://github.com/user-attachments/assets/fb8d2289-e46d-4a26-9af3-b5bbab4d9315
+
+
 ## Features
 
 <div align="center">
@@ -45,10 +49,7 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 
 ## Also
 
-* **Stem effects**: filter, tempo-synced echo and reverb on each stem.
-* **Export** the mix or each stem to WAV, AAC or M4A.
-* **Playlists** stored on your server, playable offline.
-* **Chord notation** in American or Latin, with sharps or flats, transposed with the pitch.
+* **Stem effecn American or Latin, with sharps or flats, transposed with the pitch.
 * **Chords over the lyrics** and a **chord grid** of the whole song.
 * **Background animation** with optional haptics on tempo.
 * **Share song to Fision** compatible.
