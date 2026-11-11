@@ -564,12 +564,12 @@
     <string name="settings_tour_title">Voir la visite</string>
     <string name="settings_tour_reset">La visite s\'affichera de nouveau dans la bibliothèque et le lecteur</string>
     <string name="welcome_intro_title">Bienvenue dans Fision</string>
-    <string name="welcome_intro_body">Séparez vos morceaux en pistes d\'instruments, écoutez-les ou jouez avec elles.</string>
-    <string name="welcome_server_title">Votre propre serveur</string>
-    <string name="welcome_server_body">Les morceaux sont séparés sur votre ordinateur avec Fision-Server. Sans serveur, le mode local lit des dossiers de morceaux déjà séparés.</string>
+    <string name="welcome_intro_body">The magic starts with the fision of your music</string>
+    <string name="welcome_server_title">Service auto-hébergé</string>
+    <string name="welcome_server_body">Les morceaux sont traités sur votre propre serveur avec Fision Server. Le mode local uniquement est également disponible.</string>
     <string name="welcome_server_link">Fision-Server sur GitHub</string>
     <string name="welcome_notif_title">Notifications</string>
-    <string name="welcome_notif_body">Autorisez les notifications pour contrôler la lecture depuis l\'écran de verrouillage et suivre les téléchargements.</string>
+    <string name="welcome_notif_body">Activez les notifications pour contrôler la lecture en arrière-plan et suivre les téléchargements.</string>
     <string name="welcome_notif_allow">Autoriser les notifications</string>
     <string name="welcome_choice_title">Comment voulez-vous commencer ?</string>
     <string name="welcome_choice_body">Vous pourrez le changer plus tard dans les paramètres.</string>

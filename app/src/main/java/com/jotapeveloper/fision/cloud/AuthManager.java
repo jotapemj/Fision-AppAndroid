@@ -104,7 +104,7 @@ public class AuthManager {
     public void enterLocalMode() {
         ServerPrefs prefs = ServerPrefs.get(appCtx);
         String outgoing = prefs.getUsername();
-        String before = SongStorage.activeKey(appCtx);
+        String before = librarySignature(appCtx);
         prefs.setLocalMode(true);
         prefs.setFirstRunCompleted();
         prefs.setSessionExpired(false);
@@ -130,7 +130,7 @@ public class AuthManager {
             cb.onFailure(0, "empty_fields");
             return;
         }
-        String before = SongStorage.activeKey(appCtx);
+        String before = librarySignature(appCtx);
         prefs.setUrl(u);
         ApiClient.get(appCtx).notifyConfigChanged();
 
@@ -342,9 +342,18 @@ public class AuthManager {
     public void addLibraryChangedListener(LibraryChangedListener l) { libraryListeners.add(l); }
     public void removeLibraryChangedListener(LibraryChangedListener l) { libraryListeners.remove(l); }
 
+    /** Active library as a change-detection key. Local mode and the no-session
+     *  state share the "local" folder, so the flag goes into the key: entering
+     *  local mode out of the first-run choice is a library change (local mode
+     *  is what makes the demo song placeholder show up). */
+    private static String librarySignature(Context ctx) {
+        return SongStorage.activeKey(ctx)
+                + (ServerPrefs.get(ctx).isLocalMode() ? "#local" : "#session");
+    }
+
     /** Drops the outgoing account's state when the active library is not [before] any more. */
     private void onLibraryMaybeChanged(String before) {
-        if (before.equals(SongStorage.activeKey(appCtx))) return;
+        if (before.equals(librarySignature(appCtx))) return;
         CloudRepository.get(appCtx).onAccountChanged();
         main.post(() -> {
             for (LibraryChangedListener l : libraryListeners) l.onLibraryChanged();
@@ -357,7 +366,7 @@ public class AuthManager {
     public void logout() {
         ServerPrefs prefs = ServerPrefs.get(appCtx);
         String outgoing = prefs.getUsername();
-        String before = SongStorage.activeKey(appCtx);
+        String before = librarySignature(appCtx);
         prefs.setToken("");
         prefs.setUsername("");
         prefs.setLocalMode(true);

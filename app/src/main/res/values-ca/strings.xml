@@ -572,12 +572,12 @@
     <string name="settings_tour_title">Veure el tour</string>
     <string name="settings_tour_reset">El tour es tornarà a mostrar a la biblioteca i al reproductor</string>
     <string name="welcome_intro_title">Et donem la benvinguda a Fision</string>
-    <string name="welcome_intro_body">Separa les teves cançons en pistes d\'instruments, escolta-les o toca amb elles.</string>
-    <string name="welcome_server_title">El teu propi servidor</string>
-    <string name="welcome_server_body">Les cançons se separen al teu ordinador amb Fision-Server. Sense servidor, el mode local reprodueix carpetes de cançons ja separades.</string>
+    <string name="welcome_intro_body">The magic starts with the fision of your music</string>
+    <string name="welcome_server_title">Servei autoallotjat</string>
+    <string name="welcome_server_body">Les cançons es processen al teu propi servidor amb Fision Server. El mode només local també està disponible.</string>
     <string name="welcome_server_link">Fision-Server a GitHub</string>
     <string name="welcome_notif_title">Notificacions</string>
-    <string name="welcome_notif_body">Activa les notificacions per controlar la reproducció des de la pantalla de bloqueig i seguir les baixades.</string>
+    <string name="welcome_notif_body">Activa les notificacions per controlar la reproducció en segon pla i les baixades.</string>
     <string name="welcome_notif_allow">Activa les notificacions</string>
     <string name="welcome_choice_title">Com vols començar?</string>
     <string name="welcome_choice_body">Ho pots canviar més endavant a Ajustaments.</string>

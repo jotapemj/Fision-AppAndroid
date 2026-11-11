@@ -37,12 +37,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.android.material.button.MaterialButton;
 import com.jotapeveloper.fision.R;
 import com.jotapeveloper.fision.design.AccentColorManager;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -54,7 +57,12 @@ import java.util.List;
 public final class CoachMarkOverlay extends FrameLayout {
 
     /** Bounds of a step's target in window coordinates, or null when it is not on screen. */
-    public interface Target { @Nullable RectF windowBounds(); }
+    public interface Target {
+        @Nullable RectF windowBounds();
+
+        /** Views behind the bounds, read by the settle check. Empty for computed targets. */
+        @NonNull default List<View> views() { return Collections.emptyList(); }
+    }
 
     /** One line of a step's legend: an icon and its meaning. */
     public static final class LegendRow {
@@ -80,16 +88,20 @@ public final class CoachMarkOverlay extends FrameLayout {
 
     /** Union of the views that are on screen. */
     public static Target views(View... views) {
-        return () -> {
-            RectF out = null;
-            int[] loc = new int[2];
-            for (View v : views) {
-                if (v == null || !v.isShown() || v.getWidth() == 0 || v.getHeight() == 0) continue;
-                v.getLocationInWindow(loc);
-                RectF r = new RectF(loc[0], loc[1], loc[0] + v.getWidth(), loc[1] + v.getHeight());
-                if (out == null) out = r; else out.union(r);
+        final View[] vs = views;
+        return new Target() {
+            @Override @Nullable public RectF windowBounds() {
+                RectF out = null;
+                int[] loc = new int[2];
+                for (View v : vs) {
+                    if (v == null || !v.isShown() || v.getWidth() == 0 || v.getHeight() == 0) continue;
+                    v.getLocationInWindow(loc);
+                    RectF r = new RectF(loc[0], loc[1], loc[0] + v.getWidth(), loc[1] + v.getHeight());
+                    if (out == null) out = r; else out.union(r);
+                }
+                return out;
             }
-            return out;
+            @NonNull @Override public List<View> views() { return Arrays.asList(vs); }
         };
     }
 
@@ -97,6 +109,9 @@ public final class CoachMarkOverlay extends FrameLayout {
     private static final long FADE_MS = 200L;
     private static final int  DIM = 0x8C000000;
     private static final float SNAPSHOT_SCALE = 0.25f;
+    // Screen settle: sample the targets until they sit still, fully drawn.
+    private static final long  SETTLE_POLL_MS = 150L;
+    private static final int   SETTLE_TRIES   = 20;
 
     private final Activity activity;
     private final String tourId;
@@ -158,22 +173,85 @@ public final class CoachMarkOverlay extends FrameLayout {
         return (int) Math.min(screen - 32 * dp, 360 * dp);
     }
 
+    /** One tour at a time. Set when the overlay is built (before its snapshot is
+     *  taken) and cleared when it ends, so two requests for the same screen
+     *  cannot stack two overlays — the one on top would punch its hole in the
+     *  dimmed copy painted by the other and show an empty area. */
+    @Nullable private static CoachMarkOverlay active;
+
     /**
-     * Starts [tourId] over [activity] unless it is done already. Steps whose
-     * target is not on screen are left out; nothing happens when none is.
+     * Starts [tourId] over [activity] unless it is done already. Waits for the
+     * screen to settle (see {@link #awaitSettled}), then shows the steps whose
+     * target is on screen; nothing happens when none is.
      */
     public static void start(@NonNull Activity activity, @NonNull String tourId, @NonNull List<Step> steps) {
         if (Onboarding.isDone(activity, tourId) || activity.isFinishing()) return;
+        if (active != null && (active.finishing || active.activity.isFinishing()
+                || active.activity.isDestroyed())) active = null;
+        if (active != null) return;
+        ViewGroup content = activity.findViewById(android.R.id.content);
+        if (content == null) return;
+        awaitSettled(activity, content, tourId, steps, SETTLE_TRIES, null);
+    }
+
+    /**
+     * The overlay paints ONE snapshot of the window, so a screen that is still
+     * moving or fading in (tab animations, an empty library settling, the
+     * activity enter animation) leaves a hole over an area the snapshot never
+     * drew. Polls the targets and starts when their bounds repeat across two
+     * samples with nothing fading; falls back to the targets on screen once the
+     * tries run out, so the tour is never lost.
+     */
+    private static void awaitSettled(Activity a, ViewGroup content, String tourId,
+                                     List<Step> steps, int tries, @Nullable String previous) {
+        if (a.isFinishing() || a.isDestroyed() || active != null) return;
+        String now = boundsSignature(steps);
+        if (now != null && now.equals(previous)) {
+            begin(a, content, tourId, steps);
+            return;
+        }
+        if (tries <= 0) {
+            if (resumed(a)) begin(a, content, tourId, steps);
+            return;
+        }
+        content.postDelayed(() -> awaitSettled(a, content, tourId, steps, tries - 1, now),
+                SETTLE_POLL_MS);
+    }
+
+    /** Bounds and alpha of every visible target. Null while any of them is
+     *  moving or fading in, or when none is on screen. */
+    @Nullable
+    private static String boundsSignature(List<Step> steps) {
+        StringBuilder sb = new StringBuilder();
+        int present = 0;
+        for (Step s : steps) {
+            for (View v : s.target.views()) {
+                // Alpha rides along: an element fading in changes it every frame,
+                // a permanently dimmed one (a muted icon) does not.
+                if (v != null && v.isShown()) sb.append((long) (v.getAlpha() * 100)).append('/');
+            }
+            RectF r = s.target.windowBounds();
+            if (r == null) continue;
+            present++;
+            sb.append((long) r.left).append(':').append((long) r.top).append(':')
+              .append((long) r.right).append(':').append((long) r.bottom).append(';');
+        }
+        return present == 0 ? null : sb.toString();
+    }
+
+    private static void begin(Activity a, ViewGroup content, String tourId, List<Step> steps) {
         List<Step> shown = new ArrayList<>();
         for (Step s : steps) if (s.target.windowBounds() != null) shown.add(s);
         if (shown.isEmpty()) return;
-        ViewGroup content = activity.findViewById(android.R.id.content);
-        if (content == null) return;
-        for (int i = 0; i < content.getChildCount(); i++) {
-            if (content.getChildAt(i) instanceof CoachMarkOverlay) return;   // already running
-        }
-        CoachMarkOverlay o = new CoachMarkOverlay(activity, tourId, shown);
+        CoachMarkOverlay o = new CoachMarkOverlay(a, tourId, shown);
+        active = o;
         o.captureThenShow(content);
+    }
+
+    private static boolean resumed(Activity a) {
+        if (!(a instanceof ComponentActivity)) return !a.isFinishing();
+        return ((ComponentActivity) a).getLifecycle().getCurrentState()
+                .isAtLeast(Lifecycle.State.RESUMED);
     }
 
     // ------------------------------------------------------------------ setup
@@ -371,6 +449,7 @@ public final class CoachMarkOverlay extends FrameLayout {
     private void finish(boolean done) {
         if (finishing) return;
         finishing = true;
+        if (active == this) active = null;
         if (done) Onboarding.markDone(activity, tourId);
         if (backCallback != null) backCallback.remove();
         if (moveAnim != null) moveAnim.cancel();

@@ -579,12 +579,12 @@
     <string name="settings_tour_title">Переглянути тур</string>
     <string name="settings_tour_reset">Тур знову з’явиться в бібліотеці та плеєрі</string>
     <string name="welcome_intro_title">Вітаємо у Fision</string>
-    <string name="welcome_intro_body">Розділяйте пісні на доріжки інструментів, слухайте або грайте разом із ними.</string>
-    <string name="welcome_server_title">Ваш власний сервер</string>
-    <string name="welcome_server_body">Пісні розділяються на вашому комп’ютері за допомогою Fision-Server. Без сервера локальний режим відтворює папки з уже розділеними піснями.</string>
+    <string name="welcome_intro_body">The magic starts with the fision of your music</string>
+    <string name="welcome_server_title">Сервіс на власному сервері</string>
+    <string name="welcome_server_body">Пісні обробляються на вашому власному сервері з Fision Server. Також доступний режим лише локально.</string>
     <string name="welcome_server_link">Fision-Server на GitHub</string>
     <string name="welcome_notif_title">Сповіщення</string>
-    <string name="welcome_notif_body">Дозвольте сповіщення, щоб керувати відтворенням з екрана блокування та стежити за завантаженнями.</string>
+    <string name="welcome_notif_body">Увімкніть сповіщення, щоб керувати відтворенням у фоні та стежити за завантаженнями.</string>
     <string name="welcome_notif_allow">Дозволити сповіщення</string>
     <string name="welcome_choice_title">З чого почнемо?</string>
     <string name="welcome_choice_body">Це можна змінити пізніше в налаштуваннях.</string>

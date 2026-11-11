@@ -4,10 +4,12 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +25,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.widget.TextViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -190,10 +194,12 @@ public class WelcomeActivity extends AppCompatActivity {
             h.icon.setImageTintList(null);
             switch (pages.get(position)) {
                 case INTRO:
-                    bind(h, R.drawable.ic_launcher_fg, false, R.string.welcome_intro_title, R.string.welcome_intro_body);
+                    bind(h, R.drawable.ic_launcher_fg, false, R.string.welcome_intro_title,
+                            R.string.welcome_intro_body, true);
                     break;
                 case SERVER:
-                    bind(h, R.drawable.ic_server, true, R.string.welcome_server_title, R.string.welcome_server_body);
+                    bind(h, R.drawable.ic_server, true, R.string.welcome_server_title,
+                            R.string.welcome_server_body, false);
                     h.action.setText(R.string.welcome_server_link);
                     h.action.setVisibility(View.VISIBLE);
                     h.action.setOnClickListener(v -> {
@@ -203,7 +209,8 @@ public class WelcomeActivity extends AppCompatActivity {
                     });
                     break;
                 case NOTIFICATIONS:
-                    bind(h, R.drawable.ic_notifications, true, R.string.welcome_notif_title, R.string.welcome_notif_body);
+                    bind(h, R.drawable.ic_notifications, true, R.string.welcome_notif_title,
+                            R.string.welcome_notif_body, false);
                     h.action.setText(R.string.welcome_notif_allow);
                     h.action.setVisibility(View.VISIBLE);
                     h.action.setOnClickListener(v -> {
@@ -218,7 +225,28 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         }
 
+        /** The intro subtitle is a tagline: italic, on one line, shrinking to fit
+         *  the biggest system font instead of wrapping. */
+        private void styleBody(TextView tv, boolean tagline) {
+            Typeface base = ResourcesCompat.getFont(WelcomeActivity.this, R.font.noto_sans_regular);
+            tv.setTypeface(base, tagline ? Typeface.ITALIC : Typeface.NORMAL);
+            if (tagline) {
+                tv.setMaxLines(1);
+                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(tv,
+                        11, 16, 1, TypedValue.COMPLEX_UNIT_SP);
+            } else {
+                TextViewCompat.setAutoSizeTextTypeWithDefaults(tv,
+                        TextViewCompat.AUTO_SIZE_TEXT_TYPE_NONE);
+                tv.setMaxLines(Integer.MAX_VALUE);
+            }
+        }
+
         private void bind(Holder h, @DrawableRes int icon, boolean tint, @StringRes int title, @StringRes int body) {
+            bind(h, icon, tint, title, body, false);
+        }
+
+        private void bind(Holder h, @DrawableRes int icon, boolean tint, @StringRes int title,
+                          @StringRes int body, boolean tagline) {
             h.icon.setImageResource(icon);
             // The launcher artwork carries the adaptive-icon safe margin: shown larger.
             int size = (int) ((icon == R.drawable.ic_launcher_fg ? 220 : 120)
@@ -229,6 +257,7 @@ public class WelcomeActivity extends AppCompatActivity {
             if (tint) h.icon.setImageTintList(ColorStateList.valueOf(accent));
             h.title.setText(title);
             h.body.setText(body);
+            styleBody(h.body, tagline);
         }
 
         @Override public int getItemCount() { return pages.size(); }

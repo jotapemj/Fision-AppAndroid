@@ -554,12 +554,12 @@
     <string name="settings_tour_title">查看导览</string>
     <string name="settings_tour_reset">导览将在资料库和播放器中再次显示</string>
     <string name="welcome_intro_title">欢迎使用 Fision</string>
-    <string name="welcome_intro_body">把歌曲分离成各乐器分轨，聆听或跟着一起演奏。</string>
-    <string name="welcome_server_title">你自己的服务器</string>
-    <string name="welcome_server_body">歌曲在你的电脑上由 Fision-Server 分离。没有服务器时，本地模式可播放已分离好的歌曲文件夹。</string>
+    <string name="welcome_intro_body">The magic starts with the fision of your music</string>
+    <string name="welcome_server_title">自托管服务</string>
+    <string name="welcome_server_body">歌曲在你自己的服务器上由 Fision Server 处理。也提供仅本地模式。</string>
     <string name="welcome_server_link">GitHub 上的 Fision-Server</string>
     <string name="welcome_notif_title">通知</string>
-    <string name="welcome_notif_body">允许通知，以便在锁屏上控制播放并查看下载进度。</string>
+    <string name="welcome_notif_body">开启通知，以便在后台控制播放并跟踪下载。</string>
     <string name="welcome_notif_allow">允许通知</string>
     <string name="welcome_choice_title">你想如何开始？</string>
     <string name="welcome_choice_body">之后可以在设置中更改。</string>
