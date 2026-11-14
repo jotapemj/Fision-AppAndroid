@@ -18,6 +18,15 @@ Fision is a self-hosted stem player. You just send a song to your
 stems with chords, beats and lyrics, and this app plays them through a native
 engine where every stem can be mixed, effected and even placed in 3D space.
 
+<h3 align="center">Download the latest release!</h3>
+
+<p align="center">
+  <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest/download/fision-latest.apk"><img src="https://img.shields.io/badge/Download-APK-27B397?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"></a>
+  <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest"><img src="https://img.shields.io/github/v/release/jotapemj/Fision-AppAndroid?style=for-the-badge&label=Latest&color=555555" alt="Latest release"></a>
+  <br>
+  <sub>Android 8.0 or newer · every release is signed with the same key, so updates install over the previous version.</sub>
+</p>
+
 <p align="center">
   <a href="docs/GUIDE.md"><b>User guide</b></a> ·
   <a href="docs/TECHNICAL.md"><b>Technical notes</b></a> ·
@@ -56,7 +65,10 @@ https://github.com/user-attachments/assets/fb8d2289-e46d-4a26-9af3-b5bbab4d9315
 
 ## Also
 
-* **Stem effecn American or Latin, with sharps or flats, transposed with the pitch.
+* **Stem effects**: filter, tempo-synced echo and reverb on each stem.
+* **Export** the mix or each stem to WAV, AAC or M4A.
+* **Playlists** stored on your server, playable offline.
+* **Chord notation** in American or Latin, with sharps or flats, transposed with the pitch.
 * **Chords over the lyrics** and a **chord grid** of the whole song.
 * **Background animation** with optional haptics on tempo.
 * **Share song to Fision** compatible.
@@ -79,8 +91,9 @@ https://github.com/user-attachments/assets/fb8d2289-e46d-4a26-9af3-b5bbab4d9315
 
 1. Run a [FisionServer](https://github.com/jotapemj/Fision-Server) on a computer you
    control, ideally reachable through Tailscale or HTTPS.
-2. Build and install the app (see [Building](#building)). It needs Android 8.0
-   or newer.
+2. Install the app: download the APK from the
+   [latest release](https://github.com/jotapemj/Fision-AppAndroid/releases/latest)
+   or build it yourself (see [Building](#building)). It needs Android 8.0 or newer.
 3. Sign in with the server address and your account, add a song and pick how
    to separate it.
 
