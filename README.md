@@ -21,9 +21,7 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 <h3 align="center">Download the latest release!</h3>
 
 <p align="center">
-  <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest/download/fision-latest.apk"><img src="https://img.shields.io/badge/Download-APK-27B397?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"></a>
-  <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest"><img src="https://img.shields.io/github/v/release/jotapemj/Fision-AppAndroid?style=for-the-badge&label=Latest&color=555555" alt="Latest release"></a>
-</p>
+  <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest/download/fision-latest.apk"><img src="https://img.shields.io/badge/Download-APK-27B397?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"></a></p>
 
 <p align="center">
   <a href="docs/GUIDE.md"><b>User guide</b></a> ·
