@@ -23,8 +23,6 @@ engine where every stem can be mixed, effected and even placed in 3D space.
 <p align="center">
   <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest/download/fision-latest.apk"><img src="https://img.shields.io/badge/Download-APK-27B397?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"></a>
   <a href="https://github.com/jotapemj/Fision-AppAndroid/releases/latest"><img src="https://img.shields.io/github/v/release/jotapemj/Fision-AppAndroid?style=for-the-badge&label=Latest&color=555555" alt="Latest release"></a>
-  <br>
-  <sub>Android 8.0 or newer · every release is signed with the same key, so updates install over the previous version.</sub>
 </p>
 
 <p align="center">
